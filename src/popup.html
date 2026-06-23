@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    :root { color-scheme: dark; }
+    body {
+      width: 300px; margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+      background: #11111c; color: #e8e8f0;
+    }
+    .hd {
+      padding: 16px 18px; background: linear-gradient(135deg, #7c3aed, #2563eb);
+    }
+    .hd h1 { margin: 0; font-size: 16px; display: flex; align-items: center; gap: 8px; }
+    .hd p { margin: 4px 0 0; font-size: 11.5px; opacity: .9; }
+    .bd { padding: 16px 18px; font-size: 13px; line-height: 1.55; color: #b9bdce; }
+    .bd b { color: #e8e8f0; }
+    .step { display: flex; gap: 10px; margin-bottom: 11px; }
+    .num { flex: 0 0 22px; height: 22px; border-radius: 7px; background: rgba(124,58,237,.25);
+      color: #c4b5fd; font-size: 12px; font-weight: 700; display: grid; place-items: center; }
+    .ft { padding: 12px 18px; border-top: 1px solid rgba(255,255,255,.07); font-size: 11px; color: #6f7589; }
+    a { color: #a78bfa; }
+  </style>
+</head>
+<body>
+  <div class="hd">
+    <h1>
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M12 6v8"/><path d="M9 9l3-3 3 3"/></svg>
+      Nativize
+    </h1>
+    <p>Lovable apps → native iOS + Android</p>
+  </div>
+  <div class="bd">
+    <div class="step"><span class="num">1</span><span>Open your project on <b>lovable.dev</b>.</span></div>
+    <div class="step"><span class="num">2</span><span>Click the floating <b>Nativize</b> button at the bottom-right.</span></div>
+    <div class="step"><span class="num">3</span><span>Confirm the details, then <b>Download .zip</b> or <b>Push to GitHub</b>.</span></div>
+    <div class="step"><span class="num">4</span><span>Run <b>Actions → Nativize Build</b> to build in the cloud — free, no Xcode needed.</span></div>
+  </div>
+  <div class="ft">Everything runs in your browser. Your GitHub token stays in <b>chrome.storage.local</b>.</div>
+</body>
+</html>

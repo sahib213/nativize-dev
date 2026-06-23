@@ -1,0 +1,12 @@
+{
+  "name": "nativize",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Chrome extension that turns Lovable web apps into native iOS + Android apps (Capacitor 8).",
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "icons": "node icons/generate-icons.js",
+    "smoke:native": "node tools/smoke-generated-kit.js"
+  },
+  "license": "MIT"
+}

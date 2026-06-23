@@ -1,0 +1,35 @@
+{
+  "manifest_version": 3,
+  "name": "Nativize",
+  "version": "1.0.0",
+  "description": "Turn any Lovable web app into submittable native iOS + Android apps. Generates a Capacitor 8 native kit, right inside lovable.dev.",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_title": "Nativize",
+    "default_popup": "src/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "permissions": ["storage"],
+  "host_permissions": ["https://api.github.com/*"],
+  "content_scripts": [
+    {
+      "matches": ["https://lovable.dev/*"],
+      "js": [
+        "src/kit-generator.js",
+        "src/zip.js",
+        "src/github.js",
+        "src/panel.js",
+        "src/content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}

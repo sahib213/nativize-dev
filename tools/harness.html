@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>My Demo App – Lovable</title>
+  <style>
+    body {
+      margin: 0; min-height: 100vh;
+      font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+      background:
+        radial-gradient(1100px 600px at 20% -10%, #2a2350 0%, transparent 60%),
+        radial-gradient(900px 500px at 90% 110%, #102a4d 0%, transparent 55%),
+        #0c0c14;
+      color: #cfd2e0;
+    }
+    .mock { max-width: 720px; margin: 0 auto; padding: 64px 28px; }
+    .mock h1 { font-size: 30px; margin: 0 0 8px; color: #f3f4ff; }
+    .mock p { color: #9aa0b4; line-height: 1.6; }
+    .mock .bar { height: 14px; border-radius: 7px; background: rgba(255,255,255,.06); margin: 12px 0; }
+    .mock .bar.s { width: 60%; }
+    .mock a { color: #7c93ff; }
+    .badge { display:inline-block; padding:4px 10px; border-radius:999px; background:rgba(124,58,237,.2); color:#c4b5fd; font-size:12px; }
+  </style>
+</head>
+<body>
+  <!-- Fake Lovable page chrome so detection + visual layering can be eyeballed -->
+  <div class="mock">
+    <span class="badge">lovable.dev preview (harness)</span>
+    <h1>My Demo App</h1>
+    <p>This page imitates a Lovable project so the Nativize panel can be rendered
+       and screenshotted exactly as it appears in the extension. Repo:
+       <a href="https://github.com/octocat/my-demo-app">github.com/octocat/my-demo-app</a>.</p>
+    <div class="bar"></div><div class="bar"></div><div class="bar s"></div>
+  </div>
+
+  <!-- Load the SAME modules the content script loads, in the same order -->
+  <script src="../src/kit-generator.js"></script>
+  <script src="../src/zip.js"></script>
+  <script src="../src/github.js"></script>
+  <script src="../src/panel.js"></script>
+  <script>
+    // Mirror the content-script detection so the harness exercises real code paths.
+    function detectAppName() {
+      var t = (document.title || "").trim();
+      return t.replace(/\s*[|–—\-]\s*Lovable.*$/i, "").trim() || "My Lovable App";
+    }
+    function detectRepo() {
+      var a = document.querySelector('a[href*="github.com/"]');
+      var m = a && a.href.match(/github\.com\/([^\/\s]+)\/([^\/\s#?]+)/i);
+      return m ? m[1] + "/" + m[2] : "";
+    }
+
+    var initial = {
+      appName: detectAppName(),
+      appId: NativizeKit.normalizeAppId("", detectAppName()),
+      githubRepo: detectRepo(),
+      webDir: "dist",
+      enablePush: true,
+      token: ""
+    };
+
+    window.__nz = NativizePanel.mount({
+      initial: initial,
+      openNow: true, // render with the panel open for screenshots
+      onChange: function () {},
+      onDownload: function (state) {
+        // Real generation + real blob, so this verifies the actual flow.
+        var files = NativizeKit.generateKit(state);
+        var blob = NativizeZip.toBlob(files);
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement("a");
+        a.href = url; a.download = (NativizeKit.slugify(state.appName) || "nativize") + "-native-kit.zip";
+        window.__lastKit = { count: Object.keys(files).length, size: blob.size, files: Object.keys(files) };
+        console.log("[nativize] generated kit:", window.__lastKit);
+        // Record evidence before triggering the browser download; some browser
+        // automation surfaces suspend the current task as soon as a.click().
+        document.documentElement.setAttribute("data-nativize-kit-count", String(window.__lastKit.count));
+        document.body.appendChild(a); a.click(); a.remove();
+      },
+      onPush: function (state) {
+        // No real token in the harness — simulate a successful push response.
+        console.log("[nativize] push (simulated) for", state.githubRepo);
+        return Promise.resolve({ url: "https://github.com/" + state.githubRepo + "/commit/abc1234" });
+      }
+    });
+    console.log("[nativize] harness mounted. initial =", initial);
+  </script>
+</body>
+</html>
