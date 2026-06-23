@@ -80,7 +80,18 @@
     transition: border-color .15s ease, background .15s ease;
   }
   .nz-field input[type="text"]:focus, .nz-field input[type="password"]:focus { border-color: #7c3aed; background: rgba(124,58,237,.08); }
+  .nz-field textarea {
+    width: 100%; padding: 9px 11px; border-radius: 10px; font-size: 12px; resize: vertical; min-height: 56px;
+    background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.12); color: #f2f2f7; outline: none;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  .nz-field textarea:focus { border-color: #7c3aed; background: rgba(124,58,237,.08); }
+  .nz-field input[type="file"] { width: 100%; font-size: 11.5px; color: #9aa0b4; }
   .nz-hint { font-size: 10.5px; color: #6f7589; margin-top: 4px; }
+  .nz-sub { margin: 4px 0 0 0; padding: 12px; border-radius: 12px; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.07); display: none; }
+  .nz-sub.nz-show { display: block; }
+  .nz-subhead { font-size: 11.5px; font-weight: 700; color: #c4b5fd; margin: 0 0 8px; letter-spacing: .3px; }
+  .nz-divider { height: 1px; background: rgba(255,255,255,.08); margin: 14px 0 12px; }
 
   .nz-toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0 4px; }
   .nz-toggle-row .nz-tlabel { font-size: 13px; font-weight: 600; color: #e8e8f0; }
@@ -193,6 +204,40 @@
           '<label>GitHub token (repo scope) — for direct push</label>' +
           '<input type="password" id="nz-token" autocomplete="off" spellcheck="false" placeholder="ghp_… (stored only in chrome.storage.local)">' +
           '<div class="nz-hint">Optional. Only needed for &ldquo;Push to GitHub&rdquo;. Never leaves your browser.</div></div>' +
+        '<div class="nz-divider"></div>' +
+        '<div class="nz-toggle-row">' +
+          '<div><div class="nz-tlabel">Auto-upload to stores</div>' +
+            '<div class="nz-tsub">Signed build &rarr; TestFlight + Play internal testing</div></div>' +
+          '<label class="nz-switch"><input type="checkbox" id="nz-store"><span class="nz-slider"></span></label>' +
+        '</div>' +
+        '<div class="nz-sub" id="nz-storeWrap">' +
+          // ---- iOS / App Store Connect ----
+          '<div class="nz-toggle-row" style="padding-top:0">' +
+            '<div><div class="nz-tlabel" style="font-size:12.5px">App Store Connect &rarr; TestFlight</div></div>' +
+            '<label class="nz-switch"><input type="checkbox" id="nz-ios"><span class="nz-slider"></span></label>' +
+          '</div>' +
+          '<div class="nz-sub" id="nz-iosWrap">' +
+            '<div class="nz-subhead">iOS credentials (App Store Connect API key)</div>' +
+            '<div class="nz-field"><label>Key ID</label><input type="text" id="nz-ascKeyId" placeholder="ABCD123456"></div>' +
+            '<div class="nz-field"><label>Issuer ID</label><input type="text" id="nz-ascIssuer" placeholder="69a6de7e-…"></div>' +
+            '<div class="nz-field"><label>Apple Team ID</label><input type="text" id="nz-appleTeam" placeholder="A1B2C3D4E5"></div>' +
+            '<div class="nz-field"><label>API key (.p8 contents)</label><textarea id="nz-ascP8" placeholder="-----BEGIN PRIVATE KEY-----&#10;…"></textarea></div>' +
+          '</div>' +
+          // ---- Android / Google Play ----
+          '<div class="nz-toggle-row">' +
+            '<div><div class="nz-tlabel" style="font-size:12.5px">Google Play &rarr; Internal testing</div></div>' +
+            '<label class="nz-switch"><input type="checkbox" id="nz-android"><span class="nz-slider"></span></label>' +
+          '</div>' +
+          '<div class="nz-sub" id="nz-androidWrap">' +
+            '<div class="nz-subhead">Android credentials</div>' +
+            '<div class="nz-field"><label>Upload keystore (.jks / .keystore)</label><input type="file" id="nz-keystore" accept=".jks,.keystore"><div class="nz-hint" id="nz-keystoreInfo">Read in-browser, base64-encoded into a secret.</div></div>' +
+            '<div class="nz-field"><label>Keystore password</label><input type="password" id="nz-ksPass" autocomplete="off"></div>' +
+            '<div class="nz-field"><label>Key alias</label><input type="text" id="nz-keyAlias" placeholder="upload"></div>' +
+            '<div class="nz-field"><label>Key password</label><input type="password" id="nz-keyPass" autocomplete="off"></div>' +
+            '<div class="nz-field"><label>Play service account JSON</label><textarea id="nz-playJson" placeholder=\'{ "type": "service_account", … }\'></textarea></div>' +
+          '</div>' +
+          '<div class="nz-hint">Stored only as encrypted GitHub Actions secrets via the API. First Play release must be created manually once (Google requirement).</div>' +
+        '</div>' +
         '<div class="nz-actions">' +
           '<button class="nz-btn nz-btn-ghost" id="nz-download">Download .zip</button>' +
           '<button class="nz-btn nz-btn-primary" id="nz-pushBtn">Push to GitHub</button>' +
@@ -220,14 +265,37 @@
     $("nz-token").value = initial.token || "";
     tokenField.style.display = "block"; // token always available for push delivery
 
+    var keystoreB64 = ""; // populated when a keystore file is selected
+
     function getState() {
+      var storeOn = $("nz-store").checked;
+      var iosUpload = storeOn && $("nz-ios").checked;
+      var androidUpload = storeOn && $("nz-android").checked;
+      // Map UI fields to the exact GitHub secret names the workflow expects.
+      var secrets = {};
+      if (iosUpload) {
+        secrets.ASC_KEY_ID = $("nz-ascKeyId").value.trim();
+        secrets.ASC_ISSUER_ID = $("nz-ascIssuer").value.trim();
+        secrets.APPLE_TEAM_ID = $("nz-appleTeam").value.trim();
+        secrets.ASC_KEY_P8 = $("nz-ascP8").value;
+      }
+      if (androidUpload) {
+        secrets.ANDROID_KEYSTORE_BASE64 = keystoreB64;
+        secrets.ANDROID_KEYSTORE_PASSWORD = $("nz-ksPass").value;
+        secrets.ANDROID_KEY_ALIAS = $("nz-keyAlias").value.trim();
+        secrets.ANDROID_KEY_PASSWORD = $("nz-keyPass").value;
+        secrets.PLAY_SERVICE_ACCOUNT_JSON = $("nz-playJson").value;
+      }
       return {
         appName: $("nz-appName").value.trim(),
         appId: $("nz-appId").value.trim(),
         githubRepo: $("nz-repo").value.trim(),
         webDir: $("nz-webDir").value.trim() || "dist",
         enablePush: $("nz-push").checked,
-        token: $("nz-token").value.trim()
+        token: $("nz-token").value.trim(),
+        iosUpload: iosUpload,
+        androidUpload: androidUpload,
+        storeSecrets: secrets
       };
     }
 
@@ -274,6 +342,30 @@
     });
     $("nz-push").addEventListener("change", emitChange);
 
+    // ---- Store auto-upload toggles ----
+    function reveal(id, on) { $(id).classList.toggle("nz-show", !!on); }
+    $("nz-store").addEventListener("change", function () { reveal("nz-storeWrap", $("nz-store").checked); emitChange(); });
+    $("nz-ios").addEventListener("change", function () { reveal("nz-iosWrap", $("nz-ios").checked); emitChange(); });
+    $("nz-android").addEventListener("change", function () { reveal("nz-androidWrap", $("nz-android").checked); emitChange(); });
+    ["nz-ascKeyId", "nz-ascIssuer", "nz-appleTeam", "nz-ascP8", "nz-ksPass", "nz-keyAlias", "nz-keyPass", "nz-playJson"]
+      .forEach(function (id) { $(id).addEventListener("input", emitChange); });
+
+    // Read the keystore file entirely in-browser and base64-encode it.
+    $("nz-keystore").addEventListener("change", function (e) {
+      var file = e.target.files && e.target.files[0];
+      if (!file) { keystoreB64 = ""; return; }
+      var reader = new FileReader();
+      reader.onload = function () {
+        var bytes = new Uint8Array(reader.result);
+        var bin = "";
+        for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+        keystoreB64 = (typeof btoa === "function") ? btoa(bin) : "";
+        $("nz-keystoreInfo").textContent = file.name + " · " + bytes.length + " bytes · encoded ✓";
+        emitChange();
+      };
+      reader.readAsArrayBuffer(file);
+    });
+
     function emitChange() { if (typeof opts.onChange === "function") opts.onChange(getState()); }
 
     $("nz-download").addEventListener("click", function () {
@@ -295,10 +387,16 @@
       Promise.resolve(opts.onPush && opts.onPush(st, st.token))
         .then(function (res) {
           var url = res && res.url;
-          showSuccess("Pushed to GitHub",
-            "Kit committed to <b>" + esc(st.githubRepo) + "</b>." +
-            (url ? ' <br><a href="' + esc(url) + '" target="_blank" rel="noopener">Open the commit ↗</a>' : "") +
-            "<br><br>Now run <b>Actions → Nativize Build</b> to build in the cloud.");
+          var msg = "Kit committed to <b>" + esc(st.githubRepo) + "</b>." +
+            (url ? ' <br><a href="' + esc(url) + '" target="_blank" rel="noopener">Open the commit ↗</a>' : "");
+          if (res && res.releaseReady) {
+            var n = (res.secretsSet || []).length;
+            msg += "<br><br>" + n + " encrypted secret" + (n === 1 ? "" : "s") + " stored. " +
+              "Run <b>Actions → Nativize Release</b> to build &amp; ship to TestFlight + Play internal testing.";
+          } else {
+            msg += "<br><br>Now run <b>Actions → Nativize Build</b> to build in the cloud.";
+          }
+          showSuccess("Pushed to GitHub", msg);
         })
         .catch(function (e) { setStatus("Push failed: " + (e && e.message || e), "err"); });
     });

@@ -98,5 +98,45 @@
     };
   }
 
-  return { pushKit: pushKit, splitRepo: splitRepo };
+  // Resolve the sealed-box module in either environment (Node require / browser global).
+  function getSealedBox() {
+    if (typeof module === "object" && module.exports) return require("./sealedbox.js");
+    var g = (typeof self !== "undefined" ? self : window);
+    if (!g.NativizeSealedBox) throw new Error("Sealed-box crypto not loaded (sealedbox.js).");
+    return g.NativizeSealedBox;
+  }
+
+  /**
+   * Encrypt and store repo-level GitHub Actions secrets.
+   * @param {string} repoStr  "owner/repo"
+   * @param {string} token    GitHub token with 'repo' (and Actions) scope
+   * @param {Object} secrets  { SECRET_NAME: "value", ... } — empty values skipped
+   * @returns {Promise<{set: string[], skipped: string[]}>}
+   */
+  async function setSecrets(repoStr, token, secrets) {
+    if (!token) throw new Error("A GitHub token with 'repo' scope is required.");
+    var sb = getSealedBox();
+    var r = splitRepo(repoStr);
+    var base = "/repos/" + r.owner + "/" + r.repo;
+
+    // The public key used to encrypt every secret for this repo.
+    var pub = await gh("GET", base + "/actions/secrets/public-key", token);
+
+    var set = [], skipped = [];
+    var names = Object.keys(secrets);
+    for (var i = 0; i < names.length; i++) {
+      var name = names[i];
+      var value = secrets[name];
+      if (value == null || String(value) === "") { skipped.push(name); continue; }
+      var encrypted = sb.sealBase64(String(value), pub.key);
+      await gh("PUT", base + "/actions/secrets/" + encodeURIComponent(name), token, {
+        encrypted_value: encrypted,
+        key_id: pub.key_id
+      });
+      set.push(name);
+    }
+    return { set: set, skipped: skipped };
+  }
+
+  return { pushKit: pushKit, setSecrets: setSecrets, splitRepo: splitRepo };
 });

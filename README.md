@@ -44,7 +44,27 @@ A browser can't compile native apps, so Nativize splits the job:
 | `nativize-patch-android.sh` | Pins AGP 8.13.0 / Gradle 8.13; de-dupes `splash.xml`. |
 | `.github/workflows/nativize-build.yml` | Cloud build: Android assembleDebug (ubuntu) + iOS xcodebuild `CODE_SIGNING_ALLOWED=NO` (macos), `workflow_dispatch`. |
 | `src/nativePush.ts` *(optional)* | Firebase push via **static** import; no-ops on web. |
+| `.github/workflows/nativize-release.yml` *(optional)* | **Signed** build + auto-upload to TestFlight / Play internal testing. |
+| `STORE_SETUP.md` *(optional)* | Which secrets the release workflow needs + how to get them. |
 | `CHECKLIST.md` | Full App Store + Play Store submission path. |
+
+## Direct store upload (no manual archive/upload)
+
+Flip **Auto-upload to stores** in the panel and the kit gains a
+`nativize-release.yml` workflow that builds **signed** binaries and ships them
+straight to your accounts:
+
+- **iOS → TestFlight** using an App Store Connect **API key** (`-allowProvisioningUpdates`
+  handles signing certs/profiles; `xcrun altool` uploads the `.ipa`).
+- **Android → Play Internal testing** using an upload keystore (AGP injected
+  signing) + a Play service-account JSON.
+
+Credentials never get committed. The extension encrypts each one with the repo's
+public key using libsodium **`crypto_box_seal`** (vendored tweetnacl + BLAKE2b,
+since WebCrypto can't do it) and writes them as **GitHub Actions secrets** via the
+API. Two honest caveats: public App Store "Submit for Review" stays manual, and
+Google requires the **first** Play release to be created manually once (the API
+can't create the app) — after that, uploads are automatic.
 
 ## Capacitor 8 footguns baked in
 

@@ -111,8 +111,21 @@
       onPush: function (state, token) {
         var files = Kit.generateKit(state);
         save(state);
+        // 1) commit the kit, then 2) if store upload is on, encrypt + store the
+        //    credentials as GitHub Actions secrets so the release workflow can run.
         return GitHub.pushKit(state.githubRepo, token, files,
-          "Add Nativize native kit for " + state.appName + " (Capacitor 8)");
+          "Add Nativize native kit for " + state.appName + " (Capacitor 8)")
+          .then(function (res) {
+            var secrets = state.storeSecrets || {};
+            if (!(state.iosUpload || state.androidUpload) || !Object.keys(secrets).length) {
+              return res;
+            }
+            return GitHub.setSecrets(state.githubRepo, token, secrets).then(function (s) {
+              res.secretsSet = s.set;
+              res.releaseReady = true;
+              return res;
+            });
+          });
       }
     });
   });

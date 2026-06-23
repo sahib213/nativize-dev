@@ -83,11 +83,22 @@
       webDir: normalizeWebDir(input.webDir),
       githubRepo: String(input.githubRepo || "").trim(), // "owner/repo"
       enablePush: input.enablePush === true,
+      // Store auto-upload (signed builds → testing tracks via GitHub Actions):
+      iosUpload: input.iosUpload === true,       // App Store Connect → TestFlight
+      androidUpload: input.androidUpload === true, // Google Play → Internal testing
       agpVersion: AGP_VERSION,
       gradleVersion: GRADLE_VERSION
     };
+    cfg.storeUpload = cfg.iosUpload || cfg.androidUpload;
     return cfg;
   }
+
+  // Secret names the release workflow expects. The extension encrypts + writes
+  // these to the repo's GitHub Actions secrets (see src/github.js setSecrets).
+  var STORE_SECRETS = {
+    ios: ["ASC_KEY_ID", "ASC_ISSUER_ID", "ASC_KEY_P8", "APPLE_TEAM_ID"],
+    android: ["ANDROID_KEYSTORE_BASE64", "ANDROID_KEYSTORE_PASSWORD", "ANDROID_KEY_ALIAS", "ANDROID_KEY_PASSWORD", "PLAY_SERVICE_ACCOUNT_JSON"]
+  };
 
   // ---------------------------------------------------------------------------
   // File templates. Each returns a string. Kept as functions so they can close
@@ -458,6 +469,207 @@
     ].join("\n");
   }
 
+  function fileReleaseWorkflow(c) {
+    var lines = [
+      "name: Nativize Release",
+      "",
+      "# Builds SIGNED binaries and ships them straight to your store accounts:",
+      "#   iOS     -> App Store Connect / TestFlight",
+      "#   Android -> Google Play Internal testing track",
+      "# Credentials come from encrypted GitHub Actions secrets (set by the Nativize",
+      "# extension). Manual trigger so a release only happens when you ask for it.",
+      "on:",
+      "  workflow_dispatch:",
+      "",
+      "jobs:"
+    ];
+
+    if (c.androidUpload) {
+      lines = lines.concat([
+        "  android:",
+        "    name: Android -> Play (internal)",
+        "    runs-on: ubuntu-latest",
+        "    steps:",
+        "      - uses: actions/checkout@v4",
+        "      - uses: actions/setup-node@v4",
+        "        with:",
+        "          node-version: 22",
+        "      - uses: actions/setup-java@v4",
+        "        with:",
+        "          distribution: temurin",
+        "          java-version: 17",
+        "      - name: Install deps + build web",
+        "        run: |",
+        "          npm ci || npm install",
+        "          npm install --no-save typescript @capacitor/core@^8 @capacitor/cli@^8 @capacitor/android@^8 @capacitor/splash-screen@^8" + (c.enablePush ? " @capacitor-firebase/messaging firebase" : ""),
+        "          npm run build",
+        "      - name: Add Android platform + sync",
+        "        run: |",
+        "          if [ -d android ]; then echo 'android already added'; else npx cap add android; fi",
+        "          bash ./nativize-patch-android.sh",
+        "          npx cap sync android",
+        "      - name: Decode upload keystore",
+        "        run: echo \"$ANDROID_KEYSTORE_BASE64\" | base64 -d > \"$RUNNER_TEMP/upload-keystore.jks\"",
+        "        env:",
+        "          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}",
+        "      - name: Build signed release bundle (.aab)",
+        "        working-directory: android",
+        "        env:",
+        "          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}",
+        "          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}",
+        "          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}",
+        "        run: |",
+        "          ./gradlew bundleRelease --stacktrace \\",
+        "            -Pandroid.injected.signing.store.file=\"$RUNNER_TEMP/upload-keystore.jks\" \\",
+        "            -Pandroid.injected.signing.store.password=\"$ANDROID_KEYSTORE_PASSWORD\" \\",
+        "            -Pandroid.injected.signing.key.alias=\"$ANDROID_KEY_ALIAS\" \\",
+        "            -Pandroid.injected.signing.key.password=\"$ANDROID_KEY_PASSWORD\"",
+        "      - name: Upload to Google Play (internal track)",
+        "        uses: r0adkll/upload-google-play@v1",
+        "        with:",
+        "          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}",
+        "          packageName: " + c.appId,
+        "          releaseFiles: android/app/build/outputs/bundle/release/app-release.aab",
+        "          track: internal",
+        "          status: completed",
+        ""
+      ]);
+    }
+
+    if (c.iosUpload) {
+      lines = lines.concat([
+        "  ios:",
+        "    name: iOS -> TestFlight",
+        "    runs-on: macos-26",
+        "    steps:",
+        "      - uses: actions/checkout@v4",
+        "      - uses: actions/setup-node@v4",
+        "        with:",
+        "          node-version: 22",
+        "      - name: Install deps + build web",
+        "        run: |",
+        "          npm ci || npm install",
+        "          npm install --no-save typescript @capacitor/core@^8 @capacitor/cli@^8 @capacitor/ios@^8 @capacitor/splash-screen@^8" + (c.enablePush ? " @capacitor-firebase/messaging firebase" : ""),
+        "          npm run build",
+        "      - name: Add iOS platform + sync",
+        "        env:",
+        "          LANG: en_US.UTF-8",
+        "          LC_ALL: en_US.UTF-8",
+        "        run: |",
+        "          if [ -d ios ]; then echo 'ios already added'; else npx cap add ios --packagemanager CocoaPods; fi",
+        "          npx cap sync ios",
+        "      - name: Resolve CocoaPods",
+        "        working-directory: ios/App",
+        "        env:",
+        "          LANG: en_US.UTF-8",
+        "          LC_ALL: en_US.UTF-8",
+        "        run: pod install",
+        "      - name: Install App Store Connect API key",
+        "        env:",
+        "          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}",
+        "          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}",
+        "        run: |",
+        "          mkdir -p ~/.appstoreconnect/private_keys",
+        "          printf '%s' \"$ASC_KEY_P8\" > ~/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8",
+        "      - name: Archive (automatic signing via ASC API key)",
+        "        working-directory: ios/App",
+        "        env:",
+        "          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}",
+        "          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}",
+        "          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}",
+        "        run: |",
+        "          xcodebuild -workspace App.xcworkspace -scheme App -configuration Release \\",
+        "            -sdk iphoneos -destination 'generic/platform=iOS' \\",
+        "            -archivePath \"$RUNNER_TEMP/App.xcarchive\" \\",
+        "            -authenticationKeyPath ~/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8 \\",
+        "            -authenticationKeyID \"$ASC_KEY_ID\" -authenticationKeyIssuerID \"$ASC_ISSUER_ID\" \\",
+        "            -allowProvisioningUpdates DEVELOPMENT_TEAM=\"$APPLE_TEAM_ID\" \\",
+        "            PRODUCT_BUNDLE_IDENTIFIER=" + c.appId + " \\",
+        "            clean archive",
+        "      - name: Export signed .ipa",
+        "        working-directory: ios/App",
+        "        env:",
+        "          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}",
+        "          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}",
+        "          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}",
+        "        run: |",
+        "          cat > \"$RUNNER_TEMP/ExportOptions.plist\" <<PLIST",
+        "          <?xml version=\"1.0\" encoding=\"UTF-8\"?>",
+        "          <!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">",
+        "          <plist version=\"1.0\"><dict>",
+        "            <key>method</key><string>app-store-connect</string>",
+        "            <key>teamID</key><string>${APPLE_TEAM_ID}</string>",
+        "            <key>signingStyle</key><string>automatic</string>",
+        "            <key>destination</key><string>export</string>",
+        "          </dict></plist>",
+        "          PLIST",
+        "          xcodebuild -exportArchive \\",
+        "            -archivePath \"$RUNNER_TEMP/App.xcarchive\" \\",
+        "            -exportPath \"$RUNNER_TEMP/export\" \\",
+        "            -exportOptionsPlist \"$RUNNER_TEMP/ExportOptions.plist\" \\",
+        "            -authenticationKeyPath ~/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8 \\",
+        "            -authenticationKeyID \"$ASC_KEY_ID\" -authenticationKeyIssuerID \"$ASC_ISSUER_ID\" \\",
+        "            -allowProvisioningUpdates",
+        "      - name: Upload to TestFlight",
+        "        env:",
+        "          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}",
+        "          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}",
+        "        run: |",
+        "          IPA=$(ls \"$RUNNER_TEMP\"/export/*.ipa | head -1)",
+        "          xcrun altool --upload-app -f \"$IPA\" -t ios \\",
+        "            --apiKey \"$ASC_KEY_ID\" --apiIssuer \"$ASC_ISSUER_ID\"",
+        ""
+      ]);
+    }
+
+    return lines.join("\n");
+  }
+
+  function fileStoreSetup(c) {
+    var lines = [
+      "# " + c.appName + " — automated store upload",
+      "",
+      "`.github/workflows/nativize-release.yml` builds **signed** binaries and ships them",
+      "to your store accounts. Run it from **Actions -> Nativize Release -> Run workflow**.",
+      "",
+      "Credentials are read from encrypted **GitHub Actions secrets**. The Nativize",
+      "extension can set these for you, or add them under *Settings -> Secrets and",
+      "variables -> Actions*.",
+      ""
+    ];
+    if (c.iosUpload) {
+      lines = lines.concat([
+        "## iOS -> TestFlight (App Store Connect API)",
+        "Secrets: `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8` (contents of the .p8),",
+        "`APPLE_TEAM_ID`.",
+        "- Create the key in App Store Connect -> Users and Access -> Integrations ->",
+        "  App Store Connect API, with the **App Manager** role.",
+        "- The key auto-handles signing certs/profiles (`-allowProvisioningUpdates`).",
+        "- Bundle ID `" + c.appId + "` is registered automatically on first archive.",
+        ""
+      ]);
+    }
+    if (c.androidUpload) {
+      lines = lines.concat([
+        "## Android -> Google Play (internal testing)",
+        "Secrets: `ANDROID_KEYSTORE_BASE64` (base64 of your upload keystore),",
+        "`ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`,",
+        "`PLAY_SERVICE_ACCOUNT_JSON`.",
+        "- Service account: Google Play Console -> Setup -> API access, grant it",
+        "  *Release to testing tracks*.",
+        "- **One-time manual step:** Google requires the FIRST app release to be created",
+        "  manually in Play Console (the API cannot create the app or do the first",
+        "  upload). After one manual upload of an `.aab` with package `" + c.appId + "`,",
+        "  this workflow can publish to the internal track automatically.",
+        "- Generate an upload keystore once:",
+        "  `keytool -genkey -v -keystore upload.jks -keyalg RSA -keysize 2048 -validity 9125 -alias upload`",
+        "  then `base64 -i upload.jks` for `ANDROID_KEYSTORE_BASE64`.",
+        ""
+      ]);
+    }
+    return lines.join("\n");
+  }
+
   /**
    * Main entry. Returns a { path: contents } map for the whole kit.
    */
@@ -476,7 +688,24 @@
       files["src/nativePush.ts"] = fileNativePush(c);
     }
 
+    if (c.storeUpload) {
+      files[".github/workflows/nativize-release.yml"] = fileReleaseWorkflow(c);
+      files["STORE_SETUP.md"] = fileStoreSetup(c);
+    }
+
     return files;
+  }
+
+  /**
+   * The GitHub Actions secret names required for the enabled store uploads.
+   * Drives what the extension collects + encrypts. Returns [] when no upload.
+   */
+  function requiredSecrets(input) {
+    var c = normalizeConfig(input);
+    var names = [];
+    if (c.iosUpload) names = names.concat(STORE_SECRETS.ios);
+    if (c.androidUpload) names = names.concat(STORE_SECRETS.android);
+    return names;
   }
 
   return {
@@ -485,6 +714,8 @@
     normalizeAppId: normalizeAppId,
     normalizeWebDir: normalizeWebDir,
     slugify: slugify,
+    requiredSecrets: requiredSecrets,
+    STORE_SECRETS: STORE_SECRETS,
     AGP_VERSION: AGP_VERSION,
     GRADLE_VERSION: GRADLE_VERSION
   };

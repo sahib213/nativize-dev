@@ -25,6 +25,9 @@
       "js": [
         "src/kit-generator.js",
         "src/zip.js",
+        "src/vendor/tweetnacl.js",
+        "src/vendor/blake2b.js",
+        "src/sealedbox.js",
         "src/github.js",
         "src/panel.js",
         "src/content.js"
