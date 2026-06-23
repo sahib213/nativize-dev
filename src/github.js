@@ -69,7 +69,20 @@
     var repoInfo = await gh("GET", base, token);
     var branch = repoInfo.default_branch || "main";
 
-    var ref = await gh("GET", base + "/git/ref/heads/" + branch, token);
+    // An empty repo (no commits) has no app source to build, and the Git Data
+    // API can't add onto a missing ref. Catch it with an actionable message.
+    if (repoInfo.size === 0) {
+      throw new Error("Repo '" + r.owner + "/" + r.repo + "' is empty — connect your " +
+        "Lovable project to GitHub first so your app's source is in the repo, then push the kit.");
+    }
+
+    var ref;
+    try {
+      ref = await gh("GET", base + "/git/ref/heads/" + branch, token);
+    } catch (e) {
+      throw new Error("Branch '" + branch + "' has no commits yet. Sync your Lovable app to " +
+        "this repo first (it needs source + a build script), then push the kit.");
+    }
     var latestCommitSha = ref.object.sha;
     var latestCommit = await gh("GET", base + "/git/commits/" + latestCommitSha, token);
     var baseTreeSha = latestCommit.tree.sha;
