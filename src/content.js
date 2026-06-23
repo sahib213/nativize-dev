@@ -117,14 +117,34 @@
           "Add Nativize native kit for " + state.appName + " (Capacitor 8)")
           .then(function (res) {
             var secrets = state.storeSecrets || {};
-            if (!(state.iosUpload || state.androidUpload) || !Object.keys(secrets).length) {
-              return res;
-            }
+            var wantStore = (state.iosUpload || state.androidUpload) && Object.keys(secrets).length;
+            if (!wantStore) return res;
             return GitHub.setSecrets(state.githubRepo, token, secrets).then(function (s) {
               res.secretsSet = s.set;
               res.releaseReady = true;
               return res;
             });
+          })
+          .then(function (res) {
+            // Auto-start the cloud build so binaries actually come out. The build
+            // workflow produces downloadable .apk / .aab / iOS app artifacts;
+            // the release workflow (if store upload is on) ships to the stores.
+            // GitHub needs a moment to register a freshly-pushed workflow, so a
+            // failure here is non-fatal — we just tell the user to run it manually.
+            var workflow = res.releaseReady ? "nativize-release.yml" : "nativize-build.yml";
+            return GitHub.triggerWorkflow(state.githubRepo, token, workflow)
+              .then(function (t) {
+                res.buildStarted = true;
+                res.workflow = workflow;
+                res.actionsUrl = t.actionsUrl;
+                return res;
+              })
+              .catch(function (e) {
+                res.buildStarted = false;
+                res.buildStartError = (e && e.message) || String(e);
+                res.actionsUrl = "https://github.com/" + state.githubRepo + "/actions";
+                return res;
+              });
           });
       }
     });

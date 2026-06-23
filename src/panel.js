@@ -386,17 +386,26 @@
       setStatus("Pushing to " + st.githubRepo + "…");
       Promise.resolve(opts.onPush && opts.onPush(st, st.token))
         .then(function (res) {
-          var url = res && res.url;
-          var msg = "Kit committed to <b>" + esc(st.githubRepo) + "</b>." +
-            (url ? ' <br><a href="' + esc(url) + '" target="_blank" rel="noopener">Open the commit ↗</a>' : "");
-          if (res && res.releaseReady) {
+          res = res || {};
+          var actions = res.actionsUrl;
+          var link = actions ? ' <a href="' + esc(actions) + '" target="_blank" rel="noopener">Open Actions ↗</a>' : "";
+          var msg;
+          if (res.buildStarted && res.releaseReady) {
             var n = (res.secretsSet || []).length;
-            msg += "<br><br>" + n + " encrypted secret" + (n === 1 ? "" : "s") + " stored. " +
-              "Run <b>Actions → Nativize Release</b> to build &amp; ship to TestFlight + Play internal testing.";
+            msg = "Build started 🚀 — signing and shipping to <b>TestFlight + Play internal testing</b> " +
+              "(" + n + " encrypted secret" + (n === 1 ? "" : "s") + " stored)." + link +
+              "<br><br>It runs ~5–15 min, then lands in your store accounts.";
+          } else if (res.buildStarted) {
+            msg = "Build started 🚀 — your <b>.apk / .aab</b> and compiled <b>iOS app</b> will appear as " +
+              "downloadable artifacts in the Actions run (~5–10 min)." + link;
           } else {
-            msg += "<br><br>Now run <b>Actions → Nativize Build</b> to build in the cloud.";
+            // Push succeeded but auto-trigger didn't fire (e.g. workflow not yet registered).
+            msg = "Kit pushed to <b>" + esc(st.githubRepo) + "</b>, but I couldn't auto-start the build" +
+              (res.buildStartError ? " (" + esc(res.buildStartError) + ")" : "") + "." +
+              "<br><br>Start it manually: <b>Actions → " +
+              (res.releaseReady ? "Nativize Release" : "Nativize Build") + " → Run workflow</b>." + link;
           }
-          showSuccess("Pushed to GitHub", msg);
+          showSuccess(res.buildStarted ? "Building your app" : "Pushed to GitHub", msg);
         })
         .catch(function (e) { setStatus("Push failed: " + (e && e.message || e), "err"); });
     });

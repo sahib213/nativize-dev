@@ -82,9 +82,16 @@
         document.body.appendChild(a); a.click(); a.remove();
       },
       onPush: function (state) {
-        // No real token in the harness — simulate a successful push response.
+        // No real token in the harness — simulate the full push → build-trigger response.
         console.log("[nativize] push (simulated) for", state.githubRepo);
-        return Promise.resolve({ url: "https://github.com/" + state.githubRepo + "/commit/abc1234" });
+        var wantStore = state.iosUpload || state.androidUpload;
+        return Promise.resolve({
+          url: "https://github.com/" + state.githubRepo + "/commit/abc1234",
+          buildStarted: true,
+          releaseReady: wantStore,
+          secretsSet: wantStore ? Object.keys(state.storeSecrets || {}) : [],
+          actionsUrl: "https://github.com/" + state.githubRepo + "/actions"
+        });
       }
     });
     console.log("[nativize] harness mounted. initial =", initial);

@@ -98,6 +98,26 @@
     };
   }
 
+  /**
+   * Trigger a workflow_dispatch run so the cloud build actually starts.
+   * The workflow file must already exist on the default branch (we just pushed it).
+   * @returns {Promise<{actionsUrl: string, ref: string}>}
+   */
+  async function triggerWorkflow(repoStr, token, workflowFile, ref) {
+    var r = splitRepo(repoStr);
+    var base = "/repos/" + r.owner + "/" + r.repo;
+    if (!ref) {
+      var info = await gh("GET", base, token);
+      ref = info.default_branch || "main";
+    }
+    await gh("POST", base + "/actions/workflows/" + encodeURIComponent(workflowFile) + "/dispatches",
+      token, { ref: ref });
+    return {
+      ref: ref,
+      actionsUrl: "https://github.com/" + r.owner + "/" + r.repo + "/actions"
+    };
+  }
+
   // Resolve the sealed-box module in either environment (Node require / browser global).
   function getSealedBox() {
     if (typeof module === "object" && module.exports) return require("./sealedbox.js");
@@ -138,5 +158,5 @@
     return { set: set, skipped: skipped };
   }
 
-  return { pushKit: pushKit, setSecrets: setSecrets, splitRepo: splitRepo };
+  return { pushKit: pushKit, setSecrets: setSecrets, triggerWorkflow: triggerWorkflow, splitRepo: splitRepo };
 });
