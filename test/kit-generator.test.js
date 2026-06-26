@@ -53,6 +53,7 @@ test("generateKit produces all core files", () => {
     "capacitor.config.ts",
     "nativize.sh",
     "nativize-patch-android.sh",
+    "nativize-permissions.sh",
     ".github/workflows/nativize-build.yml",
     "desktop/main.js",
     "desktop/package.json",
@@ -62,6 +63,34 @@ test("generateKit produces all core files", () => {
     assert.ok(files[f], "missing " + f);
     assert.ok(files[f].length > 0, "empty " + f);
   }
+});
+
+test("permissions: nativize-permissions.sh writes iOS usage strings + UIBackgroundModes + Android perms", () => {
+  const sh = Kit.generateKit(baseConfig({ permissions: [
+    { key: "camera", description: "Scan docs." },
+    { key: "backgroundAudio" },
+    { key: "notifications" }
+  ] }))["nativize-permissions.sh"];
+  assert.match(sh, /NSCameraUsageDescription string Scan docs\./);
+  assert.match(sh, /UIBackgroundModes/);
+  assert.match(sh, /string audio/);
+  assert.match(sh, /android\.permission\.CAMERA/);
+  assert.match(sh, /android\.permission\.POST_NOTIFICATIONS/);
+  assert.match(sh, /android\.permission\.FOREGROUND_SERVICE_MEDIA_PLAYBACK/);
+});
+
+test("permissions: validatePermissions flags enabled perms missing a required description", () => {
+  assert.deepEqual(Kit.validatePermissions([{ key: "camera", description: "" }]), ["Camera"]);
+  assert.deepEqual(Kit.validatePermissions([{ key: "camera", description: "ok" }]), []);
+  assert.deepEqual(Kit.validatePermissions([{ key: "notifications", description: "" }]), []); // no desc needed
+});
+
+test("permissions: unknown keys dropped; empty desc falls back; workflow calls the script", () => {
+  assert.equal(Kit.normalizePermissions([{ key: "bogus" }, { key: "camera", description: "x" }]).length, 1);
+  const sh = Kit.generateKit(baseConfig({ permissions: [{ key: "location", description: "" }] }))["nativize-permissions.sh"];
+  assert.match(sh, /NSLocationWhenInUseUsageDescription string This app uses Location/); // fallback, never empty
+  const wf = Kit.generateKit(baseConfig())[".github/workflows/nativize-build.yml"];
+  assert.match(wf, /bash \.\/nativize-permissions\.sh/);
 });
 
 test("desktop build: valid Electron main + package.json with mac/win targets", () => {

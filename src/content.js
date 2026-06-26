@@ -71,7 +71,8 @@
         appId: state.appId,
         githubRepo: state.githubRepo,
         webDir: state.webDir,
-        enablePush: state.enablePush
+        enablePush: state.enablePush,
+        permissions: state.permissions || []
       };
       obj[TOKEN_KEY] = state.token || "";
       chrome.storage.local.set(obj);
@@ -96,7 +97,8 @@
       githubRepo: saved.githubRepo || detectRepo(),
       webDir: saved.webDir || "dist",
       enablePush: saved.enablePush === true,
-      token: saved.token || ""
+      token: saved.token || "",
+      permissions: Array.isArray(saved.permissions) ? saved.permissions : []
     };
 
     Panel.mount({

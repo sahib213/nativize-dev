@@ -208,7 +208,19 @@
       ".nz-step.on{background:linear-gradient(90deg,#8b5cf6,#ec4899)}" +
       ".nz-step.cur{animation:nzpulse 1.1s ease-in-out infinite}" +
       "@keyframes nzpulse{50%{opacity:.45}}" +
-      ".nz-prog-note{font-size:11px;color:#8c85ab;margin-top:9px}";
+      ".nz-prog-note{font-size:11px;color:#8c85ab;margin-top:9px}" +
+      // ---- permissions ----
+      ".nz-perm{margin-top:10px;padding:10px 11px;border:1px solid rgba(255,255,255,.08);border-radius:11px;background:rgba(255,255,255,.02)}" +
+      ".nz-perm-top{display:flex;align-items:center;justify-content:space-between;gap:10px}" +
+      ".nz-perm-name{font-size:13px;font-weight:600;color:#ece9f6}" +
+      ".nz-perm-desc{margin-top:8px;display:none}" +
+      ".nz-perm-desc.nz-show{display:block}" +
+      ".nz-perm-desc input{width:100%;padding:8px 10px;border-radius:9px;border:1px solid rgba(255,255,255,.1);background:rgba(8,7,12,.7);color:#fff;font-size:12.5px}" +
+      ".nz-perm-desc input:focus{outline:none;border-color:#a855f7}" +
+      ".nz-perm-desc input.nz-bad{border-color:#fca5a5}" +
+      ".nz-perm-miss{font-size:11px;color:#fca5a5;margin-top:5px}" +
+      ".nz-permwarn{margin-top:12px;padding:10px 12px;border-radius:10px;background:rgba(252,165,165,.1);" +
+        "border:1px solid rgba(252,165,165,.3);color:#fca5a5;font-size:12px;line-height:1.5}";
     shadow.appendChild(style);
 
     // ---- Launcher button ----
@@ -297,6 +309,15 @@
         '</div>' +
           '</div>' +
         '</div>' +
+        // ---- App permissions (populated from the catalog at mount) ----
+        '<div class="nz-advanced">' +
+          '<button class="nz-link" id="nz-permToggle" type="button">App permissions — what your app can access ▾</button>' +
+          '<div class="nz-advBody" id="nz-permBody">' +
+            '<div class="nz-hint">Turn on only what your app needs. iOS requires a short reason for each — write it in plain language. This writes the iOS Info.plist + Android manifest for you.</div>' +
+            '<div id="nz-permsList"></div>' +
+            '<div class="nz-permwarn" id="nz-permWarn" style="display:none"></div>' +
+          '</div>' +
+        '</div>' +
         '<div class="nz-advanced">' +
           '<button class="nz-link" id="nz-advToggle" type="button">Advanced — manual setup kit ▾</button>' +
           '<div class="nz-advBody" id="nz-advBody">' +
@@ -364,8 +385,89 @@
         token: $("nz-token").value.trim(),
         iosUpload: iosUpload,
         androidUpload: androidUpload,
-        storeSecrets: secrets
+        storeSecrets: secrets,
+        permissions: collectPermissions()
       };
+    }
+
+    // ---- App permissions: render the catalog, collect selection, validate ----
+    var KIT = (typeof module === "object" && module.exports) ? require("./kit-generator.js")
+      : (typeof self !== "undefined" ? self.NativizeKit : null);
+    var PERM_CATALOG = (KIT && KIT.PERMISSION_CATALOG) || [];
+
+    function renderPermissions() {
+      var host = $("nz-permsList");
+      if (!host) return;
+      var saved = {};
+      ((initial.permissions) || []).forEach(function (p) { if (p && p.key) saved[p.key] = p; });
+      host.innerHTML = PERM_CATALOG.map(function (cat) {
+        var on = !!saved[cat.key];
+        var desc = (saved[cat.key] && saved[cat.key].description) || "";
+        var descBox = cat.needsDesc
+          ? '<div class="nz-perm-desc" id="pd-' + cat.key + '">' +
+              '<input type="text" data-perm="' + cat.key + '" placeholder="Why does your app need this? (shown to users)" value="' + esc(desc) + '">' +
+              '<div class="nz-perm-miss" id="pm-' + cat.key + '" style="display:none">iOS needs a reason for this permission.</div>' +
+            '</div>'
+          : '';
+        return '<div class="nz-perm">' +
+            '<div class="nz-perm-top">' +
+              '<span class="nz-perm-name">' + esc(cat.label) + '</span>' +
+              '<label class="nz-switch"><input type="checkbox" data-permtoggle="' + cat.key + '"' + (on ? ' checked' : '') + '><span class="nz-slider"></span></label>' +
+            '</div>' + descBox +
+          '</div>';
+      }).join("");
+      // wire toggles + inputs
+      Array.prototype.forEach.call(host.querySelectorAll("[data-permtoggle]"), function (cb) {
+        var key = cb.getAttribute("data-permtoggle");
+        var box = $("pd-" + key);
+        if (box) box.classList.toggle("nz-show", cb.checked);
+        cb.addEventListener("change", function () {
+          if (box) box.classList.toggle("nz-show", cb.checked);
+          validatePerms(); emitChange();
+        });
+      });
+      Array.prototype.forEach.call(host.querySelectorAll("[data-perm]"), function (inp) {
+        inp.addEventListener("input", function () { validatePerms(); emitChange(); });
+      });
+      validatePerms();
+    }
+    function collectPermissions() {
+      var host = $("nz-permsList");
+      if (!host) return (initial.permissions || []);
+      var out = [];
+      Array.prototype.forEach.call(host.querySelectorAll("[data-permtoggle]"), function (cb) {
+        if (!cb.checked) return;
+        var key = cb.getAttribute("data-permtoggle");
+        var inp = host.querySelector('[data-perm="' + key + '"]');
+        out.push({ key: key, description: inp ? inp.value.trim() : "" });
+      });
+      return out;
+    }
+    // Returns the list of enabled permissions missing a required description; also paints the UI.
+    function validatePerms() {
+      var host = $("nz-permsList");
+      if (!host || !KIT) return [];
+      var missing = KIT.validatePermissions(collectPermissions()); // array of labels
+      var missingKeys = {};
+      collectPermissions().forEach(function (p) {
+        var cat = PERM_CATALOG.filter(function (c) { return c.key === p.key; })[0];
+        if (cat && cat.needsDesc && !p.description) missingKeys[p.key] = true;
+      });
+      PERM_CATALOG.forEach(function (cat) {
+        var inp = host.querySelector('[data-perm="' + cat.key + '"]');
+        var miss = $("pm-" + cat.key);
+        var bad = !!missingKeys[cat.key];
+        if (inp) inp.classList.toggle("nz-bad", bad);
+        if (miss) miss.style.display = bad ? "block" : "none";
+      });
+      var warn = $("nz-permWarn");
+      if (warn) {
+        if (missing.length) {
+          warn.style.display = "block";
+          warn.innerHTML = "Add a reason for: <b>" + missing.map(esc).join(", ") + "</b>. iOS rejects builds with a permission but no usage description.";
+        } else { warn.style.display = "none"; }
+      }
+      return missing;
     }
 
     function setStatus(msg, kind) {
@@ -456,6 +558,11 @@
     $("nz-optToggle").addEventListener("click", function () {
       $("nz-optBody").classList.toggle("nz-show");
     });
+    // App permissions disclosure + populate the catalog list.
+    $("nz-permToggle").addEventListener("click", function () {
+      $("nz-permBody").classList.toggle("nz-show");
+    });
+    renderPermissions();
 
     // ---- Sign in with GitHub (one click, via Supabase) ----
     $("nz-signinBtn").addEventListener("click", function () {
@@ -575,6 +682,11 @@
       var st = getState();
       if (!st.githubRepo) return setStatus("Enter a GitHub repo (owner/repo) first.", "err");
       if (!st.token) return setStatus("Sign in with GitHub first (or paste a token under Options).", "err");
+      var permMissing = validatePerms();
+      if (permMissing.length) {
+        $("nz-permBody").classList.add("nz-show");
+        return setStatus("Add a usage reason for: " + permMissing.join(", ") + " (under App permissions).", "err");
+      }
       var btn = $("nz-buildBtn");
       btn.disabled = true;
       var prog = startBuildProgress();

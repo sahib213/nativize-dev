@@ -86,6 +86,7 @@
       // Store auto-upload (signed builds → testing tracks via GitHub Actions):
       iosUpload: input.iosUpload === true,       // App Store Connect → TestFlight
       androidUpload: input.androidUpload === true, // Google Play → Internal testing
+      permissions: normalizePermissions(input.permissions),
       agpVersion: AGP_VERSION,
       gradleVersion: GRADLE_VERSION
     };
@@ -99,6 +100,84 @@
     ios: ["ASC_KEY_ID", "ASC_ISSUER_ID", "ASC_KEY_P8", "APPLE_TEAM_ID"],
     android: ["ANDROID_KEYSTORE_BASE64", "ANDROID_KEYSTORE_PASSWORD", "ANDROID_KEY_ALIAS", "ANDROID_KEY_PASSWORD", "PLAY_SERVICE_ACCOUNT_JSON"]
   };
+
+  // ---------------------------------------------------------------------------
+  // App permissions catalog. Each entry maps a human permission to the native
+  // bits it needs: iOS Info.plist usage strings + UIBackgroundModes, and Android
+  // <uses-permission>. `needsDesc` => iOS requires a usage description string or
+  // the App Store rejects the build, so the UI must collect one.
+  // ---------------------------------------------------------------------------
+  var PERMISSION_CATALOG = [
+    { key: "location", label: "Location (when in use)", needsDesc: true,
+      iosUsage: ["NSLocationWhenInUseUsageDescription"],
+      android: ["android.permission.ACCESS_FINE_LOCATION", "android.permission.ACCESS_COARSE_LOCATION"],
+      defaultDesc: "We use your location to show nearby content." },
+    { key: "backgroundLocation", label: "Background location", needsDesc: true,
+      iosUsage: ["NSLocationAlwaysAndWhenInUseUsageDescription"], iosBackgroundModes: ["location"],
+      android: ["android.permission.ACCESS_BACKGROUND_LOCATION", "android.permission.FOREGROUND_SERVICE_LOCATION"],
+      defaultDesc: "We use your location in the background to keep features working." },
+    { key: "microphone", label: "Microphone / voice", needsDesc: true,
+      iosUsage: ["NSMicrophoneUsageDescription"], android: ["android.permission.RECORD_AUDIO"],
+      defaultDesc: "We use the microphone for voice features." },
+    { key: "camera", label: "Camera", needsDesc: true,
+      iosUsage: ["NSCameraUsageDescription"], android: ["android.permission.CAMERA"],
+      defaultDesc: "We use the camera to take photos and scan." },
+    { key: "photos", label: "Photos", needsDesc: true,
+      iosUsage: ["NSPhotoLibraryUsageDescription", "NSPhotoLibraryAddUsageDescription"],
+      android: ["android.permission.READ_MEDIA_IMAGES"],
+      defaultDesc: "We access your photos so you can pick and save images." },
+    { key: "notifications", label: "Notifications", needsDesc: false,
+      iosBackgroundModes: ["remote-notification"], android: ["android.permission.POST_NOTIFICATIONS"],
+      defaultDesc: "" },
+    { key: "contacts", label: "Contacts", needsDesc: true,
+      iosUsage: ["NSContactsUsageDescription"], android: ["android.permission.READ_CONTACTS"],
+      defaultDesc: "We access contacts so you can invite friends." },
+    { key: "bluetooth", label: "Bluetooth", needsDesc: true,
+      iosUsage: ["NSBluetoothAlwaysUsageDescription"],
+      android: ["android.permission.BLUETOOTH_CONNECT", "android.permission.BLUETOOTH_SCAN"],
+      defaultDesc: "We use Bluetooth to connect to nearby devices." },
+    { key: "motion", label: "Motion / fitness", needsDesc: true,
+      iosUsage: ["NSMotionUsageDescription"], android: ["android.permission.ACTIVITY_RECOGNITION"],
+      defaultDesc: "We use motion data for fitness tracking." },
+    { key: "speech", label: "Speech recognition", needsDesc: true,
+      iosUsage: ["NSSpeechRecognitionUsageDescription"], android: [],
+      defaultDesc: "We use speech recognition to transcribe your voice." },
+    { key: "files", label: "Storage / files", needsDesc: false,
+      iosUsage: [], android: ["android.permission.READ_MEDIA_VIDEO", "android.permission.READ_MEDIA_AUDIO"],
+      defaultDesc: "" },
+    { key: "backgroundAudio", label: "Background audio", needsDesc: false,
+      iosBackgroundModes: ["audio"],
+      android: ["android.permission.FOREGROUND_SERVICE", "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"],
+      defaultDesc: "" }
+  ];
+  function permissionByKey(key) {
+    for (var i = 0; i < PERMISSION_CATALOG.length; i++) if (PERMISSION_CATALOG[i].key === key) return PERMISSION_CATALOG[i];
+    return null;
+  }
+
+  // Normalize the user's permission selection into [{key, label, description, ...catalog}].
+  function normalizePermissions(input) {
+    var out = [];
+    var list = Array.isArray(input) ? input : [];
+    list.forEach(function (p) {
+      if (!p || !p.key) return;
+      var cat = permissionByKey(p.key);
+      if (!cat) return;
+      out.push({
+        key: cat.key, label: cat.label, needsDesc: cat.needsDesc,
+        description: String(p.description == null ? "" : p.description).trim(),
+        iosUsage: cat.iosUsage || [], iosBackgroundModes: cat.iosBackgroundModes || [], android: cat.android || []
+      });
+    });
+    return out;
+  }
+
+  // Validation: which enabled permissions are missing a required description.
+  function validatePermissions(permissions) {
+    return normalizePermissions(permissions)
+      .filter(function (p) { return p.needsDesc && !p.description; })
+      .map(function (p) { return p.label; });
+  }
 
   // ---------------------------------------------------------------------------
   // File templates. Each returns a string. Kept as functions so they can close
@@ -296,6 +375,7 @@
       "          if [ -d android ]; then echo 'android already added'; else npx cap add android; fi",
       "          bash ./nativize-patch-android.sh",
       "          npx cap sync android",
+      "          bash ./nativize-permissions.sh",
       "      - name: Assemble debug APK",
       "        working-directory: android",
       "        run: ./gradlew assembleDebug --stacktrace",
@@ -336,6 +416,7 @@
       "            npx cap add ios",
       "          fi",
       "          npx cap sync ios",
+      "          bash ./nativize-permissions.sh",
       "      - name: AdMob iOS guard (GADApplicationIdentifier)",
       "        run: |",
       "          # iOS counterpart of the Android AdMob fix: the Google Mobile Ads SDK",
@@ -466,6 +547,7 @@
       "          if [ ! -d android/app ]; then npx cap add android; fi",
       "          bash ./nativize-patch-android.sh",
       "          npx cap sync",
+      "          bash ./nativize-permissions.sh",
       "          # iOS AdMob guard so the committed project doesn't crash on launch.",
       "          PLIST=ios/App/App/Info.plist",
       "          if grep -qi admob package.json && [ -f \"$PLIST\" ] && ! /usr/libexec/PlistBuddy -c 'Print :GADApplicationIdentifier' \"$PLIST\" >/dev/null 2>&1; then",
@@ -906,6 +988,58 @@
     ].join("\n");
   }
 
+  // Generated, config-dependent script that applies the user's selected app
+  // permissions to the native projects. Idempotent + safe on both macOS (iOS)
+  // and Linux (Android) runners — each block is guarded by file/tool presence.
+  function fileNativizePermissionsSh(c) {
+    var perms = c.permissions || [];
+    var shEsc = function (s) { return String(s).replace(/'/g, "'\\''"); };
+    var L = [
+      "#!/usr/bin/env bash",
+      "# Generated by Nativize from the permissions you selected in the app builder.",
+      "# iOS: Info.plist usage strings + UIBackgroundModes. Android: <uses-permission>.",
+      "# Idempotent; safe to re-run. Each block is guarded so it no-ops off-platform.",
+      "set -uo pipefail",
+      ""
+    ];
+    // ---- iOS ----
+    L.push('PLIST=ios/App/App/Info.plist');
+    L.push('if [ -f "$PLIST" ] && command -v /usr/libexec/PlistBuddy >/dev/null 2>&1; then');
+    L.push("  echo '==> iOS permissions (Info.plist)'");
+    var bgModes = {};
+    perms.forEach(function (p) {
+      var desc = (p.description && p.description.trim()) ? p.description : ("This app uses " + p.label + ".");
+      var d = shEsc(desc);
+      (p.iosUsage || []).forEach(function (key) {
+        L.push("  /usr/libexec/PlistBuddy -c 'Set :" + key + " " + d + "' \"$PLIST\" 2>/dev/null || /usr/libexec/PlistBuddy -c 'Add :" + key + " string " + d + "' \"$PLIST\"");
+      });
+      (p.iosBackgroundModes || []).forEach(function (m) { bgModes[m] = true; });
+    });
+    var modes = Object.keys(bgModes);
+    if (modes.length) {
+      L.push("  /usr/libexec/PlistBuddy -c 'Print :UIBackgroundModes' \"$PLIST\" >/dev/null 2>&1 || /usr/libexec/PlistBuddy -c 'Add :UIBackgroundModes array' \"$PLIST\"");
+      modes.forEach(function (m) {
+        L.push("  /usr/libexec/PlistBuddy -c 'Print :UIBackgroundModes' \"$PLIST\" | grep -q '" + m + "' || /usr/libexec/PlistBuddy -c 'Add :UIBackgroundModes: string " + m + "' \"$PLIST\"");
+      });
+    }
+    L.push("fi");
+    L.push("");
+    // ---- Android ----
+    var androidPerms = {};
+    perms.forEach(function (p) { (p.android || []).forEach(function (a) { androidPerms[a] = true; }); });
+    L.push('MANIFEST=android/app/src/main/AndroidManifest.xml');
+    L.push('if [ -f "$MANIFEST" ]; then');
+    L.push("  echo '==> Android permissions (AndroidManifest.xml)'");
+    Object.keys(androidPerms).forEach(function (a) {
+      L.push("  grep -q '" + a + "' \"$MANIFEST\" || perl -0pi -e 's/(<application)/    <uses-permission android:name=\"" + a + "\" \\/>\\n    $1/' \"$MANIFEST\"");
+    });
+    L.push("fi");
+    L.push("");
+    L.push("echo 'Permissions applied.'");
+    L.push("");
+    return L.join("\n");
+  }
+
   /**
    * Main entry. Returns a { path: contents } map for the whole kit.
    */
@@ -916,6 +1050,7 @@
     files["capacitor.config.ts"] = fileCapacitorConfig(c);
     files["nativize.sh"] = fileNativizeSh(c);
     files["nativize-patch-android.sh"] = filePatchAndroidSh(c);
+    files["nativize-permissions.sh"] = fileNativizePermissionsSh(c);
     files[".github/workflows/nativize-build.yml"] = fileWorkflow(c);
     files["desktop/main.js"] = fileDesktopMain(c);
     files["desktop/package.json"] = fileDesktopPackage(c);
@@ -955,6 +1090,9 @@
     slugify: slugify,
     requiredSecrets: requiredSecrets,
     STORE_SECRETS: STORE_SECRETS,
+    PERMISSION_CATALOG: PERMISSION_CATALOG,
+    normalizePermissions: normalizePermissions,
+    validatePermissions: validatePermissions,
     AGP_VERSION: AGP_VERSION,
     GRADLE_VERSION: GRADLE_VERSION
   };
