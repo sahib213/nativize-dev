@@ -102,13 +102,35 @@
     Panel.mount({
       initial: initial,
       onChange: function (state) { save(state); },
+      // One-click GitHub sign-in. chrome.identity only works in the background
+      // service worker, so we relay the request to it and get the token back.
+      onSignIn: function () {
+        return new Promise(function (resolve, reject) {
+          try {
+            chrome.runtime.sendMessage({ type: "nativize-signin" }, function (res) {
+              if (chrome.runtime.lastError) return reject(new Error(chrome.runtime.lastError.message));
+              if (!res || !res.ok) return reject(new Error((res && res.error) || "Sign-in failed."));
+              resolve(res.token);
+            });
+          } catch (e) { reject(e); }
+        });
+      },
+      onSignOut: function () {
+        try { chrome.runtime.sendMessage({ type: "nativize-signout" }, function () {}); } catch (e) {}
+      },
+      // Download the full project (src + ios + android + desktop) as a .zip.
+      onDownloadProject: function (state) {
+        return GitHub.downloadRepoZip(state.githubRepo, state.token).then(function (blob) {
+          triggerDownload(blob, (Kit.slugify(state.appName) || "project") + "-full-project.zip");
+        });
+      },
       onDownload: function (state) {
         var files = Kit.generateKit(state);
         var name = (Kit.slugify(state.appName) || "nativize") + "-native-kit.zip";
         triggerDownload(Zip.toBlob(files), name);
         save(state);
       },
-      onPush: function (state, token) {
+      onPush: function (state, token, onProgress) {
         var files = Kit.generateKit(state);
         save(state);
         // 1) commit the kit, then 2) if store upload is on, encrypt + store the
@@ -126,17 +148,20 @@
             });
           })
           .then(function (res) {
-            // Auto-start the cloud build so binaries actually come out. The build
-            // workflow produces downloadable .apk / .aab / iOS app artifacts;
-            // the release workflow (if store upload is on) ships to the stores.
-            // GitHub needs a moment to register a freshly-pushed workflow, so a
-            // failure here is non-fatal — we just tell the user to run it manually.
+            // Start the cloud build AND wait for it, so we can hand the user real
+            // download links to the finished .apk / .aab / iOS app instead of just
+            // "go check Actions". The release workflow (if store upload is on) also
+            // ships to the stores. A dispatch/wait failure is non-fatal — we fall
+            // back to a manual-run message.
             var workflow = res.releaseReady ? "nativize-release.yml" : "nativize-build.yml";
-            return GitHub.triggerWorkflow(state.githubRepo, token, workflow)
-              .then(function (t) {
+            return GitHub.buildAndWait(state.githubRepo, token, workflow, { onProgress: onProgress })
+              .then(function (b) {
                 res.buildStarted = true;
                 res.workflow = workflow;
-                res.actionsUrl = t.actionsUrl;
+                res.runId = b.runId;
+                res.runUrl = b.runUrl;
+                res.conclusion = b.conclusion;
+                res.artifacts = b.artifacts;
                 return res;
               })
               .catch(function (e) {

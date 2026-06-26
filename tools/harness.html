@@ -67,6 +67,9 @@
       initial: initial,
       openNow: true, // render with the panel open for screenshots
       onChange: function () {},
+      onSignIn: function () { return Promise.resolve("ghp_simulated_harness_token"); },
+      onSignOut: function () {},
+      onDownloadProject: function () { return new Promise(function (r) { setTimeout(r, 500); }); },
       onDownload: function (state) {
         // Real generation + real blob, so this verifies the actual flow.
         var files = NativizeKit.generateKit(state);
@@ -81,16 +84,25 @@
         document.documentElement.setAttribute("data-nativize-kit-count", String(window.__lastKit.count));
         document.body.appendChild(a); a.click(); a.remove();
       },
-      onPush: function (state) {
-        // No real token in the harness — simulate the full push → build-trigger response.
-        console.log("[nativize] push (simulated) for", state.githubRepo);
-        var wantStore = state.iosUpload || state.androidUpload;
-        return Promise.resolve({
-          url: "https://github.com/" + state.githubRepo + "/commit/abc1234",
-          buildStarted: true,
-          releaseReady: wantStore,
-          secretsSet: wantStore ? Object.keys(state.storeSecrets || {}) : [],
-          actionsUrl: "https://github.com/" + state.githubRepo + "/actions"
+      onPush: function (state, token, onProgress) {
+        // No real token in the harness — simulate the full push → build → artifacts
+        // flow, including progress callbacks, so the new UX can be verified.
+        console.log("[nativize] build (simulated) for", state.githubRepo);
+        // Slower timing so the animated progress UI is visible while testing.
+        ["dispatched","in_progress","completed"].forEach(function (s, i) { setTimeout(function () { onProgress && onProgress(s); }, i * 150); });
+        var runUrl = "https://github.com/" + state.githubRepo + "/actions/runs/123";
+        return new Promise(function (resolve) {
+          setTimeout(function () {
+            resolve({
+              runId: 123, runUrl: runUrl, conclusion: "success",
+              artifacts: [
+                { name: "android", sizeBytes: 30608473, downloadUrl: runUrl },
+                { name: "ios-unsigned-app", sizeBytes: 9200000, downloadUrl: runUrl },
+                { name: "desktop-mac", sizeBytes: 95400000, downloadUrl: runUrl },
+                { name: "desktop-windows", sizeBytes: 78600000, downloadUrl: runUrl }
+              ]
+            });
+          }, 600);
         });
       }
     });

@@ -158,6 +158,9 @@
   var ICON_CHECK =
     '<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>';
 
+  var ICON_GH =
+    '<svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" style="margin-right:7px;vertical-align:-2px"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>';
+
   function mount(opts) {
     opts = opts || {};
     var doc = (opts.mountInto && opts.mountInto.ownerDocument) || document;
@@ -170,7 +173,42 @@
     var shadow = host.attachShadow({ mode: "open" });
 
     var style = doc.createElement("style");
-    style.textContent = STYLE;
+    style.textContent = STYLE +
+      ".nz-actions-stack{flex-direction:column;gap:6px}" +
+      ".nz-btn-hero{width:100%;font-size:15px;padding:13px 16px;font-weight:700}" +
+      ".nz-build-sub{text-align:left;margin-top:2px}" +
+      ".nz-advanced{margin-top:14px;border-top:1px solid rgba(255,255,255,.08);padding-top:10px}" +
+      ".nz-link{background:none;border:none;color:#a9a3c9;font-size:12px;cursor:pointer;padding:2px 0}" +
+      ".nz-link:hover{color:#d8d3ee}" +
+      ".nz-advBody{display:none;margin-top:6px}" +
+      ".nz-advBody.nz-show{display:block}" +
+      ".nz-arts{display:flex;flex-direction:column;gap:8px;margin:14px 0}" +
+      ".nz-art{display:flex;flex-direction:column;gap:2px;padding:10px 14px;border-radius:11px;" +
+        "background:linear-gradient(135deg,#7c3aed,#db2777);color:#fff;text-decoration:none}" +
+      ".nz-art-main{font-weight:650;font-size:13.5px}" +
+      ".nz-art-note{font-size:11px;opacity:.85}" +
+      ".nz-art:hover{filter:brightness(1.08)}" +
+      ".nz-auth{margin-bottom:14px;text-align:center}" +
+      ".nz-btn-gh{width:100%;display:inline-flex;align-items:center;justify-content:center;padding:11px 16px;" +
+        "border:1px solid rgba(255,255,255,.18);border-radius:11px;background:#1b1726;color:#fff;font-weight:650;font-size:13.5px;cursor:pointer}" +
+      ".nz-btn-gh:hover{background:#241f33}" +
+      ".nz-signed{font-size:13px;color:#6ee7b7;font-weight:600;padding:10px;background:rgba(110,231,183,.08);border-radius:11px}" +
+      ".nz-signed .nz-link{color:#9b94b8;margin-left:4px}" +
+      // ---- build progress ----
+      ".nz-prog{margin-top:13px;padding:13px;border:1px solid rgba(255,255,255,.09);border-radius:13px;background:rgba(255,255,255,.025)}" +
+      ".nz-prog-top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:9px}" +
+      ".nz-prog-stage{font-size:13px;font-weight:600;color:#ece9f6}" +
+      ".nz-prog-time{font-size:12px;color:#9b94b8;font-variant-numeric:tabular-nums}" +
+      ".nz-prog-bar{height:6px;border-radius:999px;background:rgba(255,255,255,.1);overflow:hidden;position:relative}" +
+      ".nz-prog-bar::before{content:'';position:absolute;top:0;left:-45%;width:45%;height:100%;border-radius:999px;" +
+        "background:linear-gradient(90deg,#8b5cf6,#ec4899);animation:nzslide 1.25s cubic-bezier(.4,0,.2,1) infinite}" +
+      "@keyframes nzslide{0%{left:-45%}100%{left:100%}}" +
+      ".nz-steps{display:flex;gap:5px;margin-top:10px}" +
+      ".nz-step{flex:1;height:4px;border-radius:999px;background:rgba(255,255,255,.12);transition:background .3s}" +
+      ".nz-step.on{background:linear-gradient(90deg,#8b5cf6,#ec4899)}" +
+      ".nz-step.cur{animation:nzpulse 1.1s ease-in-out infinite}" +
+      "@keyframes nzpulse{50%{opacity:.45}}" +
+      ".nz-prog-note{font-size:11px;color:#8c85ab;margin-top:9px}";
     shadow.appendChild(style);
 
     // ---- Launcher button ----
@@ -186,13 +224,32 @@
         '<button class="nz-close" aria-label="Close">&times;</button>' +
       '</div>' +
       '<div class="nz-body">' +
+        // ---- Sign in with GitHub (one click, via Supabase) ----
+        '<div class="nz-auth">' +
+          '<button class="nz-btn nz-btn-gh" id="nz-signinBtn">' + ICON_GH + 'Sign in with GitHub</button>' +
+          '<div class="nz-signed" id="nz-signedIn" style="display:none">✓ Connected to GitHub · <button class="nz-link" id="nz-signout" type="button">sign out</button></div>' +
+          '<div class="nz-hint" id="nz-authHint">One click — no token to create.</div>' +
+        '</div>' +
+        // ---- Essentials ----
         '<div class="nz-field"><label>App name</label>' +
           '<input type="text" id="nz-appName" placeholder="My Lovable App"></div>' +
+        '<div class="nz-field"><label>GitHub repo (owner/repo)</label>' +
+          '<input type="text" id="nz-repo" placeholder="octocat/my-app"></div>' +
+        // ---- Build (hero) ----
+        '<div class="nz-actions nz-actions-stack">' +
+          '<button class="nz-btn nz-btn-primary nz-btn-hero" id="nz-buildBtn">⚡ Build my app</button>' +
+          '<div class="nz-hint nz-build-sub">Builds installable <b>iOS, Android, Mac &amp; Windows</b> apps in the cloud, with download links.</div>' +
+          '<button class="nz-btn nz-btn-ghost" id="nz-projectBtn" style="margin-top:8px">⬇ Download full project (source)</button>' +
+          '<div class="nz-hint nz-build-sub">The whole project: your <b>src</b> + ios + android + desktop folders, as a .zip.</div>' +
+        '</div>' +
+        '<div class="nz-status" id="nz-status"></div>' +
+        // ---- Options (collapsed) ----
+        '<div class="nz-advanced">' +
+          '<button class="nz-link" id="nz-optToggle" type="button">Options — app ID, push, store upload, manual token ▾</button>' +
+          '<div class="nz-advBody" id="nz-optBody">' +
         '<div class="nz-field"><label>App ID (reverse-DNS)</label>' +
           '<input type="text" id="nz-appId" placeholder="app.lovable.myapp">' +
           '<div class="nz-hint">Must match your App Store / Play bundle identifier.</div></div>' +
-        '<div class="nz-field"><label>GitHub repo (owner/repo)</label>' +
-          '<input type="text" id="nz-repo" placeholder="octocat/my-app"></div>' +
         '<div class="nz-field"><label>Web build dir</label>' +
           '<input type="text" id="nz-webDir" placeholder="dist"></div>' +
         '<div class="nz-toggle-row">' +
@@ -200,10 +257,10 @@
             '<div class="nz-tsub">Adds Firebase messaging (static import, web-safe)</div></div>' +
           '<label class="nz-switch"><input type="checkbox" id="nz-push"><span class="nz-slider"></span></label>' +
         '</div>' +
-        '<div class="nz-field" id="nz-tokenField" style="display:none;margin-top:6px">' +
-          '<label>GitHub token (repo scope) — for direct push</label>' +
-          '<input type="password" id="nz-token" autocomplete="off" spellcheck="false" placeholder="ghp_… (stored only in chrome.storage.local)">' +
-          '<div class="nz-hint">Optional. Only needed for &ldquo;Push to GitHub&rdquo;. Never leaves your browser.</div></div>' +
+        '<div class="nz-field" id="nz-tokenField" style="margin-top:6px">' +
+          '<label>GitHub token <span class="nz-hint" style="display:inline">(manual — only if you skip Sign in)</span></label>' +
+          '<input type="password" id="nz-token" autocomplete="off" spellcheck="false" placeholder="ghp_… (needs repo + workflow)">' +
+          '<div class="nz-hint"><a href="https://github.com/settings/tokens/new?scopes=repo,workflow&description=Nativize" target="_blank" rel="noopener">Create a token →</a> Stored only in your browser.</div></div>' +
         '<div class="nz-divider"></div>' +
         '<div class="nz-toggle-row">' +
           '<div><div class="nz-tlabel">Auto-upload to stores</div>' +
@@ -238,11 +295,15 @@
           '</div>' +
           '<div class="nz-hint">Stored only as encrypted GitHub Actions secrets via the API. First Play release must be created manually once (Google requirement).</div>' +
         '</div>' +
-        '<div class="nz-actions">' +
-          '<button class="nz-btn nz-btn-ghost" id="nz-download">Download .zip</button>' +
-          '<button class="nz-btn nz-btn-primary" id="nz-pushBtn">Push to GitHub</button>' +
+          '</div>' +
         '</div>' +
-        '<div class="nz-status" id="nz-status"></div>' +
+        '<div class="nz-advanced">' +
+          '<button class="nz-link" id="nz-advToggle" type="button">Advanced — manual setup kit ▾</button>' +
+          '<div class="nz-advBody" id="nz-advBody">' +
+            '<div class="nz-hint"><b>This is not your built app.</b> It downloads the Capacitor config + setup scripts as a .zip — the recipe you add to your project, then run <code>bash nativize.sh</code> yourself to create the native projects.</div>' +
+            '<button class="nz-btn nz-btn-ghost" id="nz-download" style="margin-top:8px">Download setup kit (.zip)</button>' +
+          '</div>' +
+        '</div>' +
       '</div>' +
       '<div class="nz-success" id="nz-success">' +
         '<div class="nz-check">' + ICON_CHECK + '</div>' +
@@ -263,7 +324,15 @@
     $("nz-webDir").value = initial.webDir || "dist";
     $("nz-push").checked = initial.enablePush === true;
     $("nz-token").value = initial.token || "";
-    tokenField.style.display = "block"; // token always available for push delivery
+    tokenField.style.display = "block";
+
+    // Reflect signed-in state: if we already have a token, treat as connected.
+    function setSignedIn(on) {
+      $("nz-signinBtn").style.display = on ? "none" : "inline-flex";
+      $("nz-signedIn").style.display = on ? "block" : "none";
+      $("nz-authHint").style.display = on ? "none" : "block";
+    }
+    setSignedIn(!!(initial.token && initial.token.length));
 
     var keystoreB64 = ""; // populated when a keystore file is selected
 
@@ -379,35 +448,163 @@
         .catch(function (e) { setStatus("Download failed: " + (e && e.message || e), "err"); });
     });
 
-    $("nz-pushBtn").addEventListener("click", function () {
+    // Advanced disclosure for the (demoted) manual setup-kit download.
+    $("nz-advToggle").addEventListener("click", function () {
+      $("nz-advBody").classList.toggle("nz-show");
+    });
+    // Options disclosure (app id, push, store upload, manual token).
+    $("nz-optToggle").addEventListener("click", function () {
+      $("nz-optBody").classList.toggle("nz-show");
+    });
+
+    // ---- Sign in with GitHub (one click, via Supabase) ----
+    $("nz-signinBtn").addEventListener("click", function () {
+      if (typeof opts.onSignIn !== "function") {
+        return setStatus("Sign-in isn't wired in this context.", "err");
+      }
+      setStatus("Opening GitHub sign-in…");
+      Promise.resolve(opts.onSignIn())
+        .then(function (token) {
+          if (!token) throw new Error("No token returned.");
+          $("nz-token").value = token;     // build flow reads this
+          setSignedIn(true);
+          setStatus("✓ Signed in with GitHub.", "ok");
+          emitChange();
+        })
+        .catch(function (e) { setStatus("Sign-in failed: " + (e && e.message || e), "err"); });
+    });
+    $("nz-signout").addEventListener("click", function () {
+      $("nz-token").value = "";
+      setSignedIn(false);
+      if (typeof opts.onSignOut === "function") { try { opts.onSignOut(); } catch (e) {} }
+      setStatus("");
+      emitChange();
+    });
+
+    function actionsLink(url) {
+      return url ? ' <a href="' + esc(url) + '" target="_blank" rel="noopener">Open the build ↗</a>' : "";
+    }
+    // Map a build artifact to a plain-English "what is this / where does it open".
+    function describeArtifact(name) {
+      var n = String(name).toLowerCase();
+      if (n.indexOf("mac") >= 0) return { label: "💻 Mac app (.dmg)", note: "double-click to open on your Mac" };
+      if (n.indexOf("win") >= 0) return { label: "🪟 Windows app (.exe)", note: "double-click to open on Windows" };
+      if (n.indexOf("ios") >= 0) return { label: "🍏 iPhone app", note: "needs Apple signing to install on an iPhone (won't open on a computer)" };
+      if (n.indexOf("android") >= 0) return { label: "📱 Android app", note: "install .apk on an Android phone, or upload .aab to Google Play" };
+      return { label: name, note: "" };
+    }
+    function artifactsHtml(res) {
+      if (!res.artifacts || !res.artifacts.length) return "";
+      var html = '<div class="nz-arts">';
+      res.artifacts.forEach(function (a) {
+        var d = describeArtifact(a.name);
+        var mb = a.sizeBytes ? " · " + Math.max(1, Math.round(a.sizeBytes / 1048576)) + " MB" : "";
+        html += '<a class="nz-art" href="' + esc(a.downloadUrl) + '" target="_blank" rel="noopener">' +
+          '<span class="nz-art-main">⬇ ' + esc(d.label) + mb + '</span>' +
+          (d.note ? '<span class="nz-art-note">' + esc(d.note) + '</span>' : '') +
+          '</a>';
+      });
+      return html + '</div><div class="nz-hint">Each opens the GitHub build page — tap <b>Artifacts</b> to download. ' +
+        'Mac/Windows files open on a computer; phone apps only run on phones.</div>';
+    }
+
+    // Live animated progress for the long (~5-10 min) cloud build so it never
+    // looks frozen: indeterminate bar + counting-up timer + 4 step dots.
+    var BUILD_STAGE_TEXT = {
+      push: "Pushing your app kit…",
+      dispatched: "Build queued in the cloud…",
+      queued: "Build queued in the cloud…",
+      in_progress: "Building iOS, Android, Mac & Windows…",
+      completed: "Packaging your downloads…"
+    };
+    function stageToStep(stage) {
+      if (stage === "dispatched" || stage === "queued") return 1;
+      if (stage === "in_progress") return 2;
+      if (stage === "completed") return 3;
+      return 0; // push
+    }
+    function startBuildProgress() {
+      var t0 = Date.now();
+      var s = $("nz-status");
+      s.className = "nz-status";
+      s.innerHTML =
+        '<div class="nz-prog">' +
+          '<div class="nz-prog-top"><span class="nz-prog-stage" id="nz-progStage">Starting…</span>' +
+            '<span class="nz-prog-time" id="nz-progTime">0:00</span></div>' +
+          '<div class="nz-prog-bar"></div>' +
+          '<div class="nz-steps" id="nz-progSteps">' +
+            '<span class="nz-step"></span><span class="nz-step"></span>' +
+            '<span class="nz-step"></span><span class="nz-step"></span></div>' +
+          '<div class="nz-prog-note">Runs in the cloud — keep this open; download links appear when it finishes.</div>' +
+        '</div>';
+      var stepsEl = $("nz-progSteps");
+      function setStep(idx) {
+        for (var i = 0; i < stepsEl.children.length; i++) {
+          stepsEl.children[i].className = "nz-step" + (i < idx ? " on" : (i === idx ? " on cur" : ""));
+        }
+      }
+      setStep(0);
+      var timer = setInterval(function () {
+        var el = $("nz-progTime"); if (!el) return;
+        var sec = Math.floor((Date.now() - t0) / 1000);
+        el.textContent = Math.floor(sec / 60) + ":" + ("0" + (sec % 60)).slice(-2);
+      }, 1000);
+      return {
+        update: function (stage) {
+          var st = $("nz-progStage"); if (st) st.textContent = BUILD_STAGE_TEXT[stage] || ("Building… (" + stage + ")");
+          setStep(stageToStep(stage));
+        },
+        stop: function () { clearInterval(timer); }
+      };
+    }
+
+    // Download the whole project (source: src + ios + android + desktop) as a .zip.
+    $("nz-projectBtn").addEventListener("click", function () {
       var st = getState();
       if (!st.githubRepo) return setStatus("Enter a GitHub repo (owner/repo) first.", "err");
-      if (!st.token) return setStatus("A GitHub token with 'repo' scope is required to push.", "err");
-      setStatus("Pushing to " + st.githubRepo + "…");
-      Promise.resolve(opts.onPush && opts.onPush(st, st.token))
+      if (!st.token) return setStatus("Sign in with GitHub first (or paste a token under Options).", "err");
+      if (typeof opts.onDownloadProject !== "function") return setStatus("Project download isn't wired here.", "err");
+      var b = $("nz-projectBtn"); b.disabled = true;
+      setStatus("Zipping your full project (src + ios + android + desktop)…");
+      Promise.resolve(opts.onDownloadProject(st))
+        .then(function () { b.disabled = false; setStatus("✓ Full project downloaded (source + all platform folders).", "ok"); })
+        .catch(function (e) { b.disabled = false; setStatus("Project download failed: " + (e && e.message || e), "err"); });
+    });
+
+    $("nz-buildBtn").addEventListener("click", function () {
+      var st = getState();
+      if (!st.githubRepo) return setStatus("Enter a GitHub repo (owner/repo) first.", "err");
+      if (!st.token) return setStatus("Sign in with GitHub first (or paste a token under Options).", "err");
+      var btn = $("nz-buildBtn");
+      btn.disabled = true;
+      var prog = startBuildProgress();
+      prog.update("push");
+      var onProgress = function (stage) { prog.update(stage); };
+
+      Promise.resolve(opts.onPush && opts.onPush(st, st.token, onProgress))
         .then(function (res) {
           res = res || {};
-          var actions = res.actionsUrl;
-          var link = actions ? ' <a href="' + esc(actions) + '" target="_blank" rel="noopener">Open Actions ↗</a>' : "";
-          var msg;
-          if (res.buildStarted && res.releaseReady) {
-            var n = (res.secretsSet || []).length;
-            msg = "Build started 🚀 — signing and shipping to <b>TestFlight + Play internal testing</b> " +
-              "(" + n + " encrypted secret" + (n === 1 ? "" : "s") + " stored)." + link +
-              "<br><br>It runs ~5–15 min, then lands in your store accounts.";
-          } else if (res.buildStarted) {
-            msg = "Build started 🚀 — your <b>.apk / .aab</b> and compiled <b>iOS app</b> will appear as " +
-              "downloadable artifacts in the Actions run (~5–10 min)." + link;
+          prog.stop();
+          btn.disabled = false;
+          var hasArtifacts = res.artifacts && res.artifacts.length;
+          var failed = res.conclusion && res.conclusion !== "success";
+
+          if (hasArtifacts) {
+            showSuccess("🎉 Your app is ready", "Your installable app was built in the cloud. Download it:" +
+              artifactsHtml(res));
+          } else if (failed) {
+            showSuccess("Build didn't pass", "The cloud build finished as <b>" + esc(res.conclusion) +
+              "</b>." + actionsLink(res.runUrl) + " to read the logs and retry.");
+          } else if (res.runUrl || res.actionsUrl) {
+            // Build started but we didn't wait for artifacts (or none were produced).
+            showSuccess("Building your app", "Your <b>.apk / .aab</b> and iOS app will appear as downloadable " +
+              "files when the run finishes (~5–10 min)." + actionsLink(res.runUrl || res.actionsUrl));
           } else {
-            // Push succeeded but auto-trigger didn't fire (e.g. workflow not yet registered).
-            msg = "Kit pushed to <b>" + esc(st.githubRepo) + "</b>, but I couldn't auto-start the build" +
-              (res.buildStartError ? " (" + esc(res.buildStartError) + ")" : "") + "." +
-              "<br><br>Start it manually: <b>Actions → " +
-              (res.releaseReady ? "Nativize Release" : "Nativize Build") + " → Run workflow</b>." + link;
+            showSuccess("Pushed to GitHub", "Kit pushed to <b>" + esc(st.githubRepo) +
+              "</b>. Start the build from <b>Actions → Nativize Build → Run workflow</b>.");
           }
-          showSuccess(res.buildStarted ? "Building your app" : "Pushed to GitHub", msg);
         })
-        .catch(function (e) { setStatus("Push failed: " + (e && e.message || e), "err"); });
+        .catch(function (e) { prog.stop(); btn.disabled = false; setStatus("Build failed: " + (e && e.message || e), "err"); });
     });
 
     function esc(s) {

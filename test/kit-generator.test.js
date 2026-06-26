@@ -54,12 +54,36 @@ test("generateKit produces all core files", () => {
     "nativize.sh",
     "nativize-patch-android.sh",
     ".github/workflows/nativize-build.yml",
+    "desktop/main.js",
+    "desktop/package.json",
     "CHECKLIST.md",
     "NATIVIZE_README.md"
   ]) {
     assert.ok(files[f], "missing " + f);
     assert.ok(files[f].length > 0, "empty " + f);
   }
+});
+
+test("desktop build: valid Electron main + package.json with mac/win targets", () => {
+  const files = Kit.generateKit(baseConfig({ appId: "com.acme.demo" }));
+  const main = files["desktop/main.js"];
+  assert.match(main, /require\('electron'\)/);
+  assert.match(main, /electron-serve/);
+  assert.match(main, /BrowserWindow/);
+  const pkg = JSON.parse(files["desktop/package.json"]); // must be valid JSON
+  assert.equal(pkg.main, "main.js");
+  assert.ok(pkg.devDependencies["electron-builder"]);
+  assert.equal(pkg.build.appId, "com.acme.demo");
+  assert.equal(pkg.build.mac.target, "dmg");
+  assert.equal(pkg.build.win.target, "nsis");
+  assert.equal(pkg.build.mac.identity, null); // unsigned so it builds without an Apple cert
+  const wf = files[".github/workflows/nativize-build.yml"];
+  assert.match(wf, /desktop-mac:/);
+  assert.match(wf, /desktop-windows:/);
+  assert.match(wf, /runs-on: macos-latest/);
+  assert.match(wf, /runs-on: windows-latest/);
+  assert.match(wf, /electron-builder --mac/);
+  assert.match(wf, /electron-builder --win/);
 });
 
 test("nativePush.ts only present when push enabled", () => {
@@ -109,10 +133,13 @@ test("workflow has dispatch trigger + android assembleDebug + ios xcodebuild no-
   assert.match(wf, /runs-on: ubuntu-latest/);
   assert.match(wf, /runs-on: macos-26/);
   assert.match(wf, /node-version: 22/);
-  assert.match(wf, /npm install --no-save typescript/);
+  assert.match(wf, /npm install --no-save --legacy-peer-deps typescript/);
+  // Real Lovable apps often have peer-dep conflicts (e.g. a Capacitor-6 plugin on
+  // a Capacitor-8 project) — installs MUST tolerate them or the build dies at npm ci.
+  assert.match(wf, /npm ci --legacy-peer-deps \|\| npm install --legacy-peer-deps/);
   assert.match(wf, /@capacitor\/android@\^8/);
   assert.match(wf, /@capacitor\/ios@\^8/);
-  assert.match(wf, /cap add ios --packagemanager CocoaPods/);
+  assert.match(wf, /cap add ios/);
   assert.match(wf, /pod install/);
   assert.match(wf, /-workspace App\.xcworkspace/);
   assert.match(wf, /xcodebuild/);

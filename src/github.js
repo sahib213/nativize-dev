@@ -39,6 +39,11 @@
     if (!res.ok) {
       var detail = "";
       try { detail = (await res.json()).message; } catch (e) {}
+      // The #1 real-world failure: a repo-only token can't add/run workflow files.
+      if ((res.status === 403 || res.status === 404) && /workflow/i.test(detail || "") && /scope/i.test(detail || "")) {
+        throw new Error("Your GitHub token is missing the 'workflow' scope, which is required to add and run " +
+          "the build. Create a new token with BOTH 'repo' and 'workflow' scopes, then paste it and build again.");
+      }
       throw new Error("GitHub " + res.status + (detail ? " — " + detail : "") + " (" + method + " " + url + ")");
     }
     return res.status === 204 ? null : res.json();
@@ -62,7 +67,7 @@
    * @returns {Promise<{url: string, sha: string, branch: string}>}
    */
   async function pushKit(repoStr, token, files, message) {
-    if (!token) throw new Error("A GitHub token with 'repo' scope is required.");
+    if (!token) throw new Error("A GitHub token with 'repo' + 'workflow' scopes is required.");
     var r = splitRepo(repoStr);
     var base = "/repos/" + r.owner + "/" + r.repo;
 
@@ -113,22 +118,37 @@
 
   /**
    * Trigger a workflow_dispatch run so the cloud build actually starts.
-   * The workflow file must already exist on the default branch (we just pushed it).
+   *
+   * A workflow file we JUST pushed isn't registered by GitHub for a few seconds,
+   * so the first dispatch can 404 ("Workflow does not exist"). We retry with a
+   * short delay so the build reliably starts instead of silently no-op'ing.
+   * @param {object} [opts] { attempts, intervalMs, sleep }
    * @returns {Promise<{actionsUrl: string, ref: string}>}
    */
-  async function triggerWorkflow(repoStr, token, workflowFile, ref) {
+  async function triggerWorkflow(repoStr, token, workflowFile, ref, opts) {
+    opts = opts || {};
+    var sleep = opts.sleep || defaultSleep;
+    var attempts = opts.attempts || 6;
     var r = splitRepo(repoStr);
     var base = "/repos/" + r.owner + "/" + r.repo;
     if (!ref) {
       var info = await gh("GET", base, token);
       ref = info.default_branch || "main";
     }
-    await gh("POST", base + "/actions/workflows/" + encodeURIComponent(workflowFile) + "/dispatches",
-      token, { ref: ref });
-    return {
-      ref: ref,
-      actionsUrl: "https://github.com/" + r.owner + "/" + r.repo + "/actions"
-    };
+    var lastErr;
+    for (var i = 0; i < attempts; i++) {
+      try {
+        await gh("POST", base + "/actions/workflows/" + encodeURIComponent(workflowFile) + "/dispatches",
+          token, { ref: ref });
+        return { ref: ref, actionsUrl: "https://github.com/" + r.owner + "/" + r.repo + "/actions" };
+      } catch (e) {
+        lastErr = e;
+        // Only the "not registered yet" class of error is worth retrying.
+        if (!/does not exist|not found|404|422/i.test(e.message || "")) throw e;
+        if (i < attempts - 1) await sleep(opts.intervalMs || 4000);
+      }
+    }
+    throw lastErr;
   }
 
   // Resolve the sealed-box module in either environment (Node require / browser global).
@@ -147,7 +167,7 @@
    * @returns {Promise<{set: string[], skipped: string[]}>}
    */
   async function setSecrets(repoStr, token, secrets) {
-    if (!token) throw new Error("A GitHub token with 'repo' scope is required.");
+    if (!token) throw new Error("A GitHub token with 'repo' + 'workflow' scopes is required.");
     var sb = getSealedBox();
     var r = splitRepo(repoStr);
     var base = "/repos/" + r.owner + "/" + r.repo;
@@ -171,5 +191,118 @@
     return { set: set, skipped: skipped };
   }
 
-  return { pushKit: pushKit, setSecrets: setSecrets, triggerWorkflow: triggerWorkflow, splitRepo: splitRepo };
+  /**
+   * Find the run created by a dispatch we just sent. There's a short lag
+   * between dispatching and the run appearing, so callers poll this.
+   * @returns {Promise<object|null>} the newest matching run, or null if none yet
+   */
+  async function findWorkflowRun(repoStr, token, workflowFile, sinceMs) {
+    var r = splitRepo(repoStr);
+    var base = "/repos/" + r.owner + "/" + r.repo;
+    var data = await gh("GET", base + "/actions/workflows/" +
+      encodeURIComponent(workflowFile) + "/runs?event=workflow_dispatch&per_page=10", token);
+    var runs = (data && data.workflow_runs) || [];
+    var skew = 60 * 1000; // tolerate clock skew between the browser and GitHub
+    var match = null;
+    for (var i = 0; i < runs.length; i++) {
+      var t = Date.parse(runs[i].created_at);
+      if (sinceMs && t < sinceMs - skew) continue;
+      if (!match || t > Date.parse(match.created_at)) match = runs[i];
+    }
+    return match;
+  }
+
+  /** Fetch one run's current status/conclusion. */
+  async function getRun(repoStr, token, runId) {
+    var r = splitRepo(repoStr);
+    return gh("GET", "/repos/" + r.owner + "/" + r.repo + "/actions/runs/" + runId, token);
+  }
+
+  /**
+   * List a finished run's downloadable artifacts (the .apk / .aab / iOS app).
+   * The API's archive_download_url needs auth, so we hand the user the run page
+   * URL — one click, no token handling in the page — plus the API url for tools.
+   * @returns {Promise<Array<{name, sizeBytes, downloadUrl, apiUrl}>>}
+   */
+  async function listArtifacts(repoStr, token, runId) {
+    var r = splitRepo(repoStr);
+    var base = "/repos/" + r.owner + "/" + r.repo;
+    var data = await gh("GET", base + "/actions/runs/" + runId + "/artifacts", token);
+    var arts = (data && data.artifacts) || [];
+    var runUrl = "https://github.com/" + r.owner + "/" + r.repo + "/actions/runs/" + runId;
+    return arts.map(function (a) {
+      return { name: a.name, sizeBytes: a.size_in_bytes, downloadUrl: runUrl, apiUrl: a.archive_download_url };
+    });
+  }
+
+  function defaultSleep(ms) { return new Promise(function (res) { setTimeout(res, ms); }); }
+
+  /**
+   * Dispatch a workflow and WAIT for the run to finish, reporting progress.
+   * This is what turns "build started, go check Actions" into "here's your app".
+   *
+   * @param {object} [opts] { ref, onProgress(stage,info), sleep(ms),
+   *                          intervalMs, timeoutMs }
+   *   stages reported: "dispatched" | "queued" | "in_progress" | "completed"
+   * @returns {Promise<{runId, runUrl, conclusion, artifacts}>}
+   */
+  async function buildAndWait(repoStr, token, workflowFile, opts) {
+    opts = opts || {};
+    var sleep = opts.sleep || defaultSleep;
+    var interval = opts.intervalMs || 6000;
+    var deadline = Date.now() + (opts.timeoutMs || 20 * 60 * 1000);
+    var startedAt = Date.now();
+    var report = function (stage, info) { if (opts.onProgress) opts.onProgress(stage, info || {}); };
+
+    var trig = await triggerWorkflow(repoStr, token, workflowFile, opts.ref,
+      { sleep: sleep, intervalMs: interval });
+    report("dispatched", { actionsUrl: trig.actionsUrl });
+
+    // 1) wait for the dispatched run to appear
+    var run = null;
+    while (!run) {
+      if (Date.now() > deadline) throw new Error("Timed out waiting for the build to start.");
+      await sleep(interval);
+      run = await findWorkflowRun(repoStr, token, workflowFile, startedAt);
+      if (run) report(run.status || "queued", { runUrl: run.html_url });
+    }
+
+    // 2) poll until it completes
+    while (run.status !== "completed") {
+      if (Date.now() > deadline) throw new Error("Timed out waiting for the build to finish.");
+      await sleep(interval);
+      run = await getRun(repoStr, token, run.id);
+      report(run.status, { runUrl: run.html_url });
+    }
+
+    var artifacts = [];
+    try { artifacts = await listArtifacts(repoStr, token, run.id); } catch (e) { /* artifacts optional */ }
+    var result = { runId: run.id, runUrl: run.html_url, conclusion: run.conclusion, artifacts: artifacts };
+    report("completed", result);
+    return result;
+  }
+
+  /**
+   * Download the WHOLE project (src + ios + android + desktop + configs) as a
+   * .zip — GitHub's repo archive. This is the full source project; the compiled
+   * apps (.dmg/.exe/.apk/.aab) stay as build artifacts (a browser can't bundle
+   * hundreds of MB of binaries).
+   * @returns {Promise<Blob>}
+   */
+  async function downloadRepoZip(repoStr, token, ref) {
+    var r = splitRepo(repoStr);
+    var url = API + "/repos/" + r.owner + "/" + r.repo + "/zipball" + (ref ? "/" + encodeURIComponent(ref) : "");
+    var res = await fetch(url, { headers: authHeaders(token) });
+    if (!res.ok) {
+      var detail = ""; try { detail = (await res.json()).message; } catch (e) {}
+      throw new Error("Couldn't download the project zip (GitHub " + res.status + (detail ? " — " + detail : "") + ").");
+    }
+    return res.blob();
+  }
+
+  return {
+    pushKit: pushKit, setSecrets: setSecrets, triggerWorkflow: triggerWorkflow, splitRepo: splitRepo,
+    findWorkflowRun: findWorkflowRun, getRun: getRun, listArtifacts: listArtifacts, buildAndWait: buildAndWait,
+    downloadRepoZip: downloadRepoZip
+  };
 });

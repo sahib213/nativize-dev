@@ -77,6 +77,22 @@ can't create the app) — after that, uploads are automatic.
   WebView. `nativePush.ts` imports it statically.
 - **APNs key must be Sandbox & Production.** A Production-only key throws
   `THIRD_PARTY_AUTH_ERROR` on local debug builds.
+- **Peer-dep conflicts abort `npm ci`.** Real Lovable apps mix plugin versions
+  (e.g. a Capacitor-6 plugin on a Capacitor-8 project). Every install in the
+  cloud build uses `--legacy-peer-deps` so it never dies at install.
+- **Capacitor 8 requires JDK 21.** The Android job runs Java 21 — Java 17 fails
+  the `capacitor-android` compile with `invalid source release: 21`.
+- **A half-scaffolded `ios/` folder breaks `cap sync`.** Some repos ship an
+  incomplete `ios/` stub (no Xcode project / Podfile). The build detects that,
+  recreates iOS cleanly, and adapts to whichever package manager Capacitor uses
+  (CocoaPods *or* SPM).
+- **AdMob crashes the app on launch.** `@capacitor-community/admob` pulls in the
+  Google Mobile Ads SDK, whose `MobileAdsInitProvider` aborts at startup unless
+  ad config is perfect. The Android patch (a) injects the required
+  `com.google.android.gms.ads.APPLICATION_ID` meta-data (Google's TEST id by
+  default — replace with yours) and (b) removes the auto-init provider via the
+  manifest merger, so the app never crashes; the plugin still initializes ads
+  on demand from JS.
 
 ## Architecture
 

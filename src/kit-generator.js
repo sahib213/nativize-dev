@@ -144,7 +144,7 @@
 
   function fileNativizeSh(c) {
     var addPush = c.enablePush
-      ? "npm install @capacitor-firebase/messaging firebase\n"
+      ? "npm install --legacy-peer-deps @capacitor-firebase/messaging firebase\n"
       : "";
     return [
       "#!/usr/bin/env bash",
@@ -166,9 +166,9 @@
       "fi",
       "",
       "echo '==> Installing Capacitor 8 core + CLI + native platforms'",
-      "npm install @capacitor/core@^8 @capacitor/cli@^8 typescript",
-      "npm install @capacitor/ios@^8 @capacitor/android@^8",
-      "npm install @capacitor/splash-screen@^8",
+      "npm install --legacy-peer-deps @capacitor/core@^8 @capacitor/cli@^8 typescript",
+      "npm install --legacy-peer-deps @capacitor/ios@^8 @capacitor/android@^8",
+      "npm install --legacy-peer-deps @capacitor/splash-screen@^8",
       addPush + "",
       "echo '==> Ensuring web build exists in ./" + c.webDir + "'",
       "if [ ! -d \"" + c.webDir + "\" ]; then",
@@ -234,6 +234,29 @@
       "  rm -f \"$SPLASH_B\"",
       "fi",
       "",
+      "# 4) AdMob launch-crash guard. The Google Mobile Ads SDK (pulled in by",
+      "#    @capacitor-community/admob) CRASHES the app on startup if the manifest",
+      "#    lacks com.google.android.gms.ads.APPLICATION_ID. A fresh `cap add android`",
+      "#    never adds it, so inject Google's official TEST app id when AdMob is used.",
+      "#    >>> REPLACE the value with YOUR real AdMob App ID before release. <<<",
+      "MANIFEST=android/app/src/main/AndroidManifest.xml",
+      "if [ -f package.json ] && grep -qi 'admob' package.json && [ -f \"$MANIFEST\" ]; then",
+      "  if ! grep -q 'com.google.android.gms.ads.APPLICATION_ID' \"$MANIFEST\"; then",
+      "    echo 'AdMob detected — injecting APPLICATION_ID meta-data (TEST id; replace with yours).'",
+      "    export NZ_ADMOB_META='        <meta-data android:name=\"com.google.android.gms.ads.APPLICATION_ID\" android:value=\"ca-app-pub-3940256099942544~3347511713\"/>'",
+      "    perl -0pi -e 's/(<activity)/$ENV{NZ_ADMOB_META}\\n        $1/' \"$MANIFEST\"",
+      "  fi",
+      "  # The Google Mobile Ads SDK auto-init content provider (MobileAdsInitProvider)",
+      "  # crashes the app at startup whenever ad config isn't perfect. Remove it via",
+      "  # the manifest merger — the admob plugin still initializes ads on demand from JS.",
+      "  if ! grep -q 'MobileAdsInitProvider' \"$MANIFEST\"; then",
+      "    echo 'Removing MobileAdsInitProvider auto-init to prevent the AdMob startup crash.'",
+      "    grep -q 'xmlns:tools' \"$MANIFEST\" || perl -0pi -e 's/(<manifest\\b)/$1 xmlns:tools=\"http:\\/\\/schemas.android.com\\/tools\"/' \"$MANIFEST\"",
+      "    export NZ_ADMOB_PROV='        <provider android:name=\"com.google.android.gms.ads.MobileAdsInitProvider\" android:authorities=\"${applicationId}.mobileadsinitprovider\" tools:node=\"remove\" />'",
+      "    perl -0pi -e 's/(<activity)/$ENV{NZ_ADMOB_PROV}\\n        $1/' \"$MANIFEST\"",
+      "  fi",
+      "fi",
+      "",
       "echo \"Pinned AGP=$AGP, Gradle=$GRADLE.\"",
       ""
     ].join("\n");
@@ -262,11 +285,11 @@
       "      - uses: actions/setup-java@v4",
       "        with:",
       "          distribution: temurin",
-      "          java-version: 17",
+      "          java-version: 21",
       "      - name: Install deps + build web",
       "        run: |",
-      "          npm ci || npm install",
-      "          npm install --no-save typescript @capacitor/core@^8 @capacitor/cli@^8 @capacitor/android@^8 @capacitor/splash-screen@^8" + (c.enablePush ? " @capacitor-firebase/messaging firebase" : ""),
+      "          npm ci --legacy-peer-deps || npm install --legacy-peer-deps",
+      "          npm install --no-save --legacy-peer-deps typescript @capacitor/core@^8 @capacitor/cli@^8 @capacitor/android@^8 @capacitor/splash-screen@^8" + (c.enablePush ? " @capacitor-firebase/messaging firebase" : ""),
       "          npm run build",
       "      - name: Add Android platform + sync",
       "        run: |",
@@ -298,27 +321,33 @@
       "          node-version: 22",
       "      - name: Install deps + build web",
       "        run: |",
-      "          npm ci || npm install",
-      "          npm install --no-save typescript @capacitor/core@^8 @capacitor/cli@^8 @capacitor/ios@^8 @capacitor/splash-screen@^8" + (c.enablePush ? " @capacitor-firebase/messaging firebase" : ""),
+      "          npm ci --legacy-peer-deps || npm install --legacy-peer-deps",
+      "          npm install --no-save --legacy-peer-deps typescript @capacitor/core@^8 @capacitor/cli@^8 @capacitor/ios@^8 @capacitor/splash-screen@^8" + (c.enablePush ? " @capacitor-firebase/messaging firebase" : ""),
       "          npm run build",
       "      - name: Add iOS platform + sync",
       "        env:",
       "          LANG: en_US.UTF-8",
       "          LC_ALL: en_US.UTF-8",
       "        run: |",
-      "          if [ -d ios ]; then echo 'ios already added'; else npx cap add ios --packagemanager CocoaPods; fi",
+      "          # A committed ios/ can be an incomplete stub (no Xcode project / Podfile),",
+      "          # which makes 'cap sync' fail. Recreate it cleanly in that case.",
+      "          if [ ! -f ios/App/App.xcodeproj/project.pbxproj ] && [ ! -f ios/App/Podfile ]; then",
+      "            rm -rf ios",
+      "            npx cap add ios",
+      "          fi",
       "          npx cap sync ios",
-      "      - name: Resolve CocoaPods",
+      "      - name: Resolve native dependencies",
       "        working-directory: ios/App",
       "        env:",
       "          LANG: en_US.UTF-8",
       "          LC_ALL: en_US.UTF-8",
-      "        run: pod install",
-      "      - name: Compile app (no signing — validates the build for free)",
+      "        run: |",
+      "          if [ -f Podfile ]; then pod install; else echo 'No Podfile (SPM) - resolved during build'; fi",
+      "      - name: Compile app (no signing - validates the build for free)",
       "        working-directory: ios/App",
       "        run: |",
-      "          xcodebuild \\",
-      "            -workspace App.xcworkspace \\",
+      "          if [ -d App.xcworkspace ]; then PROJ='-workspace App.xcworkspace'; else PROJ='-project App.xcodeproj'; fi",
+      "          xcodebuild $PROJ \\",
       "            -scheme App \\",
       "            -configuration Debug \\",
       "            -sdk iphoneos \\",
@@ -331,6 +360,59 @@
       "        with:",
       "          name: ios-unsigned-app",
       "          path: ios/App/DerivedData/Build/Products/Debug-iphoneos/*.app",
+      "          if-no-files-found: error",
+      "",
+      "  # ---- Desktop apps (Electron) - double-click .dmg / .exe ----",
+      "  desktop-mac:",
+      "    name: Desktop (macOS .dmg)",
+      "    runs-on: macos-latest",
+      "    steps:",
+      "      - uses: actions/checkout@v4",
+      "      - uses: actions/setup-node@v4",
+      "        with:",
+      "          node-version: 22",
+      "      - name: Install deps + build web",
+      "        run: |",
+      "          npm ci --legacy-peer-deps || npm install --legacy-peer-deps",
+      "          npm run build",
+      "      - name: Package desktop app",
+      "        run: |",
+      "          rm -rf desktop/app && cp -r dist desktop/app",
+      "          cd desktop",
+      "          npm install",
+      "          npx --no-install electron-builder --mac --publish never",
+      "      - name: Upload macOS desktop app",
+      "        uses: actions/upload-artifact@v4",
+      "        with:",
+      "          name: desktop-mac",
+      "          path: desktop/out/*.dmg",
+      "          if-no-files-found: error",
+      "",
+      "  desktop-windows:",
+      "    name: Desktop (Windows .exe)",
+      "    runs-on: windows-latest",
+      "    steps:",
+      "      - uses: actions/checkout@v4",
+      "      - uses: actions/setup-node@v4",
+      "        with:",
+      "          node-version: 22",
+      "      - name: Install deps + build web",
+      "        shell: bash",
+      "        run: |",
+      "          npm ci --legacy-peer-deps || npm install --legacy-peer-deps",
+      "          npm run build",
+      "      - name: Package desktop app",
+      "        shell: bash",
+      "        run: |",
+      "          rm -rf desktop/app && cp -r dist desktop/app",
+      "          cd desktop",
+      "          npm install",
+      "          npx --no-install electron-builder --win --publish never",
+      "      - name: Upload Windows desktop app",
+      "        uses: actions/upload-artifact@v4",
+      "        with:",
+      "          name: desktop-windows",
+      "          path: desktop/out/*.exe",
       "          if-no-files-found: error",
       ""
     ].join("\n");
@@ -497,11 +579,11 @@
         "      - uses: actions/setup-java@v4",
         "        with:",
         "          distribution: temurin",
-        "          java-version: 17",
+        "          java-version: 21",
         "      - name: Install deps + build web",
         "        run: |",
-        "          npm ci || npm install",
-        "          npm install --no-save typescript @capacitor/core@^8 @capacitor/cli@^8 @capacitor/android@^8 @capacitor/splash-screen@^8" + (c.enablePush ? " @capacitor-firebase/messaging firebase" : ""),
+        "          npm ci --legacy-peer-deps || npm install --legacy-peer-deps",
+        "          npm install --no-save --legacy-peer-deps typescript @capacitor/core@^8 @capacitor/cli@^8 @capacitor/android@^8 @capacitor/splash-screen@^8" + (c.enablePush ? " @capacitor-firebase/messaging firebase" : ""),
         "          npm run build",
         "      - name: Add Android platform + sync",
         "        run: |",
@@ -548,8 +630,8 @@
         "          node-version: 22",
         "      - name: Install deps + build web",
         "        run: |",
-        "          npm ci || npm install",
-        "          npm install --no-save typescript @capacitor/core@^8 @capacitor/cli@^8 @capacitor/ios@^8 @capacitor/splash-screen@^8" + (c.enablePush ? " @capacitor-firebase/messaging firebase" : ""),
+        "          npm ci --legacy-peer-deps || npm install --legacy-peer-deps",
+        "          npm install --no-save --legacy-peer-deps typescript @capacitor/core@^8 @capacitor/cli@^8 @capacitor/ios@^8 @capacitor/splash-screen@^8" + (c.enablePush ? " @capacitor-firebase/messaging firebase" : ""),
         "          npm run build",
         "      - name: Add iOS platform + sync",
         "        env:",
@@ -670,6 +752,92 @@
     return lines.join("\n");
   }
 
+  // Electron main process: wraps the built web app into a desktop window.
+  function fileDesktopMain(c) {
+    return [
+      "// Electron main process — generated by Nativize.",
+      "// Wraps your built web app (./app) into a desktop window users double-click.",
+      "const { app, BrowserWindow, shell } = require('electron');",
+      "const path = require('path');",
+      "const serve = require('electron-serve');",
+      "",
+      "// Serve the static web build through a custom protocol so SPA routing and",
+      "// absolute asset paths work (loading via file:// would break them).",
+      "const loadApp = serve({ directory: path.join(__dirname, 'app') });",
+      "",
+      "async function createWindow() {",
+      "  const win = new BrowserWindow({",
+      "    width: 1280,",
+      "    height: 800,",
+      "    webPreferences: { contextIsolation: true }",
+      "  });",
+      "  // External links open in the real browser, not inside the app window.",
+      "  win.webContents.setWindowOpenHandler(function (d) { shell.openExternal(d.url); return { action: 'deny' }; });",
+      "  await loadApp(win);",
+      "}",
+      "",
+      "app.whenReady().then(createWindow);",
+      "app.on('activate', function () { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });",
+      "app.on('window-all-closed', function () { if (process.platform !== 'darwin') app.quit(); });",
+      ""
+    ].join("\n");
+  }
+
+  // Self-contained package for the desktop build (isolated from the web app's
+  // package.json so the web/mobile builds are never touched).
+  function fileDesktopPackage(c) {
+    var name = (slugify(c.appName) || "app") + "-desktop";
+    var pkg = {
+      name: name,
+      version: "1.0.0",
+      description: c.appName + " desktop app",
+      author: "Nativize",
+      main: "main.js",
+      scripts: { dist: "electron-builder" },
+      dependencies: { "electron-serve": "^1.3.0" },
+      devDependencies: { electron: "^31.7.7", "electron-builder": "^24.13.3" },
+      build: {
+        appId: c.appId,
+        productName: c.appName,
+        files: ["main.js", "app/**/*"],
+        directories: { output: "out" },
+        mac: { target: "dmg", identity: null },
+        win: { target: "nsis" },
+        linux: { target: "AppImage" }
+      }
+    };
+    return JSON.stringify(pkg, null, 2) + "\n";
+  }
+
+  function fileDesktopReadme(c) {
+    return [
+      "# " + c.appName + " — desktop app",
+      "",
+      "The cloud build produces a **Mac `.dmg`** and a **Windows `.exe`** (Artifacts",
+      "on the GitHub Actions run). These are unsigned, so the operating system",
+      "guards them on first launch. That's expected — not corruption.",
+      "",
+      "## macOS — \"App is damaged\" / \"can't be opened\"",
+      "macOS quarantines unsigned apps downloaded from the internet. To open YOUR",
+      "OWN copy, clear the quarantine flag once, then open normally:",
+      "",
+      "```bash",
+      "xattr -cr \"/Applications/" + c.appName + ".app\"   # or wherever you put it",
+      "```",
+      "",
+      "(Or right-click the app -> Open the first time.)",
+      "",
+      "## Windows — \"Windows protected your PC\" (SmartScreen)",
+      "Click **More info -> Run anyway**.",
+      "",
+      "## Distributing to OTHER people without warnings",
+      "You need real signing: an Apple Developer ID + notarization (macOS) and an",
+      "Authenticode certificate (Windows). Add those to the desktop build config",
+      "(electron-builder `mac.notarize` / `win.certificateFile`) when you're ready.",
+      ""
+    ].join("\n");
+  }
+
   /**
    * Main entry. Returns a { path: contents } map for the whole kit.
    */
@@ -681,6 +849,9 @@
     files["nativize.sh"] = fileNativizeSh(c);
     files["nativize-patch-android.sh"] = filePatchAndroidSh(c);
     files[".github/workflows/nativize-build.yml"] = fileWorkflow(c);
+    files["desktop/main.js"] = fileDesktopMain(c);
+    files["desktop/package.json"] = fileDesktopPackage(c);
+    files["desktop/README.md"] = fileDesktopReadme(c);
     files["CHECKLIST.md"] = fileChecklist(c);
     files["NATIVIZE_README.md"] = fileReadme(c);
 

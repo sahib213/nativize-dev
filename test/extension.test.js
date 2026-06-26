@@ -10,9 +10,12 @@ const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
 test("Manifest V3 is scoped to Lovable and GitHub with local storage only", () => {
   const manifest = JSON.parse(read("manifest.json"));
   assert.equal(manifest.manifest_version, 3);
-  assert.deepEqual(manifest.permissions, ["storage"]);
+  // 'identity' is needed for one-click "Sign in with GitHub" via chrome.identity.
+  assert.deepEqual(manifest.permissions, ["storage", "identity"]);
   assert.deepEqual(manifest.host_permissions, ["https://api.github.com/*"]);
   assert.deepEqual(manifest.content_scripts[0].matches, ["https://lovable.dev/*"]);
+  // sign-in runs in the background service worker (chrome.identity isn't in content scripts)
+  assert.equal(manifest.background.service_worker, "src/background.js");
   assert.equal(manifest.action.default_popup, "src/popup.html");
   assert.deepEqual(Object.keys(manifest.icons).sort(), ["128", "16", "48"]);
 });
