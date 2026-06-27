@@ -1,0 +1,258 @@
+/* ============================================================
+   Nativize site — interactions. Zero dependencies.
+   ============================================================ */
+(function () {
+  "use strict";
+
+  /* ---- Config: fill these in when the listings go live ---- */
+  // When the Chrome Web Store listing exists, set CHROME_STORE_URL and every
+  // "Add to Chrome" button points to it. Until then they scroll to install steps.
+  var CHROME_STORE_URL = ""; // e.g. "https://chrome.google.com/webstore/detail/…"
+  var GITHUB_URL = "https://github.com/"; // set to the public Nativize repo URL
+
+  // Supabase feedback forms. The anon key is publishable; protect the tables
+  // with RLS so anonymous visitors can insert but cannot read existing rows.
+  var SUPABASE_URL = "https://gaaxcbarmiwtojblkkyh.supabase.co";
+  var SUPABASE_ANON_KEY = "sb_publishable_mAA5LXz9HFHlwVzkA1SCEg_ybxHh_X7";
+  var FEEDBACK_TABLES = {
+    feature: "feature_requests",
+    support: "support_requests"
+  };
+
+  // Lemon Squeezy (or any) checkout URLs per plan. Fill these in to take money.
+  // Free starts the app; leave a paid one empty and its button links to the app
+  // with a "coming soon" feel until you add the URL.
+  var CHECKOUT_URLS = {
+    free: "app.html",
+    starter: "",   // e.g. "https://yourstore.lemonsqueezy.com/buy/XXXX"
+    pro: "",       // e.g. "https://yourstore.lemonsqueezy.com/buy/YYYY"
+    max: ""        // e.g. "https://yourstore.lemonsqueezy.com/buy/ZZZZ"
+  };
+
+  var prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* ---- Wire CTAs + GitHub links ---- */
+  document.querySelectorAll("[data-cta]").forEach(function (el) {
+    if (CHROME_STORE_URL) {
+      el.setAttribute("href", CHROME_STORE_URL);
+      el.setAttribute("target", "_blank");
+      el.setAttribute("rel", "noopener");
+    } else {
+      el.setAttribute("href", "#get-started");
+    }
+  });
+  document.querySelectorAll("[data-gh]").forEach(function (el) {
+    el.setAttribute("href", GITHUB_URL);
+  });
+
+  /* ---- Year ---- */
+  var y = document.getElementById("year");
+  if (y) y.textContent = new Date().getFullYear();
+
+  /* ---- Pricing cards (rendered from plans.js so they never drift) ---- */
+  var pricingGrid = document.getElementById("pricingGrid");
+  if (pricingGrid && window.NativizePlans) {
+    pricingGrid.innerHTML = window.NativizePlans.PLANS.map(function (p) {
+      var url = CHECKOUT_URLS[p.id] || "app.html";
+      var isFree = p.id === "free";
+      var cta = isFree ? "Start free" : (CHECKOUT_URLS[p.id] ? "Get " + p.name : "Coming soon");
+      var feats = (p.highlights || []).map(function (h) { return "<li>" + h + "</li>"; }).join("");
+      return '<article class="price-card card reveal' + (p.popular ? " popular" : "") + '">' +
+          (p.popular ? '<span class="price-tag">Most popular</span>' : "") +
+          '<h3>' + p.name + '</h3>' +
+          '<div class="price-amt"><span class="amt">' + p.price + '</span><span class="per">' + p.priceNote + '</span></div>' +
+          '<p class="price-line">' + p.tagline + '</p>' +
+          '<ul class="price-feats">' + feats + '</ul>' +
+          '<a class="btn ' + (p.popular ? "btn-primary" : "btn-glass") + ' price-cta" href="' + url + '"' +
+            (CHECKOUT_URLS[p.id] && !isFree ? ' target="_blank" rel="noopener"' : "") + '>' + cta + '</a>' +
+        '</article>';
+    }).join("");
+  }
+
+  /* ---- Header: blur/border once scrolled ---- */
+  var header = document.getElementById("siteHeader");
+  var onScroll = function () {
+    if (window.scrollY > 12) header.classList.add("scrolled");
+    else header.classList.remove("scrolled");
+  };
+  onScroll();
+  window.addEventListener("scroll", onScroll, { passive: true });
+
+  /* ---- Mobile nav ---- */
+  var toggle = document.getElementById("navToggle");
+  var links = document.getElementById("navLinks");
+  if (toggle && links) {
+    toggle.addEventListener("click", function () {
+      links.classList.toggle("open");
+    });
+    links.querySelectorAll("a").forEach(function (a) {
+      a.addEventListener("click", function () { links.classList.remove("open"); });
+    });
+  }
+
+  /* ---- Scroll reveal (staggered) ---- */
+  var reveals = Array.prototype.slice.call(document.querySelectorAll(".reveal"));
+  if (prefersReduced || !("IntersectionObserver" in window)) {
+    reveals.forEach(function (el) { el.classList.add("in"); });
+  } else {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) return;
+        var el = entry.target;
+        // Stagger siblings inside the same grid/row for a cascade effect.
+        var sibs = el.parentElement ? Array.prototype.slice.call(el.parentElement.children).filter(function (c) { return c.classList.contains("reveal"); }) : [el];
+        var idx = sibs.indexOf(el);
+        el.style.transitionDelay = Math.min(idx, 6) * 70 + "ms";
+        el.classList.add("in");
+        io.unobserve(el);
+      });
+    }, { threshold: 0.14, rootMargin: "0px 0px -8% 0px" });
+    reveals.forEach(function (el) { io.observe(el); });
+  }
+
+  /* ---- Feature card spotlight follows cursor ---- */
+  if (!prefersReduced) {
+    document.querySelectorAll(".feat").forEach(function (card) {
+      card.addEventListener("pointermove", function (e) {
+        var r = card.getBoundingClientRect();
+        card.style.setProperty("--mx", (e.clientX - r.left) + "px");
+        card.style.setProperty("--my", (e.clientY - r.top) + "px");
+      });
+    });
+  }
+
+  /* ---- FAQ: single-open accordion ---- */
+  var faqItems = document.querySelectorAll("#faq-list .faq-item");
+  faqItems.forEach(function (item) {
+    item.addEventListener("toggle", function () {
+      if (!item.open) return;
+      faqItems.forEach(function (other) {
+        if (other !== item) other.open = false;
+      });
+    });
+  });
+
+  /* ---- Supabase: support + feature request forms ---- */
+  function formValue(form, name) {
+    var value = new FormData(form).get(name);
+    return typeof value === "string" ? value.trim() : "";
+  }
+
+  function setFormStatus(form, state, message) {
+    var status = form.querySelector(".form-status");
+    if (!status) return;
+    status.classList.remove("is-success", "is-error");
+    if (state) status.classList.add("is-" + state);
+    status.textContent = message || "";
+  }
+
+  function setFormBusy(form, busy) {
+    var button = form.querySelector("button[type='submit']");
+    if (!button) return;
+    if (!button.dataset.idleText) button.dataset.idleText = button.textContent;
+    button.disabled = busy;
+    button.textContent = busy ? "Sending..." : button.dataset.idleText;
+  }
+
+  function buildFeedbackPayload(form, type) {
+    var base = {
+      source: "website",
+      page_path: window.location.pathname || "/"
+    };
+
+    if (type === "feature") {
+      base.email = formValue(form, "email") || null;
+      base.priority = formValue(form, "priority");
+      base.title = formValue(form, "title");
+      base.description = formValue(form, "description");
+      return base;
+    }
+
+    base.name = formValue(form, "name") || null;
+    base.email = formValue(form, "email");
+    base.topic = formValue(form, "topic");
+    base.message = formValue(form, "message");
+    return base;
+  }
+
+  async function insertFeedback(table, payload) {
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+      throw new Error("Supabase is not configured yet.");
+    }
+
+    var response = await fetch(SUPABASE_URL + "/rest/v1/" + encodeURIComponent(table), {
+      method: "POST",
+      headers: {
+        "apikey": SUPABASE_ANON_KEY,
+        "Authorization": "Bearer " + SUPABASE_ANON_KEY,
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal"
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      var detail = await response.text();
+      throw new Error(detail || ("Supabase insert failed with status " + response.status));
+    }
+  }
+
+  document.querySelectorAll("[data-feedback-form]").forEach(function (form) {
+    form.addEventListener("submit", async function (event) {
+      event.preventDefault();
+      if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+      }
+
+      var type = form.getAttribute("data-feedback-type");
+      var table = FEEDBACK_TABLES[type];
+      if (!table) return;
+
+      if (formValue(form, "website")) {
+        form.reset();
+        return;
+      }
+
+      setFormBusy(form, true);
+      setFormStatus(form, "", "");
+      try {
+        await insertFeedback(table, buildFeedbackPayload(form, type));
+        form.reset();
+        setFormStatus(form, "success", type === "feature" ? "Feature request sent. Thank you." : "Support request sent. Thank you.");
+      } catch (err) {
+        console.error(err);
+        setFormStatus(form, "error", "Could not send this yet. Please try again in a moment.");
+      } finally {
+        setFormBusy(form, false);
+      }
+    });
+  });
+
+  /* ---- Platform glyphs (masked so they take the element's color) ---- */
+  var GLYPHS = {
+    ios: "M17.05 13.06c-.03-2.7 2.2-4 2.3-4.06-1.25-1.84-3.2-2.09-3.9-2.12-1.66-.17-3.24.98-4.08.98-.84 0-2.14-.96-3.52-.93-1.81.03-3.48 1.05-4.41 2.67-1.88 3.27-.48 8.1 1.35 10.76.9 1.3 1.96 2.76 3.36 2.71 1.35-.05 1.86-.87 3.49-.87 1.63 0 2.09.87 3.52.84 1.45-.03 2.37-1.32 3.26-2.63 1.03-1.5 1.45-2.96 1.47-3.04-.03-.01-2.82-1.08-2.85-4.28zM14.4 5.3c.74-.9 1.24-2.15 1.1-3.4-1.07.04-2.36.71-3.13 1.61-.69.79-1.29 2.06-1.13 3.27 1.19.09 2.42-.6 3.16-1.48z",
+    mac: "M5 5h14a1.5 1.5 0 0 1 1.5 1.5V15H3.5V6.5A1.5 1.5 0 0 1 5 5zM2 16.5h20a.5.5 0 0 1 .45.72l-.6 1.2a1 1 0 0 1-.9.58H3.05a1 1 0 0 1-.9-.58l-.6-1.2A.5.5 0 0 1 2 16.5z",
+    android: "M7.2 7.6 5.95 5.4a.4.4 0 0 1 .7-.4l1.28 2.22A6.8 6.8 0 0 1 12 6.3c1.5 0 2.9.4 4.07 1.12L17.35 5a.4.4 0 1 1 .7.4L16.8 7.6A5.7 5.7 0 0 1 19 12H5a5.7 5.7 0 0 1 2.2-4.4zM5 13h14v5a1.5 1.5 0 0 1-1.5 1.5h-.6V22a1.2 1.2 0 0 1-2.4 0v-2.5H9.5V22a1.2 1.2 0 0 1-2.4 0v-2.5h-.6A1.5 1.5 0 0 1 5 18v-5zM3.3 13.2a1.2 1.2 0 0 1 2.4 0v3.6a1.2 1.2 0 0 1-2.4 0v-3.6zm15 0a1.2 1.2 0 0 1 2.4 0v3.6a1.2 1.2 0 0 1-2.4 0v-3.6z",
+    win: "M3 4.6 11 3.45V11.4H3zM12 3.3 21 2v9.4h-9zM3 12.6h8v7.8L3 19.2zM12 12.6h9V22l-9-1.35z",
+    git: "M12 1.6A10.4 10.4 0 0 0 8.7 21.9c.52.1.71-.22.71-.5v-1.7c-2.9.63-3.5-1.4-3.5-1.4-.48-1.2-1.16-1.53-1.16-1.53-.95-.65.07-.64.07-.64 1.05.08 1.6 1.08 1.6 1.08.94 1.6 2.45 1.14 3.05.87.09-.68.36-1.14.66-1.4-2.32-.27-4.76-1.16-4.76-5.17 0-1.14.41-2.07 1.07-2.8-.11-.27-.46-1.34.1-2.78 0 0 .88-.28 2.87 1.07a9.9 9.9 0 0 1 5.22 0c1.99-1.35 2.86-1.07 2.86-1.07.57 1.44.21 2.51.11 2.78.67.73 1.07 1.66 1.07 2.8 0 4.02-2.45 4.9-4.78 5.16.38.32.71.95.71 1.92v2.85c0 .28.19.61.72.5A10.4 10.4 0 0 0 12 1.6z"
+  };
+  function maskFor(path) {
+    var svg = "data:image/svg+xml," + encodeURIComponent(
+      "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='" + path + "'/></svg>"
+    );
+    return "url(\"" + svg + "\")";
+  }
+  document.querySelectorAll("[data-platform]").forEach(function (el) {
+    var key = el.getAttribute("data-platform");
+    var path = GLYPHS[key];
+    if (!path) return;
+    var m = maskFor(path);
+    el.style.webkitMaskImage = m;
+    el.style.maskImage = m;
+    el.style.webkitMaskRepeat = el.style.maskRepeat = "no-repeat";
+    el.style.webkitMaskPosition = el.style.maskPosition = "center";
+    el.style.webkitMaskSize = el.style.maskSize = "contain";
+    el.style.backgroundColor = "currentColor";
+  });
+})();

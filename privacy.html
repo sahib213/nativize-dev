@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nativize Privacy Policy</title>
+  <meta name="description" content="Privacy policy for Nativize, the Chrome extension and website for generating native app projects from web apps." />
+  <meta name="theme-color" content="#0a0a12" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%237c3aed'/%3E%3Cstop offset='1' stop-color='%232563eb'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='128' height='128' rx='28' fill='url(%23g)'/%3E%3Cpath d='M64 30 L86 54 L72 54 L72 96 L56 96 L56 54 L42 54 Z' fill='white'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="aurora" aria-hidden="true">
+    <span class="blob blob-1"></span>
+    <span class="blob blob-2"></span>
+    <span class="blob blob-3"></span>
+    <div class="grid-overlay"></div>
+  </div>
+
+  <header class="site-header scrolled">
+    <nav class="nav container">
+      <a class="brand" href="index.html" aria-label="Nativize home">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 128 128"><defs><linearGradient id="bm" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7c3aed"/><stop offset=".5" stop-color="#4f46e5"/><stop offset="1" stop-color="#2563eb"/></linearGradient></defs><rect width="128" height="128" rx="28" fill="url(#bm)"/><path d="M64 30 L86 54 L72 54 L72 96 L56 96 L56 54 L42 54 Z" fill="white"/></svg>
+        </span>
+        <span class="brand-name">Nativize</span>
+      </a>
+      <div class="nav-cta">
+        <a class="btn btn-ghost" href="index.html#support">Support</a>
+        <a class="btn btn-primary" href="app.html">Open app</a>
+      </div>
+    </nav>
+  </header>
+
+  <main class="legal-main">
+    <div class="legal-shell">
+      <div class="legal-hero">
+        <span class="eyebrow">Legal</span>
+        <h1>Privacy Policy</h1>
+        <p>Effective date: June 26, 2026</p>
+      </div>
+
+      <article class="legal-card card legal-content">
+        <section>
+          <p>Nativize is a Chrome extension that helps users generate native iOS, Android, macOS, and Windows project files from a web app, push generated files to the user's GitHub repository, and run GitHub Actions builds.</p>
+        </section>
+
+        <section>
+          <h2>Data Nativize Handles</h2>
+          <p>Nativize handles only the data needed for its app-generation and build workflow:</p>
+          <ul>
+            <li>Authentication information, such as a GitHub OAuth token or manually entered GitHub token, a Lemon Squeezy license key, and optional app-store upload credentials when the user enables store-upload workflows.</li>
+            <li>Project configuration entered by the user, such as app name, app ID, repository name, web build directory, build options, permission descriptions, social sign-in options, and selected platform settings.</li>
+            <li>Limited website content used for prefill, such as the current page title and GitHub repository links found on the current page.</li>
+            <li>The current page origin and path may be used locally as a key for per-project settings. Nativize does not create or transmit a general browsing-history list.</li>
+            <li>Support requests and feature requests submitted through the Nativize website, including the email address and message text the user chooses to provide.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>How The Data Is Used</h2>
+          <ul>
+            <li>Generate native project files and downloadable project archives.</li>
+            <li>Push generated files to the GitHub repository selected by the user.</li>
+            <li>Create encrypted GitHub Actions secrets when the user enables store-upload workflows.</li>
+            <li>Trigger GitHub Actions workflows and fetch build status or artifacts.</li>
+            <li>Validate or activate paid licenses with Lemon Squeezy.</li>
+            <li>Prefill editable fields in the extension UI.</li>
+            <li>Respond to support requests and consider submitted feature requests.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Storage</h2>
+          <p>Nativize stores extension settings, selected project configuration, GitHub connection state, license status, and GitHub tokens locally in <code>chrome.storage.local</code> on the user's device. Optional store-upload credentials are not saved as normal extension settings; when the user enables store upload, they are sent to GitHub to be stored as encrypted GitHub Actions secrets.</p>
+          <p>Users can remove locally stored data by signing out in the extension, clearing extension data in Chrome, or uninstalling the extension.</p>
+          <p>Support requests and feature requests submitted through the website are stored in the Nativize Supabase project.</p>
+        </section>
+
+        <section>
+          <h2>Third-Party Services</h2>
+          <p>Nativize communicates with these services only as needed for its native-app generation workflow and website support forms:</p>
+          <ul>
+            <li>GitHub, to authenticate, read repository metadata, push generated files, create encrypted Actions secrets, trigger workflows, and fetch build artifacts.</li>
+            <li>Supabase Auth, to complete the GitHub OAuth sign-in flow and return a GitHub provider token to the extension.</li>
+            <li>Supabase, to store support requests and feature requests submitted through the website.</li>
+            <li>Lemon Squeezy, to validate and activate paid license keys.</li>
+          </ul>
+          <p>Nativize does not sell user data. Nativize does not use or transfer user data for advertising, creditworthiness, lending, or purposes unrelated to generating and building native app projects.</p>
+        </section>
+
+        <section>
+          <h2>Remote Code</h2>
+          <p>Nativize does not load or execute remote JavaScript or WebAssembly. The extension package contains its executable code. Network requests to GitHub, Supabase Auth, Supabase database APIs, and Lemon Squeezy are API/OAuth requests, not remote executable code.</p>
+        </section>
+
+        <section>
+          <h2>Children</h2>
+          <p>Nativize is not directed to children.</p>
+        </section>
+
+        <section>
+          <h2>Changes</h2>
+          <p>This policy may be updated when Nativize changes how it handles data. Material changes will be reflected by updating this policy.</p>
+        </section>
+
+        <section>
+          <h2>Contact</h2>
+          <p>For support or privacy questions, use the <a href="support.html">support page</a> or the support information provided with the Nativize Chrome Web Store listing.</p>
+        </section>
+      </article>
+
+      <div class="legal-nav">
+        <a class="btn btn-glass" href="terms.html">Terms</a>
+        <a class="btn btn-glass" href="support.html">Support</a>
+        <a class="btn btn-glass" href="chrome-web-store-disclosures.html">Chrome Web Store disclosures</a>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-bottom">
+      <span>© <span id="year"></span> Nativize · Built on Capacitor 8</span>
+      <span class="footer-note">Not affiliated with Lovable, Apple, Google or Microsoft.</span>
+    </div>
+  </footer>
+  <script src="script.js" defer></script>
+</body>
+</html>
