@@ -123,6 +123,9 @@ code {
 .trust-row { display: flex; gap: 22px; flex-wrap: wrap; list-style: none; }
 .trust-row li { display: flex; align-items: center; gap: 7px; font-size: 13.5px; color: var(--muted); }
 .check { width: 17px; height: 17px; color: #6ee7b7; }
+.guide-hero { padding-bottom: 48px; }
+.guide-art { width: min(520px, 100%); overflow: hidden; box-shadow: var(--shadow-glow); }
+.guide-art img { display: block; width: 100%; height: auto; }
 
 /* ---------- Hero visual ---------- */
 .hero-visual { display: grid; place-items: center; }

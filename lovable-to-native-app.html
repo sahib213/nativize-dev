@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lovable to Native App Converter | iOS, Android, Mac, Windows</title>
+  <meta name="description" content="Convert a Lovable app into native iOS, Android, macOS, and Windows projects with Nativize, Capacitor 8, GitHub Actions builds, push, permissions, and store upload." />
+  <meta name="robots" content="index,follow,max-image-preview:large" />
+  <meta name="theme-color" content="#0a0a12" />
+  <link rel="canonical" href="https://nativize.dev/lovable-to-native-app.html" />
+
+  <meta property="og:site_name" content="Nativize" />
+  <meta property="og:locale" content="en_US" />
+  <meta property="og:title" content="Convert Lovable apps to native iOS, Android, Mac, and Windows" />
+  <meta property="og:description" content="A practical guide to turning a Lovable or Vite web app into native app projects with Capacitor 8 and GitHub Actions." />
+  <meta property="og:type" content="article" />
+  <meta property="og:url" content="https://nativize.dev/lovable-to-native-app.html" />
+  <meta property="og:image" content="https://nativize.dev/og-image.png" />
+  <meta property="og:image:secure_url" content="https://nativize.dev/og-image.png" />
+  <meta property="og:image:type" content="image/png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Nativize converts Lovable web apps into native iOS, Android, Mac, and Windows apps." />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Lovable to native app converter" />
+  <meta name="twitter:description" content="Convert Lovable and Vite apps into Capacitor native projects and GitHub Actions builds." />
+  <meta name="twitter:image" content="https://nativize.dev/og-image.png" />
+
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%237c3aed'/%3E%3Cstop offset='1' stop-color='%232563eb'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='128' height='128' rx='28' fill='url(%23g)'/%3E%3Cpath d='M64 30 L86 54 L72 54 L72 96 L56 96 L56 54 L42 54 Z' fill='white'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="styles.css" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "BreadcrumbList",
+        "@id": "https://nativize.dev/lovable-to-native-app.html#breadcrumbs",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Nativize", "item": "https://nativize.dev/" },
+          { "@type": "ListItem", "position": 2, "name": "Lovable to Native App", "item": "https://nativize.dev/lovable-to-native-app.html" }
+        ]
+      },
+      {
+        "@type": "TechArticle",
+        "@id": "https://nativize.dev/lovable-to-native-app.html#article",
+        "headline": "How to convert a Lovable app to native iOS, Android, Mac, and Windows apps",
+        "description": "A guide to using Nativize, Capacitor 8, and GitHub Actions to convert a Lovable or Vite web app into native app projects.",
+        "image": "https://nativize.dev/og-image.png",
+        "datePublished": "2026-06-27",
+        "dateModified": "2026-06-27",
+        "author": { "@type": "Organization", "name": "Nativize", "url": "https://nativize.dev/" },
+        "publisher": { "@type": "Organization", "name": "Nativize", "logo": { "@type": "ImageObject", "url": "https://nativize.dev/og-image.png" } },
+        "mainEntityOfPage": "https://nativize.dev/lovable-to-native-app.html"
+      },
+      {
+        "@type": "FAQPage",
+        "@id": "https://nativize.dev/lovable-to-native-app.html#faq-schema",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Can a Lovable app become a real native app?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. Nativize generates a Capacitor 8 native project from the web build, then uses GitHub Actions to build iOS, Android, macOS, and Windows artifacts."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Do I need Xcode to convert a Lovable app?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No for the generated cloud build. GitHub Actions can compile iOS on macOS runners. You still need an Apple Developer account before signing and submitting to the App Store."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does Nativize work only with Lovable?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Nativize is optimized for Lovable projects but works with Vite and React projects that produce a standard dist folder."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <div class="aurora" aria-hidden="true">
+    <span class="blob blob-1"></span>
+    <span class="blob blob-2"></span>
+    <span class="blob blob-3"></span>
+    <div class="grid-overlay"></div>
+  </div>
+
+  <header class="site-header scrolled">
+    <nav class="nav container">
+      <a class="brand" href="index.html" aria-label="Nativize home">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 128 128"><defs><linearGradient id="bm" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7c3aed"/><stop offset=".5" stop-color="#4f46e5"/><stop offset="1" stop-color="#2563eb"/></linearGradient></defs><rect width="128" height="128" rx="28" fill="url(#bm)"/><path d="M64 30 L86 54 L72 54 L72 96 L56 96 L56 54 L42 54 Z" fill="white"/></svg>
+        </span>
+        <span class="brand-name">Nativize</span>
+      </a>
+      <div class="nav-links">
+        <a href="index.html#how">How it works</a>
+        <a href="index.html#features">Features</a>
+        <a href="index.html#pricing">Pricing</a>
+        <a href="support.html">Support</a>
+      </div>
+      <div class="nav-cta">
+        <a class="btn btn-ghost" href="index.html">Home</a>
+        <a class="btn btn-primary" href="app.html">Make your app</a>
+      </div>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="hero container guide-hero">
+      <div class="hero-copy">
+        <a class="pill reveal" href="index.html#pricing">
+          <span class="pill-dot"></span>
+          Lovable to native app workflow
+        </a>
+        <h1 class="reveal">Convert a Lovable app to <span class="grad-text">native apps.</span></h1>
+        <p class="lede reveal">
+          Nativize turns a Lovable or Vite web app into native iOS, Android, macOS,
+          and Windows projects. It generates the Capacitor 8 setup, pushes it to
+          your GitHub repo, and starts cloud builds with GitHub Actions.
+        </p>
+        <div class="hero-actions reveal">
+          <a class="btn btn-primary btn-lg" href="app.html">Open Nativize Studio</a>
+          <a class="btn btn-glass btn-lg" href="index.html#pricing">See plans</a>
+        </div>
+        <ul class="trust-row reveal">
+          <li><svg viewBox="0 0 24 24" class="check" aria-hidden="true"><path d="m5 13 4 4L19 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>Capacitor 8 output</li>
+          <li><svg viewBox="0 0 24 24" class="check" aria-hidden="true"><path d="m5 13 4 4L19 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>GitHub Actions builds</li>
+          <li><svg viewBox="0 0 24 24" class="check" aria-hidden="true"><path d="m5 13 4 4L19 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>Your repo owns the code</li>
+        </ul>
+      </div>
+      <div class="hero-visual reveal">
+        <figure class="guide-art card">
+          <img src="og-image.svg" alt="Nativize converts Lovable apps to iOS, Android, Mac, and Windows apps" />
+        </figure>
+      </div>
+    </section>
+
+    <section class="section container" id="workflow">
+      <div class="section-head reveal">
+        <span class="eyebrow">Workflow</span>
+        <h2>How the conversion works</h2>
+        <p class="section-sub">Nativize keeps generation local, then uses your own GitHub repository as the build and ownership boundary.</p>
+      </div>
+      <div class="steps">
+        <article class="step reveal">
+          <div class="step-num">1</div>
+          <h3>Open your Lovable project</h3>
+          <p>Start from a Lovable app or any Vite/React app with a web build directory such as <code>dist</code>.</p>
+        </article>
+        <div class="step-link reveal" aria-hidden="true"></div>
+        <article class="step reveal">
+          <div class="step-num">2</div>
+          <h3>Choose native options</h3>
+          <p>Set the app name, bundle ID, permissions, push notifications, social sign-in, and optional store upload.</p>
+        </article>
+        <div class="step-link reveal" aria-hidden="true"></div>
+        <article class="step reveal">
+          <div class="step-num">3</div>
+          <h3>Build in GitHub Actions</h3>
+          <p>Nativize commits the generated native kit and runs workflows that create installable platform artifacts.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section container">
+      <div class="split">
+        <div class="split-card reveal">
+          <div class="split-tag">Generated project</div>
+          <h3>What you get from a Lovable app</h3>
+          <p>The output is a normal Capacitor project in your own repository, not a hosted wrapper.</p>
+          <ul class="ticks">
+            <li><code>ios/</code>, <code>android/</code>, and desktop project files</li>
+            <li>Capacitor config, install scripts, and build workflows</li>
+            <li>Permission descriptions and native social-auth helpers when enabled</li>
+          </ul>
+        </div>
+        <div class="split-card reveal">
+          <div class="split-tag alt">Build targets</div>
+          <h3>Native outputs for every launch path</h3>
+          <p>Use free cloud builds to validate the project, then add signing and store-upload credentials when ready.</p>
+          <ul class="ticks">
+            <li>iOS build validation on macOS runners</li>
+            <li>Android APK/AAB generation for testing or Play upload</li>
+            <li>macOS DMG and Windows EXE desktop builds</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="section container narrow" id="faq">
+      <div class="section-head reveal">
+        <span class="eyebrow">FAQ</span>
+        <h2>Lovable to native app questions</h2>
+      </div>
+      <div class="faq" id="faq-list">
+        <details class="faq-item reveal">
+          <summary>Can a Lovable app become a real native app?<span class="faq-plus"></span></summary>
+          <div class="faq-body"><p>Yes. Nativize generates a Capacitor 8 native project from your web build and uses GitHub Actions to build native artifacts.</p></div>
+        </details>
+        <details class="faq-item reveal">
+          <summary>Do I need Xcode to convert a Lovable app?<span class="faq-plus"></span></summary>
+          <div class="faq-body"><p>No for the cloud build. GitHub Actions can compile iOS on macOS runners. You still need an Apple Developer account before signing and submitting to the App Store.</p></div>
+        </details>
+        <details class="faq-item reveal">
+          <summary>Does this only work with Lovable?<span class="faq-plus"></span></summary>
+          <div class="faq-body"><p>Nativize is optimized for Lovable projects, but it also works with Vite and React projects that produce a standard <code>dist</code> folder.</p></div>
+        </details>
+      </div>
+    </section>
+
+    <section class="section container">
+      <div class="cta-final card reveal">
+        <h2>Ready to make the native version?</h2>
+        <p>Open Nativize Studio, sign in with GitHub, and generate the native project from your repo.</p>
+        <div class="hero-actions center">
+          <a class="btn btn-primary btn-lg" href="app.html">Make your app here</a>
+          <a class="btn btn-glass btn-lg" href="index.html#features">Compare features</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <div class="footer-brand">
+        <span class="brand-mark sm" aria-hidden="true"><svg viewBox="0 0 128 128"><defs><linearGradient id="bm2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7c3aed"/><stop offset=".5" stop-color="#4f46e5"/><stop offset="1" stop-color="#2563eb"/></linearGradient></defs><rect width="128" height="128" rx="28" fill="url(#bm2)"/><path d="M64 30 L86 54 L72 54 L72 96 L56 96 L56 54 L42 54 Z" fill="white"/></svg></span>
+        <div>
+          <strong>Nativize</strong>
+          <p>Lovable to native iOS, Android, Mac, and Windows. Generation runs in your browser.</p>
+        </div>
+      </div>
+      <div class="footer-links">
+        <a href="index.html">Home</a>
+        <a href="index.html#how">How it works</a>
+        <a href="index.html#pricing">Pricing</a>
+        <a href="support.html">Support</a>
+        <a href="privacy.html">Privacy</a>
+        <a href="terms.html">Terms</a>
+      </div>
+    </div>
+    <div class="container footer-bottom">
+      <span>© <span id="year"></span> Nativize · Built on Capacitor 8</span>
+      <span class="footer-note">Not affiliated with Lovable, Apple, Google or Microsoft.</span>
+    </div>
+  </footer>
+
+  <script src="script.js" defer></script>
+</body>
+</html>
