@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">Nativize</title>
+  <desc id="desc">Lovable web apps to native iOS, Android, Mac, and Windows apps.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0a0a12"/>
+      <stop offset=".45" stop-color="#181036"/>
+      <stop offset="1" stop-color="#0b225f"/>
+    </linearGradient>
+    <linearGradient id="mark" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7c3aed"/>
+      <stop offset=".5" stop-color="#4f46e5"/>
+      <stop offset="1" stop-color="#2563eb"/>
+    </linearGradient>
+    <radialGradient id="glow" cx=".7" cy=".45" r=".55">
+      <stop offset="0" stop-color="#7c3aed" stop-opacity=".5"/>
+      <stop offset="1" stop-color="#7c3aed" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect width="1200" height="630" fill="url(#glow)"/>
+  <g opacity=".18" stroke="#ffffff">
+    <path d="M0 120H1200M0 240H1200M0 360H1200M0 480H1200"/>
+    <path d="M120 0V630M240 0V630M360 0V630M480 0V630M600 0V630M720 0V630M840 0V630M960 0V630M1080 0V630"/>
+  </g>
+  <g transform="translate(88 84)">
+    <rect width="112" height="112" rx="26" fill="url(#mark)"/>
+    <path d="M56 25 79 51H65v42H47V51H33z" fill="#fff"/>
+  </g>
+  <text x="226" y="154" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="54" font-weight="800" fill="#fff">Nativize</text>
+  <text x="88" y="284" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="72" font-weight="850" fill="#fff">Lovable to native apps</text>
+  <text x="88" y="358" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="36" font-weight="600" fill="#d8dcff">iOS, Android, Mac, and Windows builds</text>
+  <g transform="translate(90 444)" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="28" font-weight="700">
+    <rect width="178" height="58" rx="29" fill="#ffffff" fill-opacity=".12" stroke="#ffffff" stroke-opacity=".18"/>
+    <text x="36" y="38" fill="#fff">Capacitor 8</text>
+    <rect x="198" width="200" height="58" rx="29" fill="#ffffff" fill-opacity=".12" stroke="#ffffff" stroke-opacity=".18"/>
+    <text x="234" y="38" fill="#fff">GitHub Actions</text>
+    <rect x="420" width="188" height="58" rx="29" fill="#ffffff" fill-opacity=".12" stroke="#ffffff" stroke-opacity=".18"/>
+    <text x="456" y="38" fill="#fff">Chrome extension</text>
+  </g>
+</svg>

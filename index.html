@@ -3,19 +3,98 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Nativize — Ship your Lovable app to the App Store & Play Store</title>
-  <meta name="description" content="Nativize turns any Lovable web app into real native iOS, Android, Mac & Windows apps — built in the cloud, ready to submit. No Xcode, no Nativize backend handling your code. Runs in your browser." />
+  <title>Nativize | Lovable to Native iOS, Android, Mac & Windows Apps</title>
+  <meta name="description" content="Nativize turns Lovable and Vite web apps into native iOS, Android, Mac, and Windows apps with a Chrome extension, Capacitor 8, GitHub Actions builds, and Stripe-backed plans." />
+  <meta name="robots" content="index,follow,max-image-preview:large" />
   <meta name="theme-color" content="#0a0a12" />
+  <link rel="canonical" href="https://nativize.dev/" />
 
   <!-- Open Graph / social -->
-  <meta property="og:title" content="Nativize — Lovable → native iOS, Android, Mac & Windows" />
-  <meta property="og:description" content="Turn your Lovable web app into real, submittable native apps. Built in the cloud. Runs entirely in your browser." />
+  <meta property="og:site_name" content="Nativize" />
+  <meta property="og:title" content="Nativize — Lovable to native iOS, Android, Mac & Windows apps" />
+  <meta property="og:description" content="Turn your Lovable or Vite web app into real native apps with a Chrome extension, Capacitor 8, and GitHub Actions cloud builds." />
   <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://nativize.dev/" />
+  <meta property="og:image" content="https://nativize.dev/og-image.svg" />
+  <meta property="og:image:alt" content="Nativize turns Lovable web apps into native iOS, Android, Mac, and Windows apps." />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Nativize — Lovable to native apps" />
+  <meta name="twitter:description" content="Generate native iOS, Android, Mac, and Windows app projects from Lovable and Vite web apps." />
+  <meta name="twitter:image" content="https://nativize.dev/og-image.svg" />
 
   <!-- Inline SVG favicon (the Nativize mark) -->
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%237c3aed'/%3E%3Cstop offset='1' stop-color='%232563eb'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='128' height='128' rx='28' fill='url(%23g)'/%3E%3Cpath d='M64 30 L86 54 L72 54 L72 96 L56 96 L56 54 L42 54 Z' fill='white'/%3E%3C/svg%3E" />
 
   <link rel="stylesheet" href="styles.css" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": "https://nativize.dev/#organization",
+        "name": "Nativize",
+        "url": "https://nativize.dev/",
+        "logo": "https://nativize.dev/og-image.svg"
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://nativize.dev/#website",
+        "name": "Nativize",
+        "url": "https://nativize.dev/",
+        "publisher": { "@id": "https://nativize.dev/#organization" },
+        "inLanguage": "en-US"
+      },
+      {
+        "@type": "SoftwareApplication",
+        "@id": "https://nativize.dev/#software",
+        "name": "Nativize",
+        "url": "https://nativize.dev/",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "Chrome",
+        "browserRequirements": "Chrome extension",
+        "description": "Nativize generates Capacitor native app projects for iOS, Android, Mac, and Windows from Lovable and Vite web apps, then builds them with GitHub Actions.",
+        "publisher": { "@id": "https://nativize.dev/#organization" },
+        "offers": [
+          { "@type": "Offer", "name": "Free", "price": "0", "priceCurrency": "CAD", "url": "https://nativize.dev/#pricing" },
+          { "@type": "Offer", "name": "Starter", "price": "29", "priceCurrency": "CAD", "url": "https://nativize.dev/#pricing" },
+          { "@type": "Offer", "name": "Pro", "price": "12", "priceCurrency": "CAD", "url": "https://nativize.dev/#pricing" },
+          { "@type": "Offer", "name": "Max", "price": "29", "priceCurrency": "CAD", "url": "https://nativize.dev/#pricing" }
+        ]
+      },
+      {
+        "@type": "FAQPage",
+        "@id": "https://nativize.dev/#faq-schema",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Do I need a Mac to build the iOS app?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No. GitHub Actions compiles iOS in the cloud on macOS runners. You only need an Apple Developer account when you are ready to sign and submit to the App Store."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Is my code or GitHub token sent anywhere?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No. Nativize generation runs in your browser, the GitHub token is stored only in chrome.storage.local, and builds happen in your own GitHub repository."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does Nativize only work with Lovable apps?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Nativize is designed around Lovable exports, but the generated kit is standard Capacitor 8 and works with Vite or React web builds that produce a dist folder."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
 </head>
 <body>
   <!-- Animated aurora background -->
