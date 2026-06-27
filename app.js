@@ -160,6 +160,26 @@
       });
   }
 
+  function signedInError(action) {
+    return new Error("Sign in with GitHub first so Supabase can verify your Nativize plan before you " + action + ".");
+  }
+
+  function requireSignedIn(action) {
+    if (supabaseAccess) return Promise.resolve();
+    var err = signedInError(action || "make an app");
+    setStatus(err.message, "err");
+    return Promise.reject(err);
+  }
+
+  function refreshBillingStrict(action) {
+    return requireSignedIn(action || "make an app")
+      .then(billingStatusRequest)
+      .then(function (res) {
+        setBillingStatus(res);
+        return billingStatus;
+      });
+  }
+
   function appUrl(params) {
     var url = new URL(window.location.href);
     url.hash = "";
@@ -237,21 +257,12 @@
   // Enforce the per-plan app cap before a NEW repo is pushed.
   function ensureCanPush(repo) {
     repo = String(repo || "").trim();
-    if (supabaseAccess) {
+    return requireSignedIn("build an app").then(function () {
       return activateRequest(repo).then(function (res) {
         setBillingStatus(res);
         return res;
       });
-    }
-
-    var planId = currentPlanId();
-    if (nativizedRepos.indexOf(repo) > -1) return Promise.resolve(); // existing app = update, always ok
-    if (!Plans.canAddApp(planId, appsUsed())) {
-      var plan = Plans.planById(planId);
-      return Promise.reject(new Error("You've used " + appsUsed() + " of " + plan.apps +
-        " apps on the " + plan.name + " plan. Upgrade to add another app."));
-    }
-    return Promise.resolve();
+    });
   }
 
   function recordRepo(repo) {
@@ -290,7 +301,10 @@
     var btn = $("rebuildBtn");
     if (!repo || !token) return;
     btn.disabled = true; btn.textContent = "Rebuilding...";
-    GitHub.rebuild(repo, token, { onProgress: function (stage) { btn.textContent = "Build: " + stage + "..."; } })
+    refreshBillingStrict("rebuild an app")
+      .then(function () {
+        return GitHub.rebuild(repo, token, { onProgress: function (stage) { btn.textContent = "Build: " + stage + "..."; } });
+      })
       .then(function (b) {
         btn.textContent = b.conclusion === "success" ? "Rebuilt" : "Build " + (b.conclusion || "finished");
         var status = $("licStatus");
@@ -312,6 +326,7 @@
     webDir: savedCfg.webDir || "dist",
     enablePush: savedCfg.enablePush === true,
     token: savedToken,
+    signedIn: !!supabaseAccess,
     permissions: Array.isArray(savedCfg.permissions) ? savedCfg.permissions : [],
     socialAuth: savedCfg.socialAuth || {}
   };
@@ -320,6 +335,7 @@
 
   var panel = Panel.mount({
     initial: initial,
+    authRequired: true,
     openNow: true,
     onChange: function (state) {
       store(K.cfg, {
@@ -341,12 +357,14 @@
       setBillingStatus(Billing.freeStatus({ apps_used: nativizedRepos.length }));
     },
     onDownloadProject: function (state) {
-      return GitHub.downloadRepoZip(state.githubRepo, state.token).then(function (blob) {
-        triggerDownload(blob, (Kit.slugify(state.appName) || "project") + "-full-project.zip");
+      return refreshBillingStrict("download the full project").then(function () {
+        return GitHub.downloadRepoZip(state.githubRepo, state.token).then(function (blob) {
+          triggerDownload(blob, (Kit.slugify(state.appName) || "project") + "-full-project.zip");
+        });
       });
     },
     onDownload: function (state) {
-      return refreshBilling().then(function () {
+      return refreshBillingStrict("download a native kit").then(function () {
         var stripped = gatedNote(state);
         var files = Kit.generateKit(withPlan(state));
         triggerDownload(Zip.toBlob(files), (Kit.slugify(state.appName) || "nativize") + "-native-kit.zip");
@@ -356,7 +374,7 @@
     onPush: function (state, token, onProgress) {
       var repo = state.githubRepo;
       var stripped = gatedNote(state);
-      return refreshBilling().then(function () {
+      return refreshBillingStrict("build an app").then(function () {
         return ensureCanPush(repo);
       }).then(function () {
         var files = Kit.generateKit(withPlan(state));
