@@ -9,7 +9,7 @@ DEST="$HERE/lib"
 mkdir -p "$DEST/vendor"
 
 cp "$SRC/plans.js"          "$DEST/plans.js"
-cp "$SRC/license.js"        "$DEST/license.js"
+cp "$SRC/billing.js"        "$DEST/billing.js"
 cp "$SRC/kit-generator.js"  "$DEST/kit-generator.js"
 cp "$SRC/zip.js"            "$DEST/zip.js"
 cp "$SRC/vendor/tweetnacl.js" "$DEST/vendor/tweetnacl.js"

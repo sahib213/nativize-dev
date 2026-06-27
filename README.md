@@ -15,7 +15,7 @@ website/
   app.css        # Studio-only styles
   script.js      # landing: scroll reveal, nav, FAQ, glyphs, pricing render, CTAs
                  #          + Supabase support/feature-request submissions
-  app.js         # Studio: mounts the builder, wires GitHub + plan gating + license
+  app.js         # Studio: mounts the builder, wires GitHub + Supabase billing
   lib/           # COPIES of ../src runtime modules (so the site deploys standalone)
   sync-lib.sh    # re-copies ../src/* into lib/ — run after changing the core
 ```
@@ -23,13 +23,13 @@ website/
 ## The web app (`app.html`)
 
 The Studio runs the **same engine as the extension** (it reuses `lib/*`, which are
-copies of `../src`). Auth is a GitHub token (PAT with `repo` + `workflow` scopes) —
-there's no extension here, so no `chrome.identity`. Users can:
-- enter any GitHub repo (Lovable or any Vite/React project) + token,
+copies of `../src`). Auth runs through Supabase GitHub OAuth and stores the GitHub
+provider token locally for GitHub API calls. Users can:
+- enter any GitHub repo (Lovable or any Vite/React project),
 - generate/download the kit, push it, and build in the cloud,
 - **update**: if the repo is already Nativized, a "Just rebuild" bar appears so they
   rebuild after a change without redoing setup,
-- paste a **license key** to unlock paid features.
+- choose Starter, Pro, or Max and pay through Stripe Checkout.
 
 > After changing anything in `../src`, run `bash website/sync-lib.sh` so the site
 > picks it up.
@@ -41,17 +41,19 @@ there's no extension here, so no `chrome.identity`. Users can:
 |----------|-------------|
 | `CHROME_STORE_URL` | Chrome Web Store URL. Empty → "Add to Chrome" scrolls to install steps. |
 | `GITHUB_URL` | Public Nativize repo URL. |
-| `SUPABASE_URL` / `SUPABASE_ANON_KEY` | Supabase project used for support and feature-request inserts. |
-| `CHECKOUT_URLS` | Per-plan checkout links (Lemon Squeezy). Empty paid plans show "Coming soon". |
+| `SUPABASE_URL` / `SUPABASE_ANON_KEY` | Supabase project used for feedback, Auth, billing RPCs, and edge functions. |
 
 **Supabase feedback forms** — run `website/supabase-feedback.sql` in the Supabase
 SQL editor. It creates `feature_requests` and `support_requests`, enables RLS, and
 allows anonymous inserts without allowing public reads.
 
-**`../src/plans.js`** — set each plan's real `price`/`priceNote` and the Lemon
-Squeezy `variantId` (so a purchased key maps to the right plan), then re-run
-`sync-lib.sh`. Set each variant's **activation limit** in Lemon Squeezy to the
-plan's app count (1 / 1 / 3 / 10) — that's what enforces the per-plan app cap.
+**Supabase billing** — run `../supabase/migrations/202606270001_billing.sql`, deploy
+the two edge functions in `../supabase/functions`, and set the Stripe price IDs in
+Supabase secrets. The app uses `../src/billing.js` to read plan status and enforce
+app activations through Supabase RPCs.
+
+**`../src/plans.js`** — set each plan's real `price`/`priceNote`, then re-run
+`sync-lib.sh`.
 
 ## Plans & gating (where the money logic lives)
 
@@ -63,10 +65,9 @@ generator, so the extension and website are gated identically:
 - **Pro** (monthly) — 3 apps, everything, unlimited updates.
 - **Max** (monthly) — 10 apps, everything, unlimited updates.
 
-`../src/license.js` validates keys against Lemon Squeezy's CORS-friendly license API
-(no Nativize backend). Note: client-side gating is the right model for this product,
-but a determined user could bypass it locally — the license key is the real friction,
-and the cloud build/store-upload (which need your secrets) are the genuine value.
+`../src/billing.js` talks to Supabase RPCs and the `create-checkout-session` edge
+function. Supabase stores paid entitlements from Stripe webhooks and enforces the
+per-plan app cap in `activate_app(repo)`.
 
 ## Deploy
 

@@ -21,7 +21,7 @@ create table if not exists public.support_requests (
   name text,
   email text not null,
   topic text not null
-    check (topic in ('github-auth', 'generated-project', 'github-actions-build', 'store-upload', 'licensing', 'other')),
+    check (topic in ('github-auth', 'generated-project', 'github-actions-build', 'store-upload', 'billing', 'other')),
   message text not null check (char_length(message) between 1 and 1600),
   source text not null default 'website',
   page_path text

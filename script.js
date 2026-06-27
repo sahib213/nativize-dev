@@ -19,16 +19,6 @@
     support: "support_requests"
   };
 
-  // Lemon Squeezy (or any) checkout URLs per plan. Fill these in to take money.
-  // Free starts the app; leave a paid one empty and its button links to the app
-  // with a "coming soon" feel until you add the URL.
-  var CHECKOUT_URLS = {
-    free: "app.html",
-    starter: "",   // e.g. "https://yourstore.lemonsqueezy.com/buy/XXXX"
-    pro: "",       // e.g. "https://yourstore.lemonsqueezy.com/buy/YYYY"
-    max: ""        // e.g. "https://yourstore.lemonsqueezy.com/buy/ZZZZ"
-  };
-
   var prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   /* ---- Wire CTAs + GitHub links ---- */
@@ -53,9 +43,9 @@
   var pricingGrid = document.getElementById("pricingGrid");
   if (pricingGrid && window.NativizePlans) {
     pricingGrid.innerHTML = window.NativizePlans.PLANS.map(function (p) {
-      var url = CHECKOUT_URLS[p.id] || "app.html";
       var isFree = p.id === "free";
-      var cta = isFree ? "Start free" : (CHECKOUT_URLS[p.id] ? "Get " + p.name : "Coming soon");
+      var url = isFree ? "app.html" : "app.html?plan=" + encodeURIComponent(p.id);
+      var cta = isFree ? "Start free" : "Get " + p.name;
       var feats = (p.highlights || []).map(function (h) { return "<li>" + h + "</li>"; }).join("");
       return '<article class="price-card card reveal' + (p.popular ? " popular" : "") + '">' +
           (p.popular ? '<span class="price-tag">Most popular</span>' : "") +
@@ -63,8 +53,7 @@
           '<div class="price-amt"><span class="amt">' + p.price + '</span><span class="per">' + p.priceNote + '</span></div>' +
           '<p class="price-line">' + p.tagline + '</p>' +
           '<ul class="price-feats">' + feats + '</ul>' +
-          '<a class="btn ' + (p.popular ? "btn-primary" : "btn-glass") + ' price-cta" href="' + url + '"' +
-            (CHECKOUT_URLS[p.id] && !isFree ? ' target="_blank" rel="noopener"' : "") + '>' + cta + '</a>' +
+          '<a class="btn ' + (p.popular ? "btn-primary" : "btn-glass") + ' price-cta" href="' + url + '">' + cta + '</a>' +
         '</article>';
     }).join("");
   }

@@ -47,13 +47,13 @@
         </section>
         <section>
           <h2>Permission Justifications</h2>
-          <p><code>storage</code>: Stores extension settings, selected project configuration, GitHub connection state, license status, and GitHub tokens locally in Chrome so users can continue the same native-app project workflow.</p>
+          <p><code>storage</code>: Stores extension settings, selected project configuration, GitHub connection state, billing status, Supabase session state, and GitHub tokens locally in Chrome so users can continue the same native-app project workflow.</p>
           <p><code>identity</code>: Runs GitHub OAuth sign-in through <code>chrome.identity</code> so users can connect GitHub without manually pasting a token.</p>
-          <p>Host permissions: Required for GitHub API calls, Lemon Squeezy license validation, and running the panel on web app pages. The content script reads only limited page information, such as title and GitHub links, to prefill editable app and repo fields.</p>
+          <p>Host permissions: Required for GitHub API calls, Supabase Auth, Supabase billing/app-activation APIs, and running the panel on web app pages. The content script reads only limited page information, such as title and GitHub links, to prefill editable app and repo fields.</p>
         </section>
         <section>
           <h2>Remote Code</h2>
-          <p>Nativize does not use remote code. All executable JavaScript is included in the extension package. API and OAuth requests to GitHub, Supabase Auth, Supabase database APIs, and Lemon Squeezy do not load or execute remote JavaScript or WebAssembly.</p>
+          <p>Nativize does not use remote code. All executable JavaScript is included in the extension package. API, OAuth, and payment-related requests to GitHub, Supabase Auth, Supabase database APIs, Supabase edge functions, and Stripe do not load or execute remote JavaScript or WebAssembly.</p>
         </section>
         <section>
           <h2>Data Categories</h2>

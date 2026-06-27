@@ -1,7 +1,7 @@
 /* ============================================================
-   Nativize Studio (web) — same engine as the extension, in the browser.
-   Reuses the shared lib/* modules. Auth = a GitHub token (PAT), since there's
-   no extension here. Everything stays client-side.
+   Nativize Studio (web) - same engine as the extension, in the browser.
+   Auth = Supabase GitHub OAuth; GitHub provider token stays in localStorage.
+   Billing = Supabase RPCs + Stripe Checkout edge function.
    ============================================================ */
 (function () {
   "use strict";
@@ -11,66 +11,200 @@
   var GitHub = window.NativizeGitHub;
   var Panel = window.NativizePanel;
   var Plans = window.NativizePlans;
-  var License = window.NativizeLicense;
+  var Billing = window.NativizeBilling;
 
   var $ = function (id) { return document.getElementById(id); };
 
   /* ---------- Storage ---------- */
-  var K = { cfg: "nz_web_config", token: "nz_web_token", lic: "nz_web_license", repos: "nz_web_repos" };
+  var K = {
+    cfg: "nz_web_config",
+    token: "nz_web_token",
+    billing: "nz_web_billing",
+    supabaseAccess: "nz_web_supabase_access",
+    supabaseRefresh: "nz_web_supabase_refresh",
+    pendingPlan: "nz_web_pending_plan",
+    repos: "nz_web_repos"
+  };
   function load(key, fallback) { try { return JSON.parse(localStorage.getItem(key)) || fallback; } catch (e) { return fallback; } }
   function store(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {} }
+  function loadText(key) { try { return localStorage.getItem(key) || ""; } catch (e) { return ""; } }
+  function storeText(key, val) { try { if (val) localStorage.setItem(key, val); else localStorage.removeItem(key); } catch (e) {} }
 
   var savedCfg = load(K.cfg, {});
-  var savedToken = (function () { try { return localStorage.getItem(K.token) || ""; } catch (e) { return ""; } })();
-  var license = load(K.lic, null);             // normalized license result or null
-  var nativizedRepos = load(K.repos, []);      // distinct repos pushed (app-count tracking)
+  var savedToken = loadText(K.token);
+  var supabaseAccess = loadText(K.supabaseAccess);
+  var supabaseRefresh = loadText(K.supabaseRefresh);
+  var billingStatus = Billing.normalize(load(K.billing, null));
+  var nativizedRepos = load(K.repos, []);
 
-  function currentPlanId() { return License.planOf(license); }
-  function appsUsed() { return nativizedRepos.length; }
+  function setStatus(message, cls) {
+    var status = $("licStatus");
+    if (!status) return;
+    status.textContent = message || "";
+    status.className = "lic-status" + (cls ? " " + cls : "");
+  }
+
+  function clearAuthHash() {
+    if (!window.location.hash) return;
+    history.replaceState(null, "", window.location.pathname + window.location.search);
+  }
+
+  function handleAuthRedirect() {
+    var tokens = Billing.parseAuthTokens(window.location.href);
+    if (tokens.error) {
+      setStatus("Sign-in failed: " + tokens.error, "err");
+      clearAuthHash();
+      return;
+    }
+    if (!tokens.accessToken) return;
+
+    supabaseAccess = tokens.accessToken;
+    supabaseRefresh = tokens.refreshToken || supabaseRefresh;
+    storeText(K.supabaseAccess, supabaseAccess);
+    storeText(K.supabaseRefresh, supabaseRefresh || "");
+    if (tokens.githubToken) {
+      savedToken = tokens.githubToken;
+      storeText(K.token, savedToken);
+    }
+    clearAuthHash();
+    setStatus("Signed in with GitHub. Checking your plan...", "ok");
+  }
+  handleAuthRedirect();
+
+  function currentPlanId() { return Billing.planOf(billingStatus); }
+  function appsUsed() { return Number.isFinite(Number(billingStatus.appsUsed)) ? Number(billingStatus.appsUsed) : nativizedRepos.length; }
+
+  function setBillingStatus(next) {
+    billingStatus = Billing.normalize(next);
+    store(K.billing, billingStatus);
+    renderPlan();
+    return billingStatus;
+  }
+
+  function storeSupabaseTokens(tokens) {
+    supabaseAccess = tokens.accessToken || "";
+    supabaseRefresh = tokens.refreshToken || supabaseRefresh || "";
+    storeText(K.supabaseAccess, supabaseAccess);
+    storeText(K.supabaseRefresh, supabaseRefresh);
+  }
+
+  function shouldRefresh(err) {
+    return supabaseRefresh && err && (err.status === 401 || err.status === 403);
+  }
+
+  function renewSession() {
+    return Billing.refreshSession(supabaseRefresh).then(function (tokens) {
+      storeSupabaseTokens(tokens);
+      return tokens;
+    });
+  }
+
+  function billingStatusRequest() {
+    return Billing.status(supabaseAccess).catch(function (err) {
+      if (!shouldRefresh(err)) throw err;
+      return renewSession().then(function () { return Billing.status(supabaseAccess); });
+    });
+  }
+
+  function activateRequest(repo) {
+    return Billing.activate(supabaseAccess, repo).catch(function (err) {
+      if (!shouldRefresh(err)) throw err;
+      return renewSession().then(function () { return Billing.activate(supabaseAccess, repo); });
+    });
+  }
+
+  function checkoutRequest(planId, opts) {
+    return Billing.checkout(supabaseAccess, planId, opts).catch(function (err) {
+      if (!shouldRefresh(err)) throw err;
+      return renewSession().then(function () { return Billing.checkout(supabaseAccess, planId, opts); });
+    });
+  }
 
   /* ---------- Plan bar ---------- */
   function renderPlan() {
     var planId = currentPlanId();
     var plan = Plans.planById(planId);
     $("planBadge").textContent = plan.name;
-    $("planName").textContent = plan.name + (license && license.valid ? "" : " (no license)");
+    $("planName").textContent = plan.name + (supabaseAccess ? "" : " (not signed in)");
     var used = appsUsed();
+    var limit = billingStatus.appsLimit || plan.apps;
     var locked = Plans.lockedFeatures(planId);
     var caps = [];
-    caps.push("Apps: " + used + " / " + plan.apps);
+    caps.push("Apps: " + used + " / " + limit);
     caps.push("Platforms: " + plan.platforms.join(", "));
-    if (locked.indexOf("push") > -1) caps.push("Push: Pro");
-    if (locked.indexOf("social") > -1) caps.push("Sign-in: Pro");
-    if (locked.indexOf("storeUpload") > -1) caps.push("Store upload: Pro");
+    if (locked.indexOf("push") > -1) caps.push("Push: paid");
+    if (locked.indexOf("social") > -1) caps.push("Sign-in: paid");
+    if (locked.indexOf("storeUpload") > -1) caps.push("Store upload: paid");
     if (plan.watermark) caps.push("Watermark: yes");
     $("planCaps").innerHTML = caps.map(function (c) { return "<span>" + c + "</span>"; }).join("");
+    $("accountBtn").textContent = supabaseAccess ? "Refresh plan" : "Sign in with GitHub";
+    $("checkoutBtn").textContent = planId === "free" ? "Choose plan" : "Change plan";
   }
 
-  /* ---------- License activation ---------- */
-  $("activateBtn").addEventListener("click", function () {
-    var key = $("licenseKey").value.trim();
-    var status = $("licStatus");
-    if (!key) { status.textContent = "Paste a license key first."; status.className = "lic-status err"; return; }
-    status.textContent = "Checking…"; status.className = "lic-status";
-    License.validate(key).then(function (res) {
-      if (!res.valid) {
-        status.textContent = "That key isn't valid (" + (res.status || "invalid") + ").";
-        status.className = "lic-status err";
-        return;
-      }
-      res.key = key;
-      license = res;
-      store(K.lic, license);
-      var plan = Plans.planById(res.plan);
-      status.textContent = "✓ " + plan.name + " unlocked" + (res.appsLimit != null ? " — " + (res.appsUsed || 0) + "/" + res.appsLimit + " apps" : "") + ".";
-      status.className = "lic-status ok";
-      renderPlan();
-    }).catch(function (e) {
-      status.textContent = "Couldn't reach the license server: " + (e && e.message || e);
-      status.className = "lic-status err";
+  function refreshBilling(opts) {
+    opts = opts || {};
+    if (!supabaseAccess) {
+      setBillingStatus(Billing.freeStatus({ apps_used: nativizedRepos.length }));
+      if (opts.flash) setStatus("Sign in with GitHub to unlock paid plans.", "warn");
+      return Promise.resolve(billingStatus);
+    }
+    return billingStatusRequest()
+      .then(function (res) {
+        setBillingStatus(res);
+        if (opts.flash) setStatus("Plan refreshed.", "ok");
+        return billingStatus;
+      })
+      .catch(function (e) {
+        if (opts.flash) setStatus("Could not refresh billing: " + (e && e.message || e), "err");
+        return billingStatus;
+      });
+  }
+
+  function appUrl(params) {
+    var url = new URL(window.location.href);
+    url.hash = "";
+    url.search = "";
+    Object.keys(params || {}).forEach(function (key) {
+      if (params[key] != null) url.searchParams.set(key, params[key]);
     });
+    return url.toString();
+  }
+
+  function signInWithGitHub(planId) {
+    if (planId) storeText(K.pendingPlan, planId);
+    window.location.href = Billing.authorizeUrl(window.location.href.split("#")[0]);
+    return new Promise(function () {});
+  }
+
+  function startCheckout(planId) {
+    planId = String(planId || "").trim();
+    if (["starter", "pro", "max"].indexOf(planId) < 0) {
+      window.location.href = "index.html#pricing";
+      return Promise.resolve();
+    }
+    if (!supabaseAccess) return signInWithGitHub(planId);
+
+    $("checkoutBtn").disabled = true;
+    setStatus("Opening secure checkout...", "");
+    return checkoutRequest(planId, {
+      successUrl: appUrl({ checkout: "success" }),
+      cancelUrl: appUrl({ checkout: "cancelled" })
+    }).then(function (res) {
+      window.location.href = res.url;
+    }).catch(function (e) {
+      setStatus("Checkout failed: " + (e && e.message || e), "err");
+      $("checkoutBtn").disabled = false;
+      throw e;
+    });
+  }
+
+  $("accountBtn").addEventListener("click", function () {
+    if (supabaseAccess) refreshBilling({ flash: true });
+    else signInWithGitHub();
   });
-  if (license && license.key) $("licenseKey").value = license.key;
+  $("checkoutBtn").addEventListener("click", function () {
+    window.location.href = "index.html#pricing";
+  });
 
   /* ---------- Download helper ---------- */
   function triggerDownload(blob, filename) {
@@ -95,13 +229,21 @@
   function flashUpgrade(stripped) {
     if (!stripped.length) return;
     var status = $("licStatus");
-    status.innerHTML = "Heads up — your plan didn't include: <b>" + stripped.join(", ") +
-      "</b>. <a href='index.html#pricing'>Upgrade →</a>";
+    status.innerHTML = "Heads up - your plan did not include: <b>" + stripped.join(", ") +
+      "</b>. <a href='index.html#pricing'>Upgrade -></a>";
     status.className = "lic-status warn";
   }
 
   // Enforce the per-plan app cap before a NEW repo is pushed.
   function ensureCanPush(repo) {
+    repo = String(repo || "").trim();
+    if (supabaseAccess) {
+      return activateRequest(repo).then(function (res) {
+        setBillingStatus(res);
+        return res;
+      });
+    }
+
     var planId = currentPlanId();
     if (nativizedRepos.indexOf(repo) > -1) return Promise.resolve(); // existing app = update, always ok
     if (!Plans.canAddApp(planId, appsUsed())) {
@@ -109,22 +251,15 @@
       return Promise.reject(new Error("You've used " + appsUsed() + " of " + plan.apps +
         " apps on the " + plan.name + " plan. Upgrade to add another app."));
     }
-    // Paid: bind this app to the license (Lemon Squeezy enforces the limit server-side).
-    if (license && license.valid && license.key) {
-      return License.activate(license.key, repo).then(function (r) {
-        if (r.activated === false && /limit|activation/i.test(r.error || "")) {
-          throw new Error(r.error || "License activation limit reached. Upgrade to add another app.");
-        }
-      }).catch(function (e) {
-        // Network hiccup shouldn't hard-block a within-limit user; only block on explicit limit errors.
-        if (/limit|activation/i.test(e.message || "")) throw e;
-      });
-    }
     return Promise.resolve();
   }
 
   function recordRepo(repo) {
-    if (nativizedRepos.indexOf(repo) < 0) { nativizedRepos.push(repo); store(K.repos, nativizedRepos); renderPlan(); }
+    if (nativizedRepos.indexOf(repo) < 0) {
+      nativizedRepos.push(repo);
+      store(K.repos, nativizedRepos);
+      renderPlan();
+    }
   }
 
   /* ---------- Existing-kit detection (Update flow) ---------- */
@@ -154,12 +289,12 @@
     var repo = bar.dataset.repo, token = bar.dataset.token;
     var btn = $("rebuildBtn");
     if (!repo || !token) return;
-    btn.disabled = true; btn.textContent = "Rebuilding…";
-    GitHub.rebuild(repo, token, { onProgress: function (stage) { btn.textContent = "Build: " + stage + "…"; } })
+    btn.disabled = true; btn.textContent = "Rebuilding...";
+    GitHub.rebuild(repo, token, { onProgress: function (stage) { btn.textContent = "Build: " + stage + "..."; } })
       .then(function (b) {
-        btn.textContent = b.conclusion === "success" ? "✓ Rebuilt" : "Build " + (b.conclusion || "finished");
+        btn.textContent = b.conclusion === "success" ? "Rebuilt" : "Build " + (b.conclusion || "finished");
         var status = $("licStatus");
-        status.innerHTML = "Rebuild " + (b.conclusion || "done") + " — <a href='" + b.runUrl + "' target='_blank' rel='noopener'>open the run →</a>";
+        status.innerHTML = "Rebuild " + (b.conclusion || "done") + " - <a href='" + b.runUrl + "' target='_blank' rel='noopener'>open the run -></a>";
         status.className = "lic-status ok";
       })
       .catch(function (e) {
@@ -181,7 +316,7 @@
     socialAuth: savedCfg.socialAuth || {}
   };
 
-  function withPlan(state) { state.plan = currentPlanId(); return state; }
+  function withPlan(state) { return Object.assign({}, state, { plan: currentPlanId() }); }
 
   var panel = Panel.mount({
     initial: initial,
@@ -192,29 +327,38 @@
         webDir: state.webDir, enablePush: state.enablePush,
         permissions: state.permissions || [], socialAuth: state.socialAuth || {}
       });
-      try { localStorage.setItem(K.token, state.token || ""); } catch (e) {}
+      storeText(K.token, state.token || "");
       maybeDetect(state);
     },
-    // No extension here → guide the user to a token.
     onSignIn: function () {
-      return Promise.reject(new Error("On the web, paste a GitHub token below (needs 'repo' + 'workflow' scopes). Create one at github.com/settings/tokens."));
+      return signInWithGitHub();
     },
-    onSignOut: function () {},
+    onSignOut: function () {
+      supabaseAccess = "";
+      supabaseRefresh = "";
+      storeText(K.supabaseAccess, "");
+      storeText(K.supabaseRefresh, "");
+      setBillingStatus(Billing.freeStatus({ apps_used: nativizedRepos.length }));
+    },
     onDownloadProject: function (state) {
       return GitHub.downloadRepoZip(state.githubRepo, state.token).then(function (blob) {
         triggerDownload(blob, (Kit.slugify(state.appName) || "project") + "-full-project.zip");
       });
     },
     onDownload: function (state) {
-      var stripped = gatedNote(state);
-      var files = Kit.generateKit(withPlan(state));
-      triggerDownload(Zip.toBlob(files), (Kit.slugify(state.appName) || "nativize") + "-native-kit.zip");
-      flashUpgrade(stripped);
+      return refreshBilling().then(function () {
+        var stripped = gatedNote(state);
+        var files = Kit.generateKit(withPlan(state));
+        triggerDownload(Zip.toBlob(files), (Kit.slugify(state.appName) || "nativize") + "-native-kit.zip");
+        flashUpgrade(stripped);
+      });
     },
     onPush: function (state, token, onProgress) {
       var repo = state.githubRepo;
       var stripped = gatedNote(state);
-      return ensureCanPush(repo).then(function () {
+      return refreshBilling().then(function () {
+        return ensureCanPush(repo);
+      }).then(function () {
         var files = Kit.generateKit(withPlan(state));
         return GitHub.pushKit(repo, token, files, "Update Nativize kit for " + state.appName + " (Capacitor 8)")
           .then(function (res) {
@@ -243,4 +387,27 @@
   window.__nzStudio = panel;
 
   renderPlan();
+
+  var query = new URLSearchParams(window.location.search);
+  var requestedPlan = query.get("plan");
+  var checkoutState = query.get("checkout");
+  if (checkoutState === "success") {
+    storeText(K.pendingPlan, "");
+    setStatus("Payment received. Refreshing your plan...", "ok");
+    refreshBilling();
+  } else if (checkoutState === "cancelled") {
+    setStatus("Checkout cancelled. Your current plan is unchanged.", "warn");
+  }
+
+  if (["starter", "pro", "max"].indexOf(requestedPlan) > -1) {
+    startCheckout(requestedPlan);
+  } else {
+    var pendingPlan = loadText(K.pendingPlan);
+    if (supabaseAccess && ["starter", "pro", "max"].indexOf(pendingPlan) > -1) {
+      storeText(K.pendingPlan, "");
+      startCheckout(pendingPlan);
+    } else {
+      refreshBilling();
+    }
+  }
 })();

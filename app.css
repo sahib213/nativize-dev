@@ -11,16 +11,15 @@
 .studio-intro h1 { font-size: clamp(28px, 4vw, 42px); letter-spacing: -0.03em; line-height: 1.08; font-weight: 800; }
 .studio-intro p { color: var(--muted); font-size: 17px; margin-top: 12px; }
 
-/* Plan + license bar */
+/* Plan + billing bar */
 .plan-bar { display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; padding: 20px 24px; margin-bottom: 16px; }
 .plan-now { font-size: 15px; color: var(--muted); }
 .plan-now b { color: var(--text); }
 .plan-caps { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .plan-caps span { font-size: 12px; color: var(--muted); background: var(--surface-2); border: 1px solid var(--border); padding: 4px 10px; border-radius: 999px; }
 .plan-bar-right { min-width: 280px; }
-.lic-row { display: flex; gap: 8px; }
-.lic-row input { flex: 1; background: rgba(0,0,0,.25); border: 1px solid var(--border-strong); border-radius: 10px; padding: 10px 12px; color: var(--text); font-size: 14px; outline: none; }
-.lic-row input:focus { border-color: #a78bfa; }
+.lic-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.lic-row .btn { white-space: nowrap; }
 .lic-status { font-size: 13px; margin-top: 8px; min-height: 18px; color: var(--muted); }
 .lic-status.ok { color: #6ee7b7; }
 .lic-status.err { color: #fca5a5; }

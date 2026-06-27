@@ -35,7 +35,7 @@
       <p>Connect a repo (your Lovable app, or any Vite/React project), pick your options, and Nativize generates the kit, pushes it, and builds real apps in the cloud — right here. Already set up? Just rebuild after a change.</p>
     </div>
 
-    <!-- Plan + license bar -->
+    <!-- Plan + billing bar -->
     <section class="plan-bar card" id="planBar">
       <div class="plan-bar-left">
         <div class="plan-now">Current plan: <b id="planName">Free</b></div>
@@ -43,11 +43,11 @@
       </div>
       <div class="plan-bar-right">
         <div class="lic-row">
-          <input type="text" id="licenseKey" placeholder="Paste your license key" autocomplete="off" spellcheck="false" />
-          <button class="btn btn-glass" id="activateBtn">Activate</button>
+          <button class="btn btn-glass" id="accountBtn">Sign in with GitHub</button>
+          <button class="btn btn-primary" id="checkoutBtn">Choose plan</button>
         </div>
         <div class="lic-status" id="licStatus"></div>
-        <a class="lic-buy" href="index.html#pricing">No key yet? See plans →</a>
+        <a class="lic-buy" href="index.html#pricing">See plans →</a>
       </div>
     </section>
 
@@ -72,7 +72,7 @@
 
   <!-- Shared runtime (same modules the extension uses) -->
   <script src="lib/plans.js"></script>
-  <script src="lib/license.js"></script>
+  <script src="lib/billing.js"></script>
   <script src="lib/kit-generator.js"></script>
   <script src="lib/zip.js"></script>
   <script src="lib/vendor/tweetnacl.js"></script>
