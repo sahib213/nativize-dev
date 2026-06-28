@@ -60,12 +60,14 @@
 
   /* ---- Header: blur/border once scrolled ---- */
   var header = document.getElementById("siteHeader");
-  var onScroll = function () {
-    if (window.scrollY > 12) header.classList.add("scrolled");
-    else header.classList.remove("scrolled");
-  };
-  onScroll();
-  window.addEventListener("scroll", onScroll, { passive: true });
+  if (header) {
+    var onScroll = function () {
+      if (window.scrollY > 12) header.classList.add("scrolled");
+      else header.classList.remove("scrolled");
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+  }
 
   /* ---- Mobile nav ---- */
   var toggle = document.getElementById("navToggle");

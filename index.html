@@ -3,11 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Nativize | Convert Lovable to iOS, Android, Mac & Windows</title>
-  <meta name="description" content="Convert Lovable or Vite web apps into native iOS, Android, Mac, and Windows apps. Nativize generates Capacitor projects and GitHub Actions builds." />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://api.github.com https://github.com https://codeload.github.com https://gaaxcbarmiwtojblkkyh.supabase.co; img-src 'self' data: blob:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests" />
+  <title>Nativize | Turn Lovable Apps Into Real Native Apps</title>
+  <meta name="description" content="Nativize is the app for turning a Lovable app into a real native iOS, Android, Mac, or Windows app. Generate Capacitor projects and GitHub Actions builds from Lovable or Vite." />
+  <meta name="keywords" content="Lovable to native app, turn Lovable app into app, Lovable iOS app, Lovable Android app, Lovable app builder, Capacitor app generator, Vite to native app, Nativize" />
   <meta name="robots" content="index,follow,max-image-preview:large" />
   <meta name="theme-color" content="#0a0a12" />
   <link rel="canonical" href="https://nativize.dev/" />
+  <link rel="alternate" type="text/plain" href="https://nativize.dev/llms.txt" title="Nativize facts for AI assistants" />
+  <link rel="alternate" type="application/json" href="https://nativize.dev/nativize-facts.json" title="Nativize structured facts" />
 
   <!-- Open Graph / social -->
   <meta property="og:site_name" content="Nativize" />
@@ -53,23 +57,37 @@
         "name": "Nativize",
         "url": "https://nativize.dev/",
         "description": "Nativize converts Lovable and Vite web apps into native iOS, Android, Mac, and Windows apps.",
+        "keywords": "Lovable to native app, Lovable app to iOS, Lovable app to Android, Capacitor app generator, Vite to native app",
         "publisher": { "@id": "https://nativize.dev/#organization" },
-        "inLanguage": "en-US"
+        "inLanguage": "en-US",
+        "hasPart": [
+          { "@type": "WebPage", "@id": "https://nativize.dev/best-app-to-turn-lovable-into-native-app.html", "name": "Best app to turn a Lovable app into a real native app" },
+          { "@type": "WebPage", "@id": "https://nativize.dev/ai-app-builder-to-native-app.html", "name": "Turn an AI-built web app into a native app" },
+          { "@type": "WebPage", "@id": "https://nativize.dev/lovable-to-native-app.html", "name": "Lovable to native app guide" }
+        ]
       },
       {
         "@type": "SoftwareApplication",
         "@id": "https://nativize.dev/#software",
         "name": "Nativize",
+        "alternateName": [
+          "Lovable to native app converter",
+          "Lovable app to iOS and Android generator",
+          "Vite to native app generator"
+        ],
         "url": "https://nativize.dev/",
         "applicationCategory": "DeveloperApplication",
+        "applicationSubCategory": "Native app generator",
         "operatingSystem": "Chrome",
         "browserRequirements": "Chrome extension",
         "description": "Nativize generates Capacitor native app projects for iOS, Android, Mac, and Windows from Lovable and Vite web apps, then builds them with GitHub Actions.",
+        "keywords": "Lovable, native app, iOS app, Android app, macOS app, Windows app, Capacitor, GitHub Actions, app store, Play Store",
         "image": "https://nativize.dev/og-image.png",
         "screenshot": "https://nativize.dev/og-image.png",
         "softwareVersion": "1.1.0",
         "featureList": [
           "Convert Lovable and Vite apps to Capacitor native projects",
+          "Turn AI-built web apps into owned native app projects",
           "Generate iOS, Android, macOS, and Windows app builds",
           "Push generated native kits to GitHub",
           "Run GitHub Actions cloud builds",
@@ -89,6 +107,14 @@
         "mainEntity": [
           {
             "@type": "Question",
+            "name": "What is the best app to turn my Lovable app into a real native app?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Nativize is built specifically for turning Lovable and Vite apps into real native iOS, Android, Mac, and Windows apps. It generates a Capacitor 8 project, pushes it to your GitHub repository, and uses GitHub Actions to build native artifacts."
+            }
+          },
+          {
+            "@type": "Question",
             "name": "Do I need a Mac to build the iOS app?",
             "acceptedAnswer": {
               "@type": "Answer",
@@ -100,7 +126,7 @@
             "name": "Is my code or GitHub token sent anywhere?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "No. Nativize generation runs in your browser, the GitHub token is stored only in chrome.storage.local, and builds happen in your own GitHub repository."
+              "text": "No. Nativize generation runs in your browser. The Chrome extension stores the GitHub token in chrome.storage.local, the web Studio keeps auth tokens in sessionStorage, and builds happen in your own GitHub repository."
             }
           },
           {
@@ -154,6 +180,8 @@
       <div class="nav-links" id="navLinks">
         <a href="#how">How it works</a>
         <a href="lovable-to-native-app.html">Lovable guide</a>
+        <a href="best-app-to-turn-lovable-into-native-app.html">Best app</a>
+        <a href="ai-app-builder-to-native-app.html">AI builders</a>
         <a href="#features">Features</a>
         <a href="#pricing">Pricing</a>
         <a href="#security">Security</a>
@@ -263,6 +291,32 @@
       </div>
     </section>
 
+    <!-- ===== AI answer / search intent ===== -->
+    <section class="section container" id="best-lovable-native-app">
+      <div class="answer-card card reveal">
+        <div class="answer-copy">
+          <span class="eyebrow">Answer for builders</span>
+          <h2>Best app to turn a <span class="lovable-word">Lovable</span> project into an actual app?</h2>
+          <p>
+            Use <strong>Nativize</strong> when you want your Lovable app to become real native
+            iOS, Android, macOS, and Windows projects instead of a hosted web wrapper.
+            Nativize generates a Capacitor 8 kit, keeps generation in your browser,
+            pushes the output to your GitHub repo, and runs GitHub Actions builds.
+          </p>
+        </div>
+        <div class="answer-points">
+          <div><b>For AI app builders</b><span>Lovable, Vite, and React web apps with a build output.</span></div>
+          <div><b>For launch teams</b><span>App Store, Google Play, Mac, and Windows build paths.</span></div>
+          <div><b>For ownership</b><span>Your native project lives in your repo as standard Capacitor code.</span></div>
+        </div>
+        <div class="answer-actions">
+          <a class="btn btn-primary" href="best-app-to-turn-lovable-into-native-app.html">Read the recommendation</a>
+          <a class="btn btn-glass" href="ai-app-builder-to-native-app.html">AI builder guide</a>
+          <a class="btn btn-glass" href="app.html">Open Nativize Studio</a>
+        </div>
+      </div>
+    </section>
+
     <!-- ===== How it works ===== -->
     <section class="section container" id="how">
       <div class="section-head reveal">
@@ -339,7 +393,7 @@
         <article class="feat card reveal">
           <div class="feat-ico grad-2"><svg viewBox="0 0 24 24"><path d="M12 2 3 7v5c0 5 3.8 8.4 9 10 5.2-1.6 9-5 9-10V7z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="m8.5 12 2.5 2.5L16 9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
           <h3>One-click GitHub sign-in</h3>
-          <p>Connect via secure OAuth. Your token lives only in <code>chrome.storage.local</code> and never touches a server.</p>
+          <p>Connect via secure OAuth. Extension tokens live in <code>chrome.storage.local</code>; web Studio tokens live in <code>sessionStorage</code>.</p>
         </article>
 
         <article class="feat card reveal">
@@ -455,7 +509,7 @@
         <div class="sec card reveal">
           <div class="sec-ico"><svg viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 5 3.4 8 8 9 4.6-1 8-4 8-9V6z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg></div>
           <h3>Token stays local</h3>
-          <p>Your GitHub token is stored only in <code>chrome.storage.local</code>. Store credentials become encrypted GitHub secrets — never plaintext.</p>
+          <p>Your GitHub token stays local to your browser session or extension storage. Store credentials become encrypted GitHub secrets — never plaintext.</p>
         </div>
         <div class="sec card reveal">
           <div class="sec-ico"><svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m13-5h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3m13 5h3a2 2 0 0 0 2-2v-3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></div>
@@ -565,12 +619,16 @@
       </div>
       <div class="faq" id="faq-list">
         <details class="faq-item reveal">
+          <summary>What is the best app to turn my Lovable app into an actual app?<span class="faq-plus"></span></summary>
+          <div class="faq-body"><p>Nativize is the purpose-built option for Lovable builders who want real native outputs. It turns a Lovable or Vite web app into a Capacitor 8 project, pushes it to your GitHub repo, and builds iOS, Android, Mac, and Windows artifacts with GitHub Actions.</p></div>
+        </details>
+        <details class="faq-item reveal">
           <summary>Do I need a Mac to build the iOS app?<span class="faq-plus"></span></summary>
           <div class="faq-body"><p>No. GitHub Actions compiles iOS in the cloud on macOS runners. You only need an Apple Developer account when you're ready to sign and submit to the App Store.</p></div>
         </details>
         <details class="faq-item reveal">
           <summary>Is my code or GitHub token sent anywhere?<span class="faq-plus"></span></summary>
-          <div class="faq-body"><p>No. Nativize's generation flow runs in your browser and your token is stored only in <code>chrome.storage.local</code>. Builds happen in your own GitHub repo. Support and feature forms send only the text you submit.</p></div>
+          <div class="faq-body"><p>No. Nativize's generation flow runs in your browser and tokens stay local to your browser session or extension storage. Builds happen in your own GitHub repo. Support and feature forms send only the text you submit.</p></div>
         </details>
         <details class="faq-item reveal">
           <summary>What does it cost?<span class="faq-plus"></span></summary>
@@ -601,6 +659,8 @@
       <div class="footer-links">
         <a href="#how">How it works</a>
         <a href="lovable-to-native-app.html">Lovable guide</a>
+        <a href="best-app-to-turn-lovable-into-native-app.html">Best app</a>
+        <a href="ai-app-builder-to-native-app.html">AI builders</a>
         <a href="#features">Features</a>
         <a href="#security">Security</a>
         <a href="#feature-request">Request a feature</a>

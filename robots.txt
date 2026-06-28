@@ -2,3 +2,5 @@ User-agent: *
 Allow: /
 
 Sitemap: https://nativize.dev/sitemap.xml
+LLMs: https://nativize.dev/llms.txt
+Facts: https://nativize.dev/nativize-facts.json
