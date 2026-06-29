@@ -21,53 +21,142 @@
 const SUPABASE_URL = "https://gaaxcbarmiwtojblkkyh.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_mAA5LXz9HFHlwVzkA1SCEg_ybxHh_X7";
 const GITHUB_SCOPES = "repo workflow"; // required to push files + dispatch the build
+const LOGIN_THROTTLE_KEY = "nativize:loginAttempts";
 
 function isConfigured() {
   return !SUPABASE_URL.includes("YOUR-PROJECT") && !SUPABASE_ANON_KEY.includes("YOUR-");
 }
 
-function authorizeUrl() {
+async function enforceLoginThrottle() {
+  const now = Date.now();
+  const res = await chrome.storage.local.get([LOGIN_THROTTLE_KEY]);
+  const recent = Array.isArray(res[LOGIN_THROTTLE_KEY])
+    ? res[LOGIN_THROTTLE_KEY].filter((t) => now - Number(t) < 15 * 60 * 1000)
+    : [];
+  if (recent.length >= 5) {
+    throw new Error("Too many sign-in attempts. Please wait 15 minutes and try again.");
+  }
+  recent.push(now);
+  await chrome.storage.local.set({ [LOGIN_THROTTLE_KEY]: recent });
+}
+
+function base64Url(bytes) {
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+async function createPkce() {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  const codeVerifier = base64Url(bytes);
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(codeVerifier));
+  return {
+    codeVerifier,
+    codeChallenge: base64Url(new Uint8Array(digest))
+  };
+}
+
+function authorizeUrl(codeChallenge) {
   const redirect = chrome.identity.getRedirectURL(); // https://<extid>.chromiumapp.org/
   const p = new URLSearchParams({
     provider: "github",
     scopes: GITHUB_SCOPES,
     redirect_to: redirect,
-    apikey: SUPABASE_ANON_KEY
+    apikey: SUPABASE_ANON_KEY,
+    code_challenge: codeChallenge,
+    code_challenge_method: "S256"
   });
   return `${SUPABASE_URL}/auth/v1/authorize?${p.toString()}`;
 }
 
-// Supabase returns tokens in the redirect URL fragment.
-function parseTokens(redirectedTo) {
+function parseAuthCallback(redirectedTo) {
   const hash = redirectedTo.includes("#") ? redirectedTo.split("#")[1] : "";
   const query = redirectedTo.includes("?") ? redirectedTo.split("?")[1].split("#")[0] : "";
   const params = new URLSearchParams(hash || query);
   return {
-    githubToken: params.get("provider_token"), // the GitHub access token we use
-    supabaseAccess: params.get("access_token"),
+    code: params.get("code") || "",
+    hasTokenFragment: params.has("access_token") || params.has("refresh_token") || params.has("provider_token"),
     error: params.get("error_description") || params.get("error")
   };
+}
+
+function anonHeaders() {
+  return {
+    "apikey": SUPABASE_ANON_KEY,
+    "Accept": "application/json",
+    "Content-Type": "application/json"
+  };
+}
+
+async function readJson(res) {
+  const text = await res.text().catch(() => "");
+  if (!text) return {};
+  try { return JSON.parse(text); } catch (e) { return { message: text }; }
+}
+
+function normalizeSession(data) {
+  data = data || {};
+  const session = data.session || {};
+  return {
+    githubToken: data.provider_token || data.providerToken || session.provider_token || session.providerToken || "",
+    supabaseAccess: data.access_token || session.access_token || "",
+    supabaseRefresh: data.refresh_token || session.refresh_token || "",
+    expiresAt: data.expires_at || session.expires_at || "",
+    expiresIn: data.expires_in || session.expires_in || ""
+  };
+}
+
+async function exchangeCodeForSession(code, codeVerifier) {
+  const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=pkce`, {
+    method: "POST",
+    headers: anonHeaders(),
+    body: JSON.stringify({ auth_code: code, code_verifier: codeVerifier })
+  });
+  const data = await readJson(res);
+  if (!res.ok) throw new Error(data.message || data.error || "Could not finish Supabase sign-in.");
+  return normalizeSession(data);
 }
 
 async function signInWithGitHub() {
   if (!isConfigured()) {
     throw new Error("Supabase isn't configured yet — set SUPABASE_URL / SUPABASE_ANON_KEY in src/background.js.");
   }
-  const redirectedTo = await chrome.identity.launchWebAuthFlow({ url: authorizeUrl(), interactive: true });
-  const t = parseTokens(redirectedTo || "");
-  if (t.error) throw new Error("GitHub sign-in failed: " + t.error);
+  await enforceLoginThrottle();
+  const pkce = await createPkce();
+  const redirectedTo = await chrome.identity.launchWebAuthFlow({ url: authorizeUrl(pkce.codeChallenge), interactive: true });
+  const callback = parseAuthCallback(redirectedTo || "");
+  if (callback.error) throw new Error("GitHub sign-in failed: " + callback.error);
+  if (callback.hasTokenFragment) throw new Error("GitHub sign-in failed a security check. Please start again.");
+  if (!callback.code) throw new Error("GitHub sign-in did not return an auth code. Check the Supabase Auth redirect settings and try again.");
+  const t = await exchangeCodeForSession(callback.code, pkce.codeVerifier);
   if (!t.githubToken) {
     throw new Error("Signed in, but GitHub didn't return a token. In Supabase → Auth → Providers → GitHub, ensure scopes include 'repo workflow'.");
   }
-  await chrome.storage.local.set({ "nativize:githubToken": t.githubToken, "nativize:signedIn": true });
-  return t.githubToken;
+  if (!t.supabaseAccess) {
+    throw new Error("Signed in, but Supabase did not return a session. Check the Supabase Auth redirect settings and try again.");
+  }
+  await chrome.storage.local.set({
+    "nativize:githubToken": t.githubToken,
+    "nativize:supabaseAccess": t.supabaseAccess || "",
+    "nativize:supabaseRefresh": t.supabaseRefresh || "",
+    "nativize:supabaseExpiresAt": t.expiresAt || "",
+    "nativize:signedIn": true
+  });
+  return t;
 }
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (!msg) return;
   if (msg.type === "nativize-signin") {
     signInWithGitHub()
-      .then((token) => sendResponse({ ok: true, token }))
+      .then((tokens) => sendResponse({
+        ok: true,
+        token: tokens.githubToken,
+        supabaseAccess: tokens.supabaseAccess || "",
+        supabaseRefresh: tokens.supabaseRefresh || "",
+        supabaseExpiresAt: tokens.expiresAt || ""
+      }))
       .catch((e) => sendResponse({ ok: false, error: (e && e.message) || String(e) }));
     return true; // keep the channel open for the async response
   }
@@ -78,7 +167,14 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true;
   }
   if (msg.type === "nativize-signout") {
-    chrome.storage.local.remove(["nativize:githubToken", "nativize:signedIn"]).then(() => sendResponse({ ok: true }));
+    chrome.storage.local.remove([
+      "nativize:githubToken",
+      "nativize:supabaseAccess",
+      "nativize:supabaseRefresh",
+      "nativize:supabaseExpiresAt",
+      "nativize:billing",
+      "nativize:signedIn"
+    ]).then(() => sendResponse({ ok: true }));
     return true;
   }
 });

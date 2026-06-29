@@ -12,7 +12,7 @@ A browser can't compile native apps, so Nativize splits the job:
   installable Android `.apk`/`.aab` and compiles the iOS app in the cloud — free,
   no local Xcode / Android Studio required to validate the build.
 - **Delivery is your choice.** Download the kit as a `.zip`, or push it straight
-  to your GitHub repo via the GitHub REST API. No backend; everything runs in
+  to your GitHub repo via the GitHub REST API. The generation workflow runs in
   your browser. Your GitHub token lives only in `chrome.storage.local`.
 
 ## Install (Load unpacked)
@@ -97,13 +97,15 @@ can't create the app) — after that, uploads are automatic.
 ## Architecture
 
 ```
-manifest.json            MV3: content script on lovable.dev, api.github.com host perm, storage
+manifest.json            MV3: content script, GitHub + Supabase host perms, storage + identity
 src/kit-generator.js     PURE, dependency-free kit generator (Node + browser via UMD)
+src/billing.js           Supabase billing/client RPC helper (Stripe secrets stay server-side)
 src/zip.js               PURE store-only ZIP writer (no deps)
 src/github.js            GitHub REST push (single commit via Git Data API)
 src/panel.js             Shadow-DOM glassmorphism UI (reused by content script + harness)
 src/content.js           Entry: detection + storage + wiring
 src/popup.html           Toolbar popup (instructions)
+supabase/                Billing migration + Stripe checkout/webhook edge functions
 icons/generate-icons.js  Pure-Node gradient PNG generator
 test/                    Node unit tests (node --test)
 tools/harness.html       Browser preview harness for the panel

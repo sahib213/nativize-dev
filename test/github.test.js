@@ -24,6 +24,8 @@ test("splitRepo accepts owner/repo and full URLs, rejects junk", () => {
   assert.deepEqual(GitHub.splitRepo("octo/demo"), { owner: "octo", repo: "demo" });
   assert.deepEqual(GitHub.splitRepo("https://github.com/octo/demo.git"), { owner: "octo", repo: "demo" });
   assert.throws(() => GitHub.splitRepo("not-a-repo"));
+  assert.throws(() => GitHub.splitRepo("octo/demo/issues"), /owner\/repo/);
+  assert.throws(() => GitHub.splitRepo("octo/" + "x".repeat(101)), /owner\/repo/);
 });
 
 test("triggerWorkflow dispatches the named workflow on the default branch", async () => {

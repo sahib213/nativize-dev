@@ -5,6 +5,8 @@ const assert = require("node:assert/strict");
 const Kit = require("../src/kit-generator.js");
 const Zip = require("../src/zip.js");
 const GitHub = require("../src/github.js");
+const Plans = require("../src/plans.js");
+const Billing = require("../src/billing.js");
 
 // ---------------------------------------------------------------------------
 // appId / slug normalization
@@ -35,6 +37,17 @@ test("normalizeWebDir accepts project-relative paths and rejects traversal", () 
   assert.equal(Kit.normalizeWebDir("./build/web"), "build/web");
   assert.throws(() => Kit.normalizeWebDir("../dist"), /safe relative path/);
   assert.throws(() => Kit.normalizeWebDir('dist"; rm -rf .'), /safe relative path/);
+});
+
+test("input hardening rejects oversized or malformed builder config", () => {
+  assert.throws(() => Kit.generateKit(baseConfig({ appName: "x".repeat(81) })), /App name is too long/);
+  assert.throws(() => Kit.generateKit(baseConfig({ githubRepo: "octo/demo/issues" })), /GitHub repo/);
+  assert.throws(() => Kit.generateKit(baseConfig({
+    permissions: [{ key: "camera", description: "x".repeat(241) }]
+  })), /description is too long/);
+  assert.throws(() => Kit.generateKit(baseConfig({
+    socialAuth: { google: { enabled: true, webClientId: "bad <id>" } }
+  })), /invalid characters/);
 });
 
 // ---------------------------------------------------------------------------
@@ -91,6 +104,203 @@ test("permissions: unknown keys dropped; empty desc falls back; workflow calls t
   assert.match(sh, /NSLocationWhenInUseUsageDescription string This app uses Location/); // fallback, never empty
   const wf = Kit.generateKit(baseConfig())[".github/workflows/nativize-build.yml"];
   assert.match(wf, /bash \.\/nativize-permissions\.sh/);
+});
+
+// ---------------------------------------------------------------------------
+// social sign-in
+// ---------------------------------------------------------------------------
+test("social: no social files when no provider enabled", () => {
+  const files = Kit.generateKit(baseConfig());
+  assert.equal(files["src/nativeSocialAuth.ts"], undefined);
+  assert.equal(files["nativize-social-auth.sh"], undefined);
+  assert.equal(files["SOCIAL_AUTH_SETUP.md"], undefined);
+  // a disabled provider object must not switch it on
+  const off = Kit.generateKit(baseConfig({ socialAuth: { google: { enabled: false, webClientId: "x" } } }));
+  assert.equal(off["src/nativeSocialAuth.ts"], undefined);
+});
+
+test("social: validateSocialAuth flags a required credential that is missing", () => {
+  assert.deepEqual(
+    Kit.validateSocialAuth({ google: { enabled: true, webClientId: "" } }),
+    ["Sign in with Google: Web client ID"]
+  );
+  assert.deepEqual(Kit.validateSocialAuth({ google: { enabled: true, webClientId: "abc.apps" } }), []);
+  // Apple has no required fields → always valid, even with no service id
+  assert.deepEqual(Kit.validateSocialAuth({ apple: { enabled: true } }), []);
+});
+
+test("social: reverseGoogleClientId builds the iOS URL scheme", () => {
+  assert.equal(
+    Kit.reverseGoogleClientId("123-ios.apps.googleusercontent.com"),
+    "com.googleusercontent.apps.123-ios"
+  );
+});
+
+test("social: Google enabled emits helper, init config, and reversed URL scheme", () => {
+  const files = Kit.generateKit(baseConfig({ socialAuth: {
+    google: { enabled: true, webClientId: "web-abc.apps.googleusercontent.com", iosClientId: "123-ios.apps.googleusercontent.com" }
+  } }));
+  const ts = files["src/nativeSocialAuth.ts"];
+  assert.ok(ts, "helper missing");
+  assert.match(ts, /import \{ SocialLogin \} from '@capgo\/capacitor-social-login'/);
+  assert.match(ts, /webClientId: "web-abc\.apps\.googleusercontent\.com"/);
+  assert.match(ts, /iOSClientId: "123-ios\.apps\.googleusercontent\.com"/);
+  assert.match(ts, /export async function signInWithGoogle/);
+  const sh = files["nativize-social-auth.sh"];
+  assert.match(sh, /GOOGLE_REVERSED = "com\.googleusercontent\.apps\.123-ios"/);
+  assert.match(sh, /APPLE = False/);
+  // build workflow installs the plugin and calls the script
+  const wf = files[".github/workflows/nativize-build.yml"];
+  assert.match(wf, /@capgo\/capacitor-social-login/);
+  assert.match(wf, /bash \.\/nativize-social-auth\.sh/);
+});
+
+test("social: Apple enabled writes the entitlement flag and uses the bundle id as client id", () => {
+  const files = Kit.generateKit(baseConfig({ appId: "com.acme.demo", socialAuth: {
+    apple: { enabled: true }
+  } }));
+  const ts = files["src/nativeSocialAuth.ts"];
+  assert.match(ts, /config\.apple = \{ clientId: "com\.acme\.demo" \}/);
+  assert.match(ts, /export async function signInWithApple/);
+  const sh = files["nativize-social-auth.sh"];
+  assert.match(sh, /APPLE = True/);
+  assert.match(sh, /com\.apple\.developer\.applesignin/);
+  assert.match(sh, /GOOGLE_REVERSED = ""/); // no google → no scheme
+});
+
+test("social: both providers → both helpers and a setup doc", () => {
+  const files = Kit.generateKit(baseConfig({ socialAuth: {
+    apple: { enabled: true, serviceId: "com.acme.web" },
+    google: { enabled: true, webClientId: "web.apps", iosClientId: "ios.apps" }
+  } }));
+  const ts = files["src/nativeSocialAuth.ts"];
+  assert.match(ts, /signInWithApple/);
+  assert.match(ts, /signInWithGoogle/);
+  assert.match(ts, /clientId: "com\.acme\.web"/); // serviceId overrides the bundle id
+  assert.ok(files["SOCIAL_AUTH_SETUP.md"]);
+});
+
+// ---------------------------------------------------------------------------
+// plans + gating
+// ---------------------------------------------------------------------------
+test("plans: gateConfig strips paid features + watermarks + iOS-only on free", () => {
+  const gated = Plans.gateConfig({
+    appName: "X", enablePush: true, iosUpload: true,
+    socialAuth: { google: { enabled: true, webClientId: "w" } }
+  }, "free");
+  assert.equal(gated.enablePush, false);
+  assert.deepEqual(gated.socialAuth, {});
+  assert.equal(gated.iosUpload, false);
+  assert.equal(gated.watermark, true);
+  assert.deepEqual(gated.platforms, ["ios"]);
+});
+
+test("plans: pro keeps features + all platforms + no watermark", () => {
+  const p = Plans.planById("pro");
+  assert.equal(p.apps, 3);
+  const gated = Plans.gateConfig({ enablePush: true, iosUpload: true }, "pro");
+  assert.equal(gated.enablePush, true);
+  assert.equal(gated.iosUpload, true);
+  assert.equal(gated.watermark, false);
+  assert.equal(gated.platforms.length, 4);
+});
+
+test("plans: canAddApp respects per-plan app limits", () => {
+  assert.equal(Plans.canAddApp("free", 0), true);
+  assert.equal(Plans.canAddApp("free", 1), false);
+  assert.equal(Plans.canAddApp("pro", 2), true);
+  assert.equal(Plans.canAddApp("pro", 3), false);
+  assert.equal(Plans.canAddApp("max", 9), true);
+});
+
+test("gating: free plan generates iOS-only workflow + watermark, no push/social/release", () => {
+  const files = Kit.generateKit(baseConfig({
+    plan: "free", enablePush: true, iosUpload: true,
+    socialAuth: { apple: { enabled: true } }
+  }));
+  // watermark file present + build injects it
+  assert.ok(files["nativize-watermark.html"]);
+  assert.match(files["nativize-watermark.html"], /Built with Nativize/);
+  const wf = files[".github/workflows/nativize-build.yml"];
+  assert.match(wf, /nativize-watermark\.html/);          // injection step
+  assert.match(wf, /Android \(\.apk \+ \.aab\)\n    if: \$\{\{ false \}\}/); // android gated off
+  assert.match(wf, /Desktop \(macOS \.dmg\)\n    if: \$\{\{ false \}\}/);    // mac gated off
+  // paid-only artifacts are absent
+  assert.equal(files["src/nativePush.ts"], undefined);
+  assert.equal(files["src/nativeSocialAuth.ts"], undefined);
+  assert.equal(files[".github/workflows/nativize-release.yml"], undefined);
+});
+
+test("gating: pro plan builds all platforms, no watermark, keeps paid features", () => {
+  const files = Kit.generateKit(baseConfig({
+    plan: "pro", enablePush: true, iosUpload: true,
+    storeSecrets: { ASC_KEY_ID: "k" }
+  }));
+  assert.equal(files["nativize-watermark.html"], undefined);
+  const wf = files[".github/workflows/nativize-build.yml"];
+  assert.doesNotMatch(wf, /if: \$\{\{ false \}\}/); // every platform builds
+  assert.doesNotMatch(wf, /nativize-watermark/);
+  assert.ok(files["src/nativePush.ts"]);
+  assert.ok(files[".github/workflows/nativize-release.yml"]);
+});
+
+test("gating: no plan field → ungated/full (back-compat)", () => {
+  const files = Kit.generateKit(baseConfig({ enablePush: true }));
+  assert.equal(files["nativize-watermark.html"], undefined);
+  assert.doesNotMatch(files[".github/workflows/nativize-build.yml"], /if: \$\{\{ false \}\}/);
+  assert.ok(files["src/nativePush.ts"]);
+});
+
+// ---------------------------------------------------------------------------
+// billing
+// ---------------------------------------------------------------------------
+test("billing: inactive or missing entitlement falls back to free; active status maps to a plan", () => {
+  assert.equal(Billing.planOf(null), "free");
+  assert.equal(Billing.planOf({ plan_id: "pro", billing: "subscription", status: "active" }), "pro");
+  assert.equal(Billing.planOf({ plan_id: "max", billing: "subscription", status: "trialing" }), "max");
+  assert.equal(Billing.planOf({ plan_id: "pro", billing: "subscription", status: "canceled" }), "free");
+});
+
+test("billing: status, activation, and checkout call the Supabase APIs", async () => {
+  const calls = [];
+  const fakeFetch = (url, opts) => {
+    calls.push({ url, opts });
+    if (url.endsWith("/rest/v1/rpc/get_billing_status")) {
+      return Promise.resolve({
+        ok: true,
+        text: () => Promise.resolve(JSON.stringify([{ plan_id: "pro", billing: "subscription", status: "active", apps_limit: 3, apps_used: 1 }]))
+      });
+    }
+    if (url.endsWith("/rest/v1/rpc/activate_app")) {
+      return Promise.resolve({
+        ok: true,
+        text: () => Promise.resolve(JSON.stringify([{ plan_id: "pro", billing: "subscription", status: "active", apps_limit: 3, apps_used: 2, activated: true, already_activated: false }]))
+      });
+    }
+    return Promise.resolve({
+      ok: true,
+      text: () => Promise.resolve(JSON.stringify({ id: "cs_test", url: "https://checkout.stripe.com/c/test" }))
+    });
+  };
+
+  const opts = { fetch: fakeFetch, supabaseUrl: "https://example.supabase.co" };
+  const status = await Billing.status("jwt", opts);
+  assert.equal(status.plan, "pro");
+  assert.equal(status.appsLimit, 3);
+  assert.equal(status.appsUsed, 1);
+
+  const activated = await Billing.activate("jwt", "octo/demo", opts);
+  assert.equal(activated.activated, true);
+  assert.equal(activated.appsUsed, 2);
+
+  const checkout = await Billing.checkout("jwt", "pro", Object.assign({}, opts, {
+    successUrl: "https://nativize.dev/app.html?checkout=success"
+  }));
+  assert.equal(checkout.url, "https://checkout.stripe.com/c/test");
+
+  assert.equal(calls[0].opts.headers.Authorization, "Bearer jwt");
+  assert.equal(JSON.parse(calls[1].opts.body).repo, "octo/demo");
+  assert.equal(JSON.parse(calls[2].opts.body).planId, "pro");
 });
 
 test("desktop build: valid Electron main + package.json with mac/win targets", () => {

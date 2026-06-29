@@ -4,3 +4,4 @@ node_modules/
 dist/
 .nativize-tmp/
 artifacts/
+supabase/.temp/
