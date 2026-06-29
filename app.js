@@ -1,6 +1,6 @@
 /* ============================================================
    Nativize Studio (web) - same engine as the extension, in the browser.
-   Auth = Supabase GitHub OAuth; GitHub provider token stays in localStorage.
+   Auth = Supabase GitHub OAuth; GitHub provider token stays in sessionStorage.
    Billing = Supabase RPCs + Stripe Checkout edge function.
    ============================================================ */
 (function () {
@@ -23,18 +23,30 @@
     supabaseAccess: "nz_web_supabase_access",
     supabaseRefresh: "nz_web_supabase_refresh",
     pendingPlan: "nz_web_pending_plan",
+    pkceVerifier: "nz_web_pkce_verifier",
+    loginAttempts: "nz_web_login_attempts",
     repos: "nz_web_repos"
   };
   function load(key, fallback) { try { return JSON.parse(localStorage.getItem(key)) || fallback; } catch (e) { return fallback; } }
   function store(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {} }
-  function loadText(key) { try { return localStorage.getItem(key) || ""; } catch (e) { return ""; } }
-  function storeText(key, val) { try { if (val) localStorage.setItem(key, val); else localStorage.removeItem(key); } catch (e) {} }
+  function loadSession(key, fallback) { try { return JSON.parse(sessionStorage.getItem(key)) || fallback; } catch (e) { return fallback; } }
+  function storeSession(key, val) { try { if (val == null) sessionStorage.removeItem(key); else sessionStorage.setItem(key, JSON.stringify(val)); } catch (e) {} }
+  function loadText(key) { try { return sessionStorage.getItem(key) || ""; } catch (e) { return ""; } }
+  function storeText(key, val) { try { if (val) sessionStorage.setItem(key, val); else sessionStorage.removeItem(key); } catch (e) {} }
+  function throttleLocal(key, maxHits, windowMs, message) {
+    var now = Date.now();
+    var attempts = load(key, []);
+    attempts = Array.isArray(attempts) ? attempts.filter(function (t) { return now - Number(t) < windowMs; }) : [];
+    if (attempts.length >= maxHits) throw new Error(message);
+    attempts.push(now);
+    store(key, attempts);
+  }
 
   var savedCfg = load(K.cfg, {});
   var savedToken = loadText(K.token);
   var supabaseAccess = loadText(K.supabaseAccess);
   var supabaseRefresh = loadText(K.supabaseRefresh);
-  var billingStatus = Billing.normalize(load(K.billing, null));
+  var billingStatus = Billing.normalize(loadSession(K.billing, null));
   var nativizedRepos = load(K.repos, []);
 
   function setStatus(message, cls) {
@@ -44,30 +56,63 @@
     status.className = "lic-status" + (cls ? " " + cls : "");
   }
 
-  function clearAuthHash() {
-    if (!window.location.hash) return;
-    history.replaceState(null, "", window.location.pathname + window.location.search);
+  function clearAuthCallback() {
+    var url = new URL(window.location.href);
+    var changed = !!url.hash;
+    url.hash = "";
+    ["code", "access_token", "refresh_token", "provider_token", "expires_at", "expires_in", "token_type", "state", "error", "error_description"].forEach(function (key) {
+      if (url.searchParams.has(key)) {
+        url.searchParams.delete(key);
+        changed = true;
+      }
+    });
+    if (changed) history.replaceState(null, "", url.pathname + (url.search ? url.search : ""));
   }
 
   function handleAuthRedirect() {
     var tokens = Billing.parseAuthTokens(window.location.href);
     if (tokens.error) {
+      storeText(K.pkceVerifier, "");
       setStatus("Sign-in failed: " + tokens.error, "err");
-      clearAuthHash();
+      clearAuthCallback();
       return;
     }
-    if (!tokens.accessToken) return;
-
-    supabaseAccess = tokens.accessToken;
-    supabaseRefresh = tokens.refreshToken || supabaseRefresh;
-    storeText(K.supabaseAccess, supabaseAccess);
-    storeText(K.supabaseRefresh, supabaseRefresh || "");
-    if (tokens.githubToken) {
-      savedToken = tokens.githubToken;
-      storeText(K.token, savedToken);
+    if (tokens.accessToken || tokens.refreshToken || tokens.githubToken) {
+      storeText(K.pkceVerifier, "");
+      setStatus("Sign-in failed a security check. Please start again.", "err");
+      clearAuthCallback();
+      return;
     }
-    clearAuthHash();
-    setStatus("Signed in with GitHub. Checking your plan...", "ok");
+    if (!tokens.code) return;
+
+    var verifier = loadText(K.pkceVerifier);
+    if (!verifier) {
+      setStatus("Sign-in failed a security check. Please start again.", "err");
+      clearAuthCallback();
+      return;
+    }
+    setStatus("Finishing GitHub sign-in...", "");
+    Billing.exchangeCodeForSession(tokens.code, verifier)
+      .then(function (session) {
+        if (!session.accessToken) throw new Error("Supabase did not return a session.");
+        if (!session.githubToken) throw new Error("GitHub did not return a repo token. Check the Supabase GitHub provider scopes.");
+        storeText(K.pkceVerifier, "");
+        supabaseAccess = session.accessToken;
+        supabaseRefresh = session.refreshToken || supabaseRefresh;
+        storeText(K.supabaseAccess, supabaseAccess);
+        storeText(K.supabaseRefresh, supabaseRefresh || "");
+        if (session.githubToken) {
+          savedToken = session.githubToken;
+          storeText(K.token, savedToken);
+        }
+        clearAuthCallback();
+        window.location.reload();
+      })
+      .catch(function (err) {
+        storeText(K.pkceVerifier, "");
+        setStatus("Sign-in failed: " + (err && err.message || err), "err");
+        clearAuthCallback();
+      });
   }
   handleAuthRedirect();
 
@@ -76,8 +121,9 @@
 
   function setBillingStatus(next) {
     billingStatus = Billing.normalize(next);
-    store(K.billing, billingStatus);
+    storeSession(K.billing, billingStatus);
     renderPlan();
+    if (panel && typeof panel.setPlan === "function") panel.setPlan(currentPlanId());
     return billingStatus;
   }
 
@@ -192,8 +238,20 @@
 
   function signInWithGitHub(planId) {
     if (planId) storeText(K.pendingPlan, planId);
-    window.location.href = Billing.authorizeUrl(window.location.href.split("#")[0]);
-    return new Promise(function () {});
+    try {
+      throttleLocal(K.loginAttempts, 5, 15 * 60 * 1000, "Too many sign-in attempts. Please wait 15 minutes and try again.");
+    } catch (err) {
+      setStatus(err && err.message || String(err), "err");
+      return Promise.reject(err);
+    }
+    return Billing.createPkce().then(function (pkce) {
+      storeText(K.pkceVerifier, pkce.codeVerifier);
+      window.location.href = Billing.authorizeUrl(window.location.href.split("#")[0], {
+        codeChallenge: pkce.codeChallenge,
+        codeChallengeMethod: pkce.codeChallengeMethod
+      });
+      return new Promise(function () {});
+    });
   }
 
   function startCheckout(planId) {
@@ -327,6 +385,7 @@
     enablePush: savedCfg.enablePush === true,
     token: savedToken,
     signedIn: !!supabaseAccess,
+    planId: currentPlanId(),
     permissions: Array.isArray(savedCfg.permissions) ? savedCfg.permissions : [],
     socialAuth: savedCfg.socialAuth || {}
   };
@@ -352,8 +411,11 @@
     onSignOut: function () {
       supabaseAccess = "";
       supabaseRefresh = "";
+      savedToken = "";
+      storeText(K.token, "");
       storeText(K.supabaseAccess, "");
       storeText(K.supabaseRefresh, "");
+      storeSession(K.billing, null);
       setBillingStatus(Billing.freeStatus({ apps_used: nativizedRepos.length }));
     },
     onDownloadProject: function (state) {

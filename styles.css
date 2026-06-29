@@ -31,6 +31,9 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+#how, #best-lovable-native-app, #compare, #features, #pricing, #security, #support, #faq, #get-started, #feature-request {
+  scroll-margin-top: 92px;
+}
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
@@ -394,6 +397,56 @@ code {
 .target-ico[data-platform], .mini-ico[data-platform] { background-repeat: no-repeat; background-position: center; background-size: contain; }
 @media (prefers-reduced-motion: reduce) {
   .build-step.is-live .step-light { animation: none; }
+}
+
+/* ---- Live-build animation: a looping "real build" so the hero feels alive.
+   Transform/opacity/box-shadow only (GPU-friendly), and fully motion-safe. ---- */
+@media (prefers-reduced-motion: no-preference) {
+  .build-steps .build-step { animation: nzStep 7.2s var(--ease) infinite both; will-change: background; }
+  .build-steps .build-step:nth-child(1) { animation-delay: .2s; }
+  .build-steps .build-step:nth-child(2) { animation-delay: 1.7s; }
+  .build-steps .build-step:nth-child(3) { animation-delay: 3.2s; }
+  .build-steps .build-step .step-light { animation: nzLight 7.2s var(--ease) infinite both; }
+  .build-steps .build-step:nth-child(1) .step-light { animation-delay: .2s; }
+  .build-steps .build-step:nth-child(2) .step-light { animation-delay: 1.7s; }
+  .build-steps .build-step:nth-child(3) .step-light { animation-delay: 3.2s; }
+
+  @keyframes nzStep {
+    0%, 6%    { border-color: rgba(255,255,255,.1); background: rgba(255,255,255,.045); }
+    10%, 22%  { border-color: rgba(125,211,252,.4); background: linear-gradient(135deg, rgba(14,165,233,.16), rgba(255,255,255,.05)); }
+    28%, 100% { border-color: rgba(110,231,183,.26); background: linear-gradient(135deg, rgba(16,185,129,.1), rgba(255,255,255,.045)); }
+  }
+  @keyframes nzLight {
+    0%, 6%    { background: rgba(255,255,255,.2); box-shadow: 0 0 0 0 rgba(125,211,252,0); transform: scale(1); }
+    10%       { background: #7dd3fc; box-shadow: 0 0 0 4px rgba(125,211,252,.2); transform: scale(1.18); }
+    22%       { background: #7dd3fc; box-shadow: 0 0 0 4px rgba(125,211,252,.16); transform: scale(1); }
+    28%, 100% { background: #6ee7b7; box-shadow: 0 0 0 4px rgba(110,231,183,.14); transform: scale(1); }
+  }
+
+  .device-showcase .artifact-card { animation: nzArtifact 7.2s var(--ease) infinite both; }
+  .device-showcase .ios-card { animation-delay: 4.4s; }
+  .device-showcase .android-card { animation-delay: 4.9s; }
+  @keyframes nzArtifact {
+    0%, 55%  { opacity: 0; transform: translateY(10px) scale(.92); }
+    62%      { opacity: 1; transform: translateY(-2px) scale(1.03); }
+    70%, 92% { opacity: 1; transform: translateY(0) scale(1); }
+    100%     { opacity: 0; transform: translateY(10px) scale(.92); }
+  }
+
+  /* A soft scan light sweeping the console as the build runs. */
+  .build-console::after {
+    content: "";
+    position: absolute; left: 0; right: 0; top: 0; height: 42%;
+    background: linear-gradient(180deg, rgba(125,211,252,.12), transparent);
+    pointer-events: none; opacity: 0;
+    animation: nzScan 7.2s linear infinite;
+  }
+  @keyframes nzScan {
+    0%   { transform: translateY(-100%); opacity: 0; }
+    8%   { opacity: .55; }
+    42%  { transform: translateY(240%); opacity: 0; }
+    100% { transform: translateY(240%); opacity: 0; }
+  }
 }
 
 /* ---------- Strip ---------- */
@@ -787,9 +840,9 @@ code {
 .price-card.popular { border-color: rgba(124,58,237,.5); background: linear-gradient(180deg, rgba(124,58,237,.12), var(--surface)); box-shadow: var(--shadow-glow); }
 .price-tag { position: absolute; top: -11px; left: 50%; transform: translateX(-50%); font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: #fff; background: var(--grad); padding: 4px 12px; border-radius: 999px; white-space: nowrap; }
 .price-card h3 { font-size: 18px; letter-spacing: -0.01em; }
-.price-amt { display: flex; align-items: baseline; gap: 6px; margin: 12px 0 4px; }
-.price-amt .amt { font-size: 36px; font-weight: 800; letter-spacing: -0.03em; }
-.price-amt .per { font-size: 13px; color: var(--muted); }
+.price-amt { display: flex; align-items: baseline; gap: 6px; margin: 12px 0 4px; flex-wrap: wrap; }
+.price-amt .amt { font-size: 34px; font-weight: 800; letter-spacing: -0.03em; white-space: nowrap; }
+.price-amt .per { font-size: 13px; color: var(--muted); white-space: nowrap; }
 .price-line { color: var(--muted); font-size: 14px; min-height: 20px; }
 .price-feats { list-style: none; display: grid; gap: 9px; margin: 18px 0 22px; flex: 1; }
 .price-feats li { position: relative; padding-left: 24px; font-size: 13.5px; color: var(--text); }
@@ -813,17 +866,31 @@ code {
 .faq-item[open] .faq-plus::after { transform: rotate(90deg); opacity: 0; }
 .faq-body { padding: 0 22px 20px; color: var(--muted); }
 .faq-body p { max-width: 64ch; }
+/* Little opening animation when a question expands */
+@media (prefers-reduced-motion: no-preference) {
+  .faq-item[open] { animation: faqItemOpen .3s var(--ease); }
+  .faq-item[open] .faq-body { animation: faqOpen .36s var(--ease) both; }
+  @keyframes faqOpen { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+  @keyframes faqItemOpen { from { transform: scale(.992); } to { transform: scale(1); } }
+}
 
 /* ---------- Footer ---------- */
-.site-footer { border-top: 1px solid var(--border); margin-top: 40px; padding: 48px 0 28px; background: linear-gradient(180deg, transparent, rgba(124,58,237,.05)); }
-.footer-inner { display: flex; justify-content: space-between; gap: 30px; flex-wrap: wrap; padding-bottom: 28px; }
-.footer-brand { display: flex; gap: 14px; max-width: 360px; }
+.site-footer { border-top: 1px solid var(--border); margin-top: 56px; padding: 56px 0 28px; background: linear-gradient(180deg, transparent, rgba(124,58,237,.05)); }
+.footer-inner { display: grid; grid-template-columns: minmax(220px, 1fr) 1.7fr; gap: 48px; padding-bottom: 36px; }
+.footer-brand { display: flex; gap: 14px; max-width: 320px; }
 .footer-brand strong { font-size: 16px; }
-.footer-brand p { color: var(--muted); font-size: 13.5px; margin-top: 3px; }
-.footer-links { display: flex; gap: 8px; flex-wrap: wrap; align-content: flex-start; }
-.footer-links a { color: var(--muted); font-size: 14px; padding: 6px 12px; border-radius: 8px; transition: color .2s, background .2s; }
-.footer-links a:hover { color: var(--text); background: var(--surface); }
-.footer-bottom { display: flex; justify-content: space-between; gap: 14px; flex-wrap: wrap; padding-top: 22px; border-top: 1px solid var(--border); font-size: 13px; color: var(--muted-2); }
+.footer-brand p { color: var(--muted); font-size: 13.5px; margin-top: 4px; line-height: 1.6; }
+/* Grouped, column-aligned link sets for a clean footer */
+.footer-cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; }
+.footer-col { display: grid; gap: 11px; align-content: start; }
+.footer-col h4 { font-size: 11.5px; font-weight: 700; letter-spacing: .13em; text-transform: uppercase; color: var(--muted-2); }
+.footer-col a { color: var(--muted); font-size: 14px; line-height: 1.2; width: fit-content; transition: color .2s; }
+.footer-col a:hover { color: var(--text); }
+/* Back-compat: any page still using the old flat link list stays readable */
+.footer-links { display: flex; gap: 8px 18px; flex-wrap: wrap; align-content: flex-start; }
+.footer-links a { color: var(--muted); font-size: 14px; transition: color .2s; }
+.footer-links a:hover { color: var(--text); }
+.footer-bottom { display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap; padding-top: 24px; border-top: 1px solid var(--border); font-size: 13px; color: var(--muted-2); }
 
 /* ---------- Legal pages ---------- */
 .legal-main {
@@ -903,8 +970,10 @@ code {
   .steps { grid-template-columns: 1fr; gap: 16px; }
   .step-link { display: none; }
   .split, .outputs, .request-panel, .answer-card, .comparison-grid { grid-template-columns: 1fr; }
+  .footer-inner { grid-template-columns: 1fr; gap: 34px; }
 }
 @media (max-width: 720px) {
+  #how, #best-lovable-native-app, #compare, #features, #pricing, #security, #support, #faq, #get-started, #feature-request { scroll-margin-top: 84px; }
   .nav-links { position: fixed; inset: 68px 0 auto; flex-direction: column; gap: 4px; background: rgba(10,10,18,.96); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); padding: 14px 24px 22px; transform: translateY(-130%); transition: transform .35s var(--ease); margin: 0; }
   .nav-links.open { transform: translateY(0); }
   .nav-extra { display: block; }
@@ -924,6 +993,7 @@ code {
   .footer-bottom { flex-direction: column; }
 }
 @media (max-width: 560px) {
+  .footer-cols { grid-template-columns: 1fr 1fr; gap: 22px 18px; }
   .request-panel { padding: 26px 20px; }
   .form-row.two { grid-template-columns: 1fr; }
   .form-actions .btn { width: 100%; justify-content: center; }
