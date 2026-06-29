@@ -431,6 +431,13 @@ test("workflow has dispatch trigger + android assembleDebug + ios xcodebuild no-
   assert.match(wf, /xcodebuild/);
   assert.match(wf, /CODE_SIGNING_ALLOWED=NO/);
   assert.match(wf, /Smoke test iOS Simulator launch/);
+  assert.match(wf, /-destination "id=\$DEVICE"/);
+  assert.match(wf, /nativize-simulator-udid\.txt/);
+  assert.match(wf, /PlistBuddy -c 'Print :CFBundleIdentifier'/);
+  assert.match(wf, /launch --terminate-running-process "\$DEVICE" "\$BUNDLE_ID"/);
+  assert.match(wf, /iOS simulator launch diagnostics/);
+  assert.doesNotMatch(wf, /-destination 'generic\/platform=iOS Simulator' \\\n            -derivedDataPath DerivedDataSim \\\n            CODE_SIGNING_ALLOWED=NO/);
+  assert.doesNotMatch(wf, /DEVICE="\$\{1:-iPhone 16\}"/);
   assert.match(wf, /ios-simulator-preview/);
   assert.match(wf, /ios-xcode-project/);
   assert.match(wf, /android-studio-project/);
