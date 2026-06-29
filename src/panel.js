@@ -215,10 +215,9 @@
       ".nz-prog-top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:9px}" +
       ".nz-prog-stage{font-size:13px;font-weight:600;color:#ece9f6}" +
       ".nz-prog-time{font-size:12px;color:#9b94b8;font-variant-numeric:tabular-nums}" +
-      ".nz-prog-bar{height:6px;border-radius:999px;background:rgba(255,255,255,.1);overflow:hidden;position:relative}" +
-      ".nz-prog-bar::before{content:'';position:absolute;top:0;left:-45%;width:45%;height:100%;border-radius:999px;" +
-        "background:linear-gradient(90deg,#8b5cf6,#ec4899);animation:nzslide 1.25s cubic-bezier(.4,0,.2,1) infinite}" +
-      "@keyframes nzslide{0%{left:-45%}100%{left:100%}}" +
+      ".nz-prog-bar{height:7px;border-radius:999px;background:rgba(255,255,255,.1);overflow:hidden;position:relative}" +
+      ".nz-prog-fill{display:block;height:100%;width:0%;border-radius:999px;background:linear-gradient(90deg,#8b5cf6,#ec4899,#22c55e);" +
+        "box-shadow:0 0 18px rgba(139,92,246,.38);transition:width .55s cubic-bezier(.22,1,.36,1)}" +
       ".nz-steps{display:flex;gap:5px;margin-top:10px}" +
       ".nz-step{flex:1;height:4px;border-radius:999px;background:rgba(255,255,255,.12);transition:background .3s}" +
       ".nz-step.on{background:linear-gradient(90deg,#8b5cf6,#ec4899)}" +
@@ -870,16 +869,39 @@
     // Map a build artifact to a plain-English "what is this / where does it open".
     function describeArtifact(name) {
       var n = String(name).toLowerCase();
-      if (n.indexOf("mac") >= 0) return { label: "💻 Mac app (.dmg)", note: "double-click to open on your Mac" };
-      if (n.indexOf("win") >= 0) return { label: "🪟 Windows app (.exe)", note: "double-click to open on Windows" };
-      if (n.indexOf("ios") >= 0) return { label: "🍏 iPhone app", note: "needs Apple signing to install on an iPhone (won't open on a computer)" };
-      if (n.indexOf("android") >= 0) return { label: "📱 Android app", note: "install .apk on an Android phone, or upload .aab to Google Play" };
+      if (n === "ios-unsigned-app" || n === "ios-simulator-app") {
+        return { hidden: true, legacy: true };
+      }
+      if (n.indexOf("ios-simulator-preview") >= 0) {
+        return { label: "🍏 iOS Simulator preview", note: "tested in the cloud; unzip and run install-in-simulator.sh with Xcode installed" };
+      }
+      if (n.indexOf("ios-xcode-project") >= 0) {
+        return { label: "🛠 iOS Xcode project", note: "open ios/App/App.xcworkspace in Xcode" };
+      }
+      if (n.indexOf("android-studio-project") >= 0) {
+        return { label: "🤖 Android Studio project", note: "open the android folder in Android Studio" };
+      }
+      if (n.indexOf("android-installable") >= 0 || n === "android") {
+        return { label: "📱 Android APK/AAB files", note: "install the APK on Android or upload the AAB to Google Play" };
+      }
+      if (n.indexOf("mac") >= 0) return { label: "💻 Mac desktop build", note: "paid desktop build; may need signing/notarization before sharing" };
+      if (n.indexOf("win") >= 0) return { label: "🪟 Windows desktop build", note: "paid desktop build for Windows" };
       return { label: name, note: "" };
+    }
+    function visibleArtifacts(artifacts) {
+      return (artifacts || []).filter(function (a) { return !describeArtifact(a.name).hidden; });
     }
     function artifactsHtml(res) {
       if (!res.artifacts || !res.artifacts.length) return "";
+      var visible = visibleArtifacts(res.artifacts);
+      if (!visible.length) {
+        return '<div class="nz-arts"><div class="nz-art" style="cursor:default;box-shadow:none">' +
+          '<span class="nz-art-main">Rebuild required</span>' +
+          '<span class="nz-art-note">This run used an older raw iOS .app artifact format. Run Build again to get the tested simulator preview package.</span>' +
+          '</div></div>';
+      }
       var html = '<div class="nz-arts">';
-      res.artifacts.forEach(function (a, idx) {
+      visible.forEach(function (a, idx) {
         var d = describeArtifact(a.name);
         var mb = a.sizeBytes ? " · " + Math.max(1, Math.round(a.sizeBytes / 1048576)) + " MB" : "";
         html += '<button class="nz-art" type="button" data-artifact-index="' + idx + '">' +
@@ -887,14 +909,15 @@
           (d.note ? '<span class="nz-art-note">' + esc(d.note) + '</span>' : '') +
           '</button>';
       });
-      return html + '</div><div class="nz-hint">Downloads start here automatically. Mac/Windows files open on a computer; phone apps only run on phones.</div>';
+      return html + '</div><div class="nz-hint">Downloads are project/preview packages, not unsupported standalone Mac apps.</div>';
     }
     function wireArtifactDownloads(res) {
-      if (!res || !res.artifacts || !res.artifacts.length) return;
+      var artifacts = visibleArtifacts(res && res.artifacts);
+      if (!artifacts.length) return;
       Array.prototype.forEach.call(shadow.querySelectorAll("[data-artifact-index]"), function (btn) {
         btn.addEventListener("click", function () {
           var idx = Number(btn.getAttribute("data-artifact-index"));
-          var artifact = res.artifacts[idx];
+          var artifact = artifacts[idx];
           if (!artifact) return;
           if (typeof opts.onDownloadArtifact !== "function") {
             if (artifact.fallbackUrl) window.open(artifact.fallbackUrl, "_blank", "noopener");
@@ -915,19 +938,27 @@
       });
     }
 
-    // Live animated progress for the long (~5-10 min) cloud build so it never
-    // looks frozen: indeterminate bar + counting-up timer + 4 step dots.
-    var BUILD_STAGE_TEXT = {
-      push: "Pushing your app kit…",
-      dispatched: "Build queued in the cloud…",
-      queued: "Build queued in the cloud…",
-      completed: "Packaging your downloads…"
-    };
-    function buildStageText(stage) {
-      if (stage === "in_progress") {
-        return isPaidUi() ? "Building iOS, Android, Mac & Windows…" : "Building your iOS app…";
+    // Live progress for the long cloud build. The percent reflects GitHub's
+    // coarse status plus elapsed time, and never reaches 100% until the run
+    // actually completes.
+    var BUILD_MILESTONES = [
+      { pct: 10, text: "Preparing project files" },
+      { pct: 20, text: "Checking app configuration" },
+      { pct: 30, text: "Installing required dependencies" },
+      { pct: 40, text: "Preparing iOS build settings" },
+      { pct: 50, text: "Generating simulator-ready files" },
+      { pct: 60, text: "Validating Xcode project" },
+      { pct: 70, text: "Packaging download files" },
+      { pct: 80, text: "Running final build checks" },
+      { pct: 90, text: "Preparing the final download" },
+      { pct: 100, text: "Build complete" }
+    ];
+    function milestoneFor(percent) {
+      var p = Math.max(10, Math.min(100, Math.ceil(Number(percent || 10) / 10) * 10));
+      for (var i = 0; i < BUILD_MILESTONES.length; i++) {
+        if (BUILD_MILESTONES[i].pct === p) return BUILD_MILESTONES[i];
       }
-      return BUILD_STAGE_TEXT[stage] || ("Building… (" + stage + ")");
+      return BUILD_MILESTONES[0];
     }
     function stageToStep(stage) {
       if (stage === "dispatched" || stage === "queued") return 1;
@@ -942,28 +973,49 @@
       s.innerHTML =
         '<div class="nz-prog">' +
           '<div class="nz-prog-top"><span class="nz-prog-stage" id="nz-progStage">Starting…</span>' +
-            '<span class="nz-prog-time" id="nz-progTime">0:00</span></div>' +
-          '<div class="nz-prog-bar"></div>' +
+            '<span class="nz-prog-time"><span id="nz-progPct">0%</span> · <span id="nz-progTime">0:00</span></span></div>' +
+          '<div class="nz-prog-bar"><span class="nz-prog-fill" id="nz-progFill"></span></div>' +
           '<div class="nz-steps" id="nz-progSteps">' +
             '<span class="nz-step"></span><span class="nz-step"></span>' +
             '<span class="nz-step"></span><span class="nz-step"></span></div>' +
-          '<div class="nz-prog-note">Runs in the cloud — keep this open; download links appear when it finishes.</div>' +
+          '<div class="nz-prog-note">Runs in the cloud — we smoke-test the simulator build before showing downloads.</div>' +
         '</div>';
       var stepsEl = $("nz-progSteps");
+      var backendStage = "push";
+      var currentPct = 0;
       function setStep(idx) {
         for (var i = 0; i < stepsEl.children.length; i++) {
           stepsEl.children[i].className = "nz-step" + (i < idx ? " on" : (i === idx ? " on cur" : ""));
         }
       }
+      function targetPercent(stage) {
+        var elapsed = Math.floor((Date.now() - t0) / 1000);
+        if (stage === "completed") return 100;
+        if (stage === "in_progress") return Math.min(90, 30 + Math.floor(elapsed / 25) * 10);
+        if (stage === "dispatched" || stage === "queued") return 20;
+        return 10;
+      }
+      function paint(percent) {
+        percent = Math.max(currentPct, Math.min(100, percent));
+        if (backendStage !== "completed") percent = Math.min(percent, 90);
+        currentPct = percent;
+        var milestone = milestoneFor(percent);
+        var st = $("nz-progStage"); if (st) st.textContent = milestone.text;
+        var pct = $("nz-progPct"); if (pct) pct.textContent = milestone.pct + "%";
+        var fill = $("nz-progFill"); if (fill) fill.style.width = milestone.pct + "%";
+      }
       setStep(0);
+      paint(10);
       var timer = setInterval(function () {
         var el = $("nz-progTime"); if (!el) return;
         var sec = Math.floor((Date.now() - t0) / 1000);
         el.textContent = Math.floor(sec / 60) + ":" + ("0" + (sec % 60)).slice(-2);
+        paint(targetPercent(backendStage));
       }, 1000);
       return {
         update: function (stage) {
-          var st = $("nz-progStage"); if (st) st.textContent = buildStageText(stage);
+          backendStage = stage || backendStage;
+          paint(targetPercent(backendStage));
           setStep(stageToStep(stage));
         },
         stop: function () { clearInterval(timer); }
@@ -1006,19 +1058,23 @@
           prog.stop();
           btn.disabled = false;
           var hasArtifacts = res.artifacts && res.artifacts.length;
+          var hasUsefulArtifacts = visibleArtifacts(res.artifacts).length > 0;
           var failed = res.conclusion && res.conclusion !== "success";
 
-          if (hasArtifacts) {
-            showSuccess("🎉 Your app is ready", "Your installable app was built in the cloud. Download it:" +
+          if (hasArtifacts && hasUsefulArtifacts) {
+            showSuccess("🎉 Your build is ready", "Your cloud build passed and the simulator preview was smoke-tested. Download:" +
               artifactsHtml(res));
             wireArtifactDownloads(res);
+          } else if (hasArtifacts) {
+            showSuccess("Run build again", "This build finished with an older raw iOS app format. Run Build again to get the tested simulator preview package." +
+              artifactsHtml(res));
           } else if (failed) {
             showSuccess("Build didn't pass", "The cloud build finished as <b>" + esc(res.conclusion) +
               "</b>." + actionsLink(res.runUrl) + " to read the logs and retry.");
           } else if (res.runUrl || res.actionsUrl) {
             // Build started but we didn't wait for artifacts (or none were produced).
-            showSuccess("Building your app", "Your <b>.apk / .aab</b> and iOS app will appear as downloadable " +
-              "files when the run finishes (~5–10 min)." + actionsLink(res.runUrl || res.actionsUrl));
+            showSuccess("Building your app", "Your tested simulator preview and native project downloads will appear " +
+              "when the run finishes (~5–10 min)." + actionsLink(res.runUrl || res.actionsUrl));
           } else {
             showSuccess("Pushed to GitHub", "Kit pushed to <b>" + esc(st.githubRepo) +
               "</b>. Start the build from <b>Actions → Nativize Build → Run workflow</b>.");

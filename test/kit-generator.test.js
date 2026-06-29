@@ -230,6 +230,12 @@ test("gating: free plan generates iOS-only workflow + watermark, no push/social/
   assert.match(files["nativize-inject.sh"], /nativize-watermark\.html/); // injector references the watermark
   assert.match(wf, /Android \(\.apk \+ \.aab\)\n    if: \$\{\{ false \}\}/); // android gated off
   assert.match(wf, /Desktop \(macOS \.dmg\)\n    if: \$\{\{ false \}\}/);    // mac gated off
+  assert.match(wf, /ios-simulator-preview/);
+  assert.match(wf, /Smoke test iOS Simulator launch/);
+  assert.match(wf, /Upload iOS Xcode project\n        if: \$\{\{ false \}\}/);
+  assert.match(wf, /materialize-project:\n    name: Commit native projects into the repo\n    if: \$\{\{ false \}\}/);
+  assert.doesNotMatch(wf, /ios-unsigned-app/);
+  assert.doesNotMatch(wf, /ios-simulator-app/);
   // paid-only artifacts are absent
   assert.equal(files["src/nativePush.ts"], undefined);
   assert.equal(files["src/nativeSocialAuth.ts"], undefined);
@@ -424,7 +430,12 @@ test("workflow has dispatch trigger + android assembleDebug + ios xcodebuild no-
   assert.match(wf, /-workspace App\.xcworkspace/);
   assert.match(wf, /xcodebuild/);
   assert.match(wf, /CODE_SIGNING_ALLOWED=NO/);
-  assert.match(wf, /ios-unsigned-app/);
+  assert.match(wf, /Smoke test iOS Simulator launch/);
+  assert.match(wf, /ios-simulator-preview/);
+  assert.match(wf, /ios-xcode-project/);
+  assert.match(wf, /android-studio-project/);
+  assert.match(wf, /android-installable-builds/);
+  assert.doesNotMatch(wf, /ios-unsigned-app/);
   assert.doesNotMatch(wf, /bundleRelease.*\|\|/);
 });
 

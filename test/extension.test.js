@@ -67,6 +67,7 @@ test("artifact downloads use Chrome downloads in the extension and Supabase rela
   const background = read("src/background.js");
   const content = read("src/content.js");
   const web = read("website/app.js");
+  const panel = read("src/panel.js");
   const billing = read("src/billing.js");
   const edge = read("supabase/functions/artifact-download/index.ts");
   const readme = read("supabase/README.md");
@@ -79,6 +80,11 @@ test("artifact downloads use Chrome downloads in the extension and Supabase rela
   assert.doesNotMatch(content, /GitHub\.downloadArtifact\(artifact, state\.token\)/);
 
   assert.match(web, /Billing\.downloadArtifact\(supabaseAccess, state\.token, artifact, filename\)/);
+  assert.match(panel, /ios-unsigned-app/);
+  assert.match(panel, /ios-simulator-app/);
+  assert.match(panel, /Rebuild required/);
+  assert.match(panel, /ios-simulator-preview/);
+  assert.match(panel, /ios-xcode-project/);
   assert.match(billing, /\/functions\/v1\/artifact-download/);
   assert.match(edge, /GITHUB_ARTIFACT_RE/);
   assert.match(edge, /Content-Disposition/);
@@ -124,14 +130,25 @@ test("panel copy does not present a manual GitHub token as a billing bypass", ()
   assert.doesNotMatch(source, /or paste a token under Options/);
 });
 
-test("free build status names only iOS and does not warn about expected platform limits", () => {
+test("build progress uses distinct ten-percent milestones and does not warn about expected platform limits", () => {
   const panel = read("src/panel.js");
   const web = read("website/app.js");
 
-  assert.match(panel, /function buildStageText\(stage\)/);
-  assert.match(panel, /Building your iOS app/);
-  assert.match(panel, /Building iOS, Android, Mac & Windows/);
-  assert.doesNotMatch(panel, /in_progress: "Building iOS, Android, Mac & Windows/);
+  [
+    "Preparing project files",
+    "Checking app configuration",
+    "Installing required dependencies",
+    "Preparing iOS build settings",
+    "Generating simulator-ready files",
+    "Validating Xcode project",
+    "Packaging download files",
+    "Running final build checks",
+    "Preparing the final download",
+    "Build complete"
+  ].forEach((message) => assert.match(panel, new RegExp(message)));
+  assert.match(panel, /id="nz-progPct"/);
+  assert.match(panel, /id="nz-progFill"/);
+  assert.match(panel, /never reaches 100% until the run/);
   assert.doesNotMatch(web, /Android \/ Mac \/ Windows builds/);
 });
 
