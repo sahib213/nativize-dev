@@ -303,7 +303,6 @@
     if (locked.indexOf("permissions") > -1 && rawState.permissions && rawState.permissions.length) stripped.push("app permissions");
     if (locked.indexOf("social") > -1 && rawState.socialAuth && Object.keys(rawState.socialAuth).some(function (k) { return rawState.socialAuth[k] && rawState.socialAuth[k].enabled; })) stripped.push("social sign-in");
     if (locked.indexOf("storeUpload") > -1 && (rawState.iosUpload || rawState.androidUpload)) stripped.push("store auto-upload");
-    if (locked.indexOf("platforms") > -1) stripped.push("Android / Mac / Windows builds");
     return stripped;
   }
   function flashUpgrade(stripped) {

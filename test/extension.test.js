@@ -77,6 +77,17 @@ test("panel copy does not present a manual GitHub token as a billing bypass", ()
   assert.doesNotMatch(source, /or paste a token under Options/);
 });
 
+test("free build status names only iOS and does not warn about expected platform limits", () => {
+  const panel = read("src/panel.js");
+  const web = read("website/app.js");
+
+  assert.match(panel, /function buildStageText\(stage\)/);
+  assert.match(panel, /Building your iOS app/);
+  assert.match(panel, /Building iOS, Android, Mac & Windows/);
+  assert.doesNotMatch(panel, /in_progress: "Building iOS, Android, Mac & Windows/);
+  assert.doesNotMatch(web, /Android \/ Mac \/ Windows builds/);
+});
+
 test("extension and web studio require Supabase sign-in before builder actions", () => {
   const panel = read("src/panel.js");
   const content = read("src/content.js");
