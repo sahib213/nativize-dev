@@ -255,7 +255,7 @@ begin
     if char_length(new.message) < 1 or char_length(new.message) > 1600 then
       raise exception 'Message is too long' using errcode = '22023';
     end if;
-    bucket := 'feedback:support:' || new.email;
+    bucket := 'feedback:support:' || md5(new.email);
     perform public.nativize_check_rate_limit(bucket, 5, 900);
     select count(*)::integer
       into recent_count
@@ -271,7 +271,7 @@ begin
     if char_length(new.description) < 1 or char_length(new.description) > 1200 then
       raise exception 'Description is too long' using errcode = '22023';
     end if;
-    bucket := 'feedback:feature:' || coalesce(new.email, regexp_replace(new.page_path, '[^a-zA-Z0-9._/-]', '-', 'g'));
+    bucket := 'feedback:feature:' || md5(coalesce(new.email, new.page_path));
     perform public.nativize_check_rate_limit(bucket, 5, 900);
     select count(*)::integer
       into recent_count

@@ -260,7 +260,7 @@
     status.textContent = "";
     status.classList.remove("is-success", "is-error");
     status.classList.add("is-error");
-    status.appendChild(document.createTextNode("The support inbox is not ready yet. "));
+    status.appendChild(document.createTextNode(type === "feature" ? "The feature inbox is not ready yet. " : "The support inbox is not ready yet. "));
     var link = document.createElement("a");
     link.href = url;
     link.target = "_blank";
