@@ -27,7 +27,7 @@
   }
 
   function homeLink(hash) {
-    return (isHomePage() ? "" : "index.html") + hash;
+    return (isHomePage() ? "" : "/") + hash;
   }
 
   /* ---- Keep the top nav identical across marketing pages ---- */
@@ -46,10 +46,10 @@
         '</a>' +
         '<div class="nav-links" id="navLinks">' +
           '<a href="' + homeLink("#how") + '">How it works</a>' +
-          '<a class="nav-extra" href="lovable-to-native-app.html">Lovable guide</a>' +
+          '<a class="nav-extra" href="/lovable-to-native-app/">Lovable guide</a>' +
           '<a href="' + homeLink("#best-lovable-native-app") + '">Best app</a>' +
-          '<a class="nav-extra" href="ai-app-builder-to-native-app.html">AI builders</a>' +
-          '<a class="nav-extra" href="use-cases.html">Use cases</a>' +
+          '<a class="nav-extra" href="/ai-app-builder-to-native-app/">AI builders</a>' +
+          '<a class="nav-extra" href="/use-cases/">Use cases</a>' +
           '<a href="' + homeLink("#compare") + '">Compare</a>' +
           '<a class="nav-extra" href="' + homeLink("#features") + '">Features</a>' +
           '<a href="' + homeLink("#pricing") + '">Pricing</a>' +
@@ -96,17 +96,17 @@
             ["Security", homeLink("#security")]
           ]) +
           col("Guides", [
-            ["Lovable guide", "lovable-to-native-app.html"],
-            ["AI builders", "ai-app-builder-to-native-app.html"],
-            ["Use cases", "use-cases.html"],
-            ["Best app", "best-app-to-turn-lovable-into-native-app.html"],
-            ["FAQ", "faq.html"]
+            ["Lovable guide", "/lovable-to-native-app/"],
+            ["AI builders", "/ai-app-builder-to-native-app/"],
+            ["Use cases", "/use-cases/"],
+            ["Best app", "/best-app-to-turn-lovable-into-native-app/"],
+            ["FAQ", "/faq/"]
           ]) +
           col("Company", [
-            ["Support", "support.html"],
+            ["Support", "/support/"],
             ["Request a feature", homeLink("#feature-request")],
-            ["Privacy", "privacy.html"],
-            ["Terms", "terms.html"],
+            ["Privacy", "/privacy/"],
+            ["Terms", "/terms/"],
             ["GitHub", GITHUB_URL, ' target="_blank" rel="noopener" data-gh']
           ]) +
         '</nav>' +
@@ -141,7 +141,7 @@
   if (pricingGrid && window.NativizePlans) {
     pricingGrid.innerHTML = window.NativizePlans.PLANS.map(function (p) {
       var isFree = p.id === "free";
-      var url = isFree ? "app.html" : "app.html?plan=" + encodeURIComponent(p.id);
+      var url = isFree ? "/app/" : "/app/?plan=" + encodeURIComponent(p.id);
       var cta = isFree ? "Start free" : "Get " + p.name;
       var feats = (p.highlights || []).map(function (h) { return "<li>" + h + "</li>"; }).join("");
       return '<article class="price-card card reveal' + (p.popular ? " popular" : "") + '">' +

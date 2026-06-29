@@ -5,12 +5,12 @@ support and feature-request forms submit user-entered text to Supabase.
 
 ```
 website/
-  index.html     # landing page (hero, how-it-works, features, pricing, support, FAQ)
-  app.html       # "Studio" — the full tool, in the browser (generate/push/update)
-  privacy.html   # public privacy policy URL for store listings
-  terms.html     # public terms page
-  support.html   # public support URL for store listings
-  chrome-web-store-disclosures.html
+  /     # landing page (hero, how-it-works, features, pricing, support, FAQ)
+  /app/       # "Studio" — the full tool, in the browser (generate/push/update)
+  /privacy/   # public privacy policy URL for store listings
+  /terms/     # public terms page
+  /support/   # public support URL for store listings
+  /chrome-web-store-disclosures/
   styles.css     # shared styles (dark, glassy, violet→blue brand + animations)
   app.css        # Studio-only styles
   script.js      # landing: scroll reveal, nav, FAQ, glyphs, pricing render, CTAs
@@ -20,7 +20,7 @@ website/
   sync-lib.sh    # re-copies ../src/* into lib/ — run after changing the core
 ```
 
-## The web app (`app.html`)
+## The web app (`/app/`)
 
 The Studio runs the **same engine as the extension** (it reuses `lib/*`, which are
 copies of `../src`). Auth runs through Supabase GitHub OAuth and stores the GitHub

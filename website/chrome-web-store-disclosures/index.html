@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://api.github.com https://github.com https://codeload.github.com https://gaaxcbarmiwtojblkkyh.supabase.co; img-src 'self' data: blob:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests" />
+  <title>Nativize Chrome Web Store Disclosures</title>
+  <meta name="description" content="Chrome Web Store privacy and permission disclosure notes for Nativize." />
+  <meta name="robots" content="index,follow" />
+  <meta name="theme-color" content="#0a0a12" />
+  <link rel="canonical" href="https://nativize.dev/chrome-web-store-disclosures/" />
+  <meta property="og:site_name" content="Nativize" />
+  <meta property="og:title" content="Nativize Chrome Web Store Disclosures" />
+  <meta property="og:description" content="Privacy, permissions, remote-code, and data-use disclosures for the Nativize Chrome extension." />
+  <meta property="og:type" content="article" />
+  <meta property="og:url" content="https://nativize.dev/chrome-web-store-disclosures/" />
+  <meta property="og:image" content="https://nativize.dev/og-image.png" />
+  <meta property="og:image:type" content="image/png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:image" content="https://nativize.dev/og-image.png" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%237c3aed'/%3E%3Cstop offset='1' stop-color='%232563eb'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='128' height='128' rx='28' fill='url(%23g)'/%3E%3Cpath d='M64 30 L86 54 L72 54 L72 96 L56 96 L56 54 L42 54 Z' fill='white'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="/styles.css?v=20260629-flow-locks" />
+</head>
+<body>
+  <div class="aurora" aria-hidden="true">
+    <span class="blob blob-1"></span>
+    <span class="blob blob-2"></span>
+    <span class="blob blob-3"></span>
+    <div class="grid-overlay"></div>
+  </div>
+
+  <header class="site-header scrolled">
+    <nav class="nav container">
+      <a class="brand" href="/" aria-label="Nativize home">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 128 128"><defs><linearGradient id="bm" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7c3aed"/><stop offset=".5" stop-color="#4f46e5"/><stop offset="1" stop-color="#2563eb"/></linearGradient></defs><rect width="128" height="128" rx="28" fill="url(#bm)"/><path d="M64 30 L86 54 L72 54 L72 96 L56 96 L56 54 L42 54 Z" fill="white"/></svg>
+        </span>
+        <span class="brand-name">Nativize</span>
+      </a>
+      <div class="nav-cta">
+        <a class="btn btn-ghost" href="/privacy/">Privacy</a>
+        <a class="btn btn-primary" href="/app/">Open app</a>
+      </div>
+    </nav>
+  </header>
+
+  <main class="legal-main">
+    <div class="legal-shell">
+      <div class="legal-hero">
+        <span class="eyebrow">Chrome Web Store</span>
+        <h1>Disclosure Notes</h1>
+        <p>These notes mirror the Chrome Web Store Developer Dashboard privacy answers for Nativize.</p>
+      </div>
+
+      <article class="legal-card card legal-content">
+        <section>
+          <h2>Single Purpose</h2>
+          <p>Nativize generates native app project kits from web apps, pushes the generated files to a user-selected GitHub repository when requested, and runs GitHub Actions builds for those native projects.</p>
+        </section>
+        <section>
+          <h2>Permission Justifications</h2>
+          <p><code>storage</code>: Stores extension settings, selected project configuration, GitHub connection state, billing status, Supabase session state, and GitHub tokens locally in Chrome so users can continue the same native-app project workflow.</p>
+          <p><code>identity</code>: Runs GitHub OAuth sign-in through <code>chrome.identity</code> so users can connect GitHub without manually pasting a token.</p>
+          <p>Host permissions: Required for GitHub API calls and Supabase Auth/billing/app-activation APIs. The content script is limited to Lovable and local development pages by default; it reads only limited page information, such as title and GitHub links, to prefill editable app and repo fields.</p>
+        </section>
+        <section>
+          <h2>Remote Code</h2>
+          <p>Nativize does not use remote code. All executable JavaScript is included in the extension package. API, OAuth, and payment-related requests to GitHub, Supabase Auth, Supabase database APIs, Supabase edge functions, and Stripe do not load or execute remote JavaScript or WebAssembly.</p>
+        </section>
+        <section>
+          <h2>Data Categories</h2>
+          <ul>
+            <li>Authentication information</li>
+            <li>Web history, limited to the current page origin/path used locally as a per-project storage key</li>
+            <li>Website content, limited to page title and GitHub repository links used for prefill</li>
+            <li>Support and feature-request text submitted through the Nativize website</li>
+          </ul>
+        </section>
+        <section>
+          <h2>Certifications</h2>
+          <ul>
+            <li>Nativize does not sell or transfer user data except for approved uses needed to provide the extension's functionality.</li>
+            <li>Nativize does not use or transfer user data for unrelated purposes.</li>
+            <li>Nativize does not use or transfer user data for creditworthiness or lending.</li>
+          </ul>
+        </section>
+      </article>
+
+      <div class="legal-nav">
+        <a class="btn btn-glass" href="/privacy/">Privacy</a>
+        <a class="btn btn-glass" href="/terms/">Terms</a>
+        <a class="btn btn-glass" href="/support/">Support</a>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-bottom">
+      <span>© <span id="year"></span> Nativize · Built on Capacitor 8</span>
+      <span class="footer-note">Not affiliated with Lovable, Apple, Google or Microsoft.</span>
+    </div>
+  </footer>
+  <script src="/script.js?v=20260629-feedback-fallback" defer></script>
+</body>
+</html>
