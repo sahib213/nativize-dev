@@ -8,7 +8,7 @@
   // When the Chrome Web Store listing exists, set CHROME_STORE_URL and every
   // "Add to Chrome" button points to it. Until then they scroll to install steps.
   var CHROME_STORE_URL = ""; // e.g. "https://chrome.google.com/webstore/detail/…"
-  var GITHUB_URL = "https://github.com/"; // set to the public Nativize repo URL
+  var GITHUB_URL = "https://github.com/sahib213/nativize-dev"; // public Nativize repo
 
   // Supabase feedback forms. The anon key is publishable; protect the tables
   // with RLS so anonymous visitors can insert but cannot read existing rows.
@@ -66,6 +66,57 @@
   }
 
   renderSharedHeader();
+
+  /* ---- Keep one clean, column-aligned footer across every marketing page ---- */
+  function renderSharedFooter() {
+    if (document.body && document.body.classList.contains("app-body")) return;
+    var footer = document.querySelector(".site-footer");
+    if (!footer) return;
+    var year = new Date().getFullYear();
+    function col(title, links) {
+      return '<div class="footer-col"><h4>' + title + '</h4>' +
+        links.map(function (l) {
+          return '<a href="' + l[1] + '"' + (l[2] || "") + '>' + l[0] + '</a>';
+        }).join("") + '</div>';
+    }
+    footer.innerHTML =
+      '<div class="container footer-inner">' +
+        '<div class="footer-brand">' +
+          '<span class="brand-mark sm" aria-hidden="true"><svg viewBox="0 0 128 128"><defs><linearGradient id="bmf" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7c3aed"/><stop offset=".5" stop-color="#4f46e5"/><stop offset="1" stop-color="#2563eb"/></linearGradient></defs><rect width="128" height="128" rx="28" fill="url(#bmf)"/><path d="M64 30 L86 54 L72 54 L72 96 L56 96 L56 54 L42 54 Z" fill="white"/></svg></span>' +
+          '<div><strong>Nativize</strong>' +
+            '<p>Lovable &rarr; native iOS, Android, Mac &amp; Windows. Generation runs in your browser.</p>' +
+          '</div>' +
+        '</div>' +
+        '<nav class="footer-cols" aria-label="Footer">' +
+          col("Product", [
+            ["How it works", homeLink("#how")],
+            ["Features", homeLink("#features")],
+            ["Pricing", homeLink("#pricing")],
+            ["Compare", homeLink("#compare")],
+            ["Security", homeLink("#security")]
+          ]) +
+          col("Guides", [
+            ["Lovable guide", "lovable-to-native-app.html"],
+            ["AI builders", "ai-app-builder-to-native-app.html"],
+            ["Use cases", "use-cases.html"],
+            ["Best app", "best-app-to-turn-lovable-into-native-app.html"],
+            ["FAQ", "faq.html"]
+          ]) +
+          col("Company", [
+            ["Support", "support.html"],
+            ["Request a feature", homeLink("#feature-request")],
+            ["Privacy", "privacy.html"],
+            ["Terms", "terms.html"],
+            ["GitHub", GITHUB_URL, ' target="_blank" rel="noopener" data-gh']
+          ]) +
+        '</nav>' +
+      '</div>' +
+      '<div class="container footer-bottom">' +
+        '<span>&copy; ' + year + ' Nativize &middot; Built on Capacitor 8</span>' +
+        '<span class="footer-note">Not affiliated with Lovable, Apple, Google or Microsoft.</span>' +
+      '</div>';
+  }
+  renderSharedFooter();
 
   /* ---- Wire CTAs + GitHub links ---- */
   document.querySelectorAll("[data-cta]").forEach(function (el) {
@@ -192,9 +243,26 @@
   function setFormStatus(form, state, message) {
     var status = form.querySelector(".form-status");
     if (!status) return;
+    status.textContent = "";
     status.classList.remove("is-success", "is-error");
     if (state) status.classList.add("is-" + state);
     status.textContent = message || "";
+  }
+
+  function setFormFallbackStatus(form, type, url) {
+    var status = form.querySelector(".form-status");
+    if (!status) return;
+    status.textContent = "";
+    status.classList.remove("is-success", "is-error");
+    status.classList.add("is-error");
+    status.appendChild(document.createTextNode("The support inbox is not ready yet. "));
+    var link = document.createElement("a");
+    link.href = url;
+    link.target = "_blank";
+    link.rel = "noopener";
+    link.textContent = type === "feature" ? "Open a GitHub feature draft" : "Open a GitHub support draft";
+    status.appendChild(link);
+    status.appendChild(document.createTextNode(" instead. Do not include secrets."));
   }
 
   function setFormBusy(form, busy) {
@@ -248,6 +316,38 @@
     }
   }
 
+  function feedbackFallbackUrl(type, payload) {
+    var title = type === "feature"
+      ? "Feature request: " + (payload.title || "Nativize request")
+      : "Support request: " + (payload.topic || "Nativize help");
+    var body = type === "feature"
+      ? [
+          "## Feature request",
+          "",
+          "**Priority:** " + (payload.priority || "nice-to-have"),
+          "**Page:** " + (payload.page_path || "/"),
+          "",
+          "## Description",
+          payload.description || "",
+          "",
+          "_Email is omitted here so this public GitHub draft does not expose private contact info._"
+        ].join("\n")
+      : [
+          "## Support request",
+          "",
+          "**Topic:** " + (payload.topic || "other"),
+          "**Page:** " + (payload.page_path || "/"),
+          "",
+          "## What happened",
+          payload.message || "",
+          "",
+          "_Name and email are omitted here so this public GitHub draft does not expose private contact info._"
+        ].join("\n");
+    var url = GITHUB_URL + "/issues/new";
+    var params = new URLSearchParams({ title: title, body: body });
+    return url + "?" + params.toString();
+  }
+
   document.querySelectorAll("[data-feedback-form]").forEach(function (form) {
     form.addEventListener("submit", async function (event) {
       event.preventDefault();
@@ -267,13 +367,19 @@
 
       setFormBusy(form, true);
       setFormStatus(form, "", "");
+      var payload = null;
       try {
-        await insertFeedback(table, buildFeedbackPayload(form, type));
+        payload = buildFeedbackPayload(form, type);
+        await insertFeedback(table, payload);
         form.reset();
         setFormStatus(form, "success", type === "feature" ? "Feature request sent. Thank you." : "Support request sent. Thank you.");
       } catch (err) {
         console.error(err);
-        setFormStatus(form, "error", "Could not send this yet. Please try again in a moment.");
+        if (payload) {
+          setFormFallbackStatus(form, type, feedbackFallbackUrl(type, payload));
+        } else {
+          setFormStatus(form, "error", (err && err.message) || "Please check the form and try again.");
+        }
       } finally {
         setFormBusy(form, false);
       }
