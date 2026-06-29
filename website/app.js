@@ -179,6 +179,7 @@
     caps.push("Apps: " + used + " / " + limit);
     caps.push("Platforms: " + plan.platforms.join(", "));
     if (locked.indexOf("push") > -1) caps.push("Push: paid");
+    if (locked.indexOf("permissions") > -1) caps.push("Permissions: paid");
     if (locked.indexOf("social") > -1) caps.push("Sign-in: paid");
     if (locked.indexOf("storeUpload") > -1) caps.push("Store upload: paid");
     if (plan.watermark) caps.push("Watermark: yes");
@@ -299,6 +300,7 @@
     var locked = Plans.lockedFeatures(planId);
     var stripped = [];
     if (locked.indexOf("push") > -1 && rawState.enablePush) stripped.push("push notifications");
+    if (locked.indexOf("permissions") > -1 && rawState.permissions && rawState.permissions.length) stripped.push("app permissions");
     if (locked.indexOf("social") > -1 && rawState.socialAuth && Object.keys(rawState.socialAuth).some(function (k) { return rawState.socialAuth[k] && rawState.socialAuth[k].enabled; })) stripped.push("social sign-in");
     if (locked.indexOf("storeUpload") > -1 && (rawState.iosUpload || rawState.androidUpload)) stripped.push("store auto-upload");
     if (locked.indexOf("platforms") > -1) stripped.push("Android / Mac / Windows builds");
@@ -433,12 +435,16 @@
         flashUpgrade(stripped);
       });
     },
+    onDownloadArtifact: function (artifact, state) {
+      var filename = (Kit.slugify((artifact && artifact.name) || state.appName || "nativize-artifact") || "nativize-artifact") + ".zip";
+      return GitHub.downloadArtifact(artifact, state.token).then(function (blob) {
+        triggerDownload(blob, filename);
+      });
+    },
     onPush: function (state, token, onProgress) {
       var repo = state.githubRepo;
       var stripped = gatedNote(state);
-      return refreshBillingStrict("build an app").then(function () {
-        return ensureCanPush(repo);
-      }).then(function () {
+      return ensureCanPush(repo).then(function () {
         var files = Kit.generateKit(withPlan(state));
         return GitHub.pushKit(repo, token, files, "Update Nativize kit for " + state.appName + " (Capacitor 8)")
           .then(function (res) {

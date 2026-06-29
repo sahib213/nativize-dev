@@ -127,7 +127,7 @@
   .nz-status.ok { color: #7ee2a8; }
 
   .nz-success {
-    display: none; padding: 28px 22px 26px; text-align: center;
+    display: none; padding: 28px 22px 26px; text-align: center; color: #f5f3ff;
   }
   .nz-success.nz-show { display: block; animation: nz-in .2s ease; }
   .nz-success .nz-check {
@@ -136,7 +136,8 @@
     box-shadow: 0 10px 28px rgba(34,197,94,.4);
   }
   .nz-success h2 { margin: 0 0 6px; font-size: 17px; }
-  .nz-success p { margin: 0 0 16px; font-size: 12.5px; color: #9aa0b4; line-height: 1.5; }
+  .nz-success-msg { margin: 0 0 16px; font-size: 12.5px; color: #d8d3ee; line-height: 1.55; }
+  .nz-success-msg b, .nz-success-msg code { color: #fff; }
   .nz-success a { color: #a78bfa; word-break: break-all; }
 
   .nz-foot { padding: 10px 20px 14px; font-size: 10.5px; color: #646a7e; text-align: center; border-top: 1px solid rgba(255,255,255,.06); }
@@ -188,11 +189,13 @@
       ".nz-advBody{display:none;margin-top:6px}" +
       ".nz-advBody.nz-show{display:block}" +
       ".nz-arts{display:flex;flex-direction:column;gap:8px;margin:14px 0}" +
-      ".nz-art{display:flex;flex-direction:column;gap:2px;padding:10px 14px;border-radius:11px;" +
-        "background:linear-gradient(135deg,#7c3aed,#db2777);color:#fff;text-decoration:none}" +
-      ".nz-art-main{font-weight:650;font-size:13.5px}" +
-      ".nz-art-note{font-size:11px;opacity:.85}" +
-      ".nz-art:hover{filter:brightness(1.08)}" +
+      ".nz-art{display:flex;flex-direction:column;gap:3px;width:100%;padding:12px 14px;border-radius:12px;" +
+        "border:1px solid rgba(167,139,250,.42);background:linear-gradient(135deg,rgba(124,58,237,.92),rgba(37,99,235,.88));" +
+        "color:#fff;text-decoration:none;text-align:left;cursor:pointer;box-shadow:0 10px 24px rgba(37,99,235,.22)}" +
+      ".nz-art-main{font-weight:750;font-size:13.5px;color:#fff}" +
+      ".nz-art-note{font-size:11.5px;color:#eef2ff;opacity:.94}" +
+      ".nz-art:hover{filter:brightness(1.08);transform:translateY(-1px)}" +
+      ".nz-art[disabled]{opacity:.72;cursor:wait;transform:none}" +
       ".nz-auth{margin-bottom:14px;text-align:center}" +
       ".nz-btn-gh{width:100%;display:inline-flex;align-items:center;justify-content:center;padding:11px 16px;" +
         "border:1px solid rgba(255,255,255,.18);border-radius:11px;background:#1b1726;color:#fff;font-weight:650;font-size:13.5px;cursor:pointer}" +
@@ -264,7 +267,7 @@
         // ---- Build (hero) ----
         '<div class="nz-actions nz-actions-stack">' +
           '<button class="nz-btn nz-btn-primary nz-btn-hero" id="nz-buildBtn">⚡ Build my app</button>' +
-          '<div class="nz-hint nz-build-sub">Builds installable <b>iOS, Android, Mac &amp; Windows</b> apps in the cloud, with download links. Plan is checked before build.</div>' +
+          '<div class="nz-hint nz-build-sub">Free builds a watermarked <b>iOS</b> app. Paid plans unlock Android, Mac, Windows, permissions, uploads, and no watermark.</div>' +
           '<button class="nz-btn nz-btn-ghost" id="nz-projectBtn" style="margin-top:8px">⬇ Download full project (source)</button>' +
           '<div class="nz-hint nz-build-sub">The whole project: your <b>src</b> + ios + android + desktop folders, as a .zip.</div>' +
         '</div>' +
@@ -330,6 +333,7 @@
           '<button class="nz-link" id="nz-permToggle" type="button">App permissions — what your app can access ▾</button>' +
           '<div class="nz-advBody" id="nz-permBody">' +
             '<div class="nz-hint">Turn on only what your app needs. iOS requires a short reason for each — write it in plain language. This writes the iOS Info.plist + Android manifest for you.</div>' +
+            '<div class="nz-paid-lock" id="nz-permLock">Paid plan required for app permissions. Free builds stay iOS-only with the Nativize watermark.</div>' +
             '<div id="nz-permsList"></div>' +
             '<div class="nz-permwarn" id="nz-permWarn" style="display:none"></div>' +
           '</div>' +
@@ -379,7 +383,7 @@
       '<div class="nz-success" id="nz-success">' +
         '<div class="nz-check">' + ICON_CHECK + '</div>' +
         '<h2 id="nz-successTitle">Kit generated</h2>' +
-        '<p id="nz-successMsg"></p>' +
+        '<div class="nz-success-msg" id="nz-successMsg"></div>' +
         '<button class="nz-btn nz-btn-ghost" id="nz-again" style="max-width:140px;margin:0 auto">Back</button>' +
       '</div>' +
       '<div class="nz-foot">Nativize · Capacitor 8 · runs entirely in your browser</div>';
@@ -393,6 +397,7 @@
       "#nz-ascKeyId", "#nz-ascIssuer", "#nz-appleTeam", "#nz-ascP8",
       "#nz-ksPass", "#nz-keyAlias", "#nz-keyPass", "#nz-playJson",
       "#nz-logo", "#nz-logoBg", "#nz-island",
+      "[data-permtoggle]", "[data-perm]",
       "[data-socialtoggle]", "[data-social]"
     ].join(",");
 
@@ -412,6 +417,8 @@
       setPanelVisible("nz-storeWrap", false);
       setPanelVisible("nz-iosWrap", false);
       setPanelVisible("nz-androidWrap", false);
+      Array.prototype.forEach.call(shadow.querySelectorAll("[data-permtoggle]"), function (cb) { cb.checked = false; });
+      Array.prototype.forEach.call(shadow.querySelectorAll('[id^="pd-"]'), function (box) { box.classList.remove("nz-show"); });
       Array.prototype.forEach.call(shadow.querySelectorAll("[data-socialtoggle]"), function (cb) { cb.checked = false; });
       Array.prototype.forEach.call(shadow.querySelectorAll('[id^="sd-"]'), function (box) { box.classList.remove("nz-show"); });
     }
@@ -419,6 +426,7 @@
       var planLocked = !isPaidUi();
       if (planLocked) clearPaidSelections();
       setPanelVisible("nz-pushLock", planLocked);
+      setPanelVisible("nz-permLock", planLocked);
       setPanelVisible("nz-storeLock", planLocked);
       setPanelVisible("nz-socialLock", planLocked);
       setPanelVisible("nz-brandLock", planLocked);
@@ -540,7 +548,7 @@
         iosUpload: iosUpload,
         androidUpload: androidUpload,
         storeSecrets: secrets,
-        permissions: collectPermissions(),
+        permissions: isPaidUi() ? collectPermissions() : [],
         socialAuth: isPaidUi() ? collectSocial() : {},
         appIcon: isPaidUi() ? (logoIconB64 || null) : null,
         appSplash: isPaidUi() ? (logoSplashB64 || null) : null,
@@ -605,6 +613,11 @@
     function validatePerms() {
       var host = $("nz-permsList");
       if (!host || !KIT) return [];
+      if (!isPaidUi()) {
+        var lockedWarn = $("nz-permWarn");
+        if (lockedWarn) lockedWarn.style.display = "none";
+        return [];
+      }
       var missing = KIT.validatePermissions(collectPermissions()); // array of labels
       var missingKeys = {};
       collectPermissions().forEach(function (p) {
@@ -866,16 +879,40 @@
     function artifactsHtml(res) {
       if (!res.artifacts || !res.artifacts.length) return "";
       var html = '<div class="nz-arts">';
-      res.artifacts.forEach(function (a) {
+      res.artifacts.forEach(function (a, idx) {
         var d = describeArtifact(a.name);
         var mb = a.sizeBytes ? " · " + Math.max(1, Math.round(a.sizeBytes / 1048576)) + " MB" : "";
-        html += '<a class="nz-art" href="' + esc(a.downloadUrl) + '" target="_blank" rel="noopener">' +
+        html += '<button class="nz-art" type="button" data-artifact-index="' + idx + '">' +
           '<span class="nz-art-main">⬇ ' + esc(d.label) + mb + '</span>' +
           (d.note ? '<span class="nz-art-note">' + esc(d.note) + '</span>' : '') +
-          '</a>';
+          '</button>';
       });
-      return html + '</div><div class="nz-hint">Each opens the GitHub build page — tap <b>Artifacts</b> to download. ' +
-        'Mac/Windows files open on a computer; phone apps only run on phones.</div>';
+      return html + '</div><div class="nz-hint">Downloads start here automatically. Mac/Windows files open on a computer; phone apps only run on phones.</div>';
+    }
+    function wireArtifactDownloads(res) {
+      if (!res || !res.artifacts || !res.artifacts.length) return;
+      Array.prototype.forEach.call(shadow.querySelectorAll("[data-artifact-index]"), function (btn) {
+        btn.addEventListener("click", function () {
+          var idx = Number(btn.getAttribute("data-artifact-index"));
+          var artifact = res.artifacts[idx];
+          if (!artifact) return;
+          if (typeof opts.onDownloadArtifact !== "function") {
+            if (artifact.fallbackUrl) window.open(artifact.fallbackUrl, "_blank", "noopener");
+            return;
+          }
+          var main = btn.querySelector(".nz-art-main");
+          var old = main ? main.textContent : btn.textContent;
+          btn.disabled = true;
+          if (main) main.textContent = "Downloading " + (artifact.name || "file") + "...";
+          Promise.resolve(opts.onDownloadArtifact(artifact, getState()))
+            .then(function () { if (main) main.textContent = "Downloaded " + (artifact.name || "file"); })
+            .catch(function (e) {
+              btn.disabled = false;
+              if (main) main.textContent = old;
+              setStatus("Download failed: " + (e && e.message || e), "err");
+            });
+        });
+      });
     }
 
     // Live animated progress for the long (~5-10 min) cloud build so it never
@@ -969,6 +1006,7 @@
           if (hasArtifacts) {
             showSuccess("🎉 Your app is ready", "Your installable app was built in the cloud. Download it:" +
               artifactsHtml(res));
+            wireArtifactDownloads(res);
           } else if (failed) {
             showSuccess("Build didn't pass", "The cloud build finished as <b>" + esc(res.conclusion) +
               "</b>." + actionsLink(res.runUrl) + " to read the logs and retry.");

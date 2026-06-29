@@ -186,9 +186,11 @@ test("social: both providers → both helpers and a setup doc", () => {
 test("plans: gateConfig strips paid features + watermarks + iOS-only on free", () => {
   const gated = Plans.gateConfig({
     appName: "X", enablePush: true, iosUpload: true,
+    permissions: [{ key: "camera", description: "Scan receipts" }],
     socialAuth: { google: { enabled: true, webClientId: "w" } }
   }, "free");
   assert.equal(gated.enablePush, false);
+  assert.deepEqual(gated.permissions, []);
   assert.deepEqual(gated.socialAuth, {});
   assert.equal(gated.iosUpload, false);
   assert.equal(gated.watermark, true);
@@ -198,9 +200,10 @@ test("plans: gateConfig strips paid features + watermarks + iOS-only on free", (
 test("plans: pro keeps features + all platforms + no watermark", () => {
   const p = Plans.planById("pro");
   assert.equal(p.apps, 3);
-  const gated = Plans.gateConfig({ enablePush: true, iosUpload: true }, "pro");
+  const gated = Plans.gateConfig({ enablePush: true, iosUpload: true, permissions: [{ key: "camera", description: "Scan" }] }, "pro");
   assert.equal(gated.enablePush, true);
   assert.equal(gated.iosUpload, true);
+  assert.equal(gated.permissions.length, 1);
   assert.equal(gated.watermark, false);
   assert.equal(gated.platforms.length, 4);
 });
@@ -216,6 +219,7 @@ test("plans: canAddApp respects per-plan app limits", () => {
 test("gating: free plan generates iOS-only workflow + watermark, no push/social/release", () => {
   const files = Kit.generateKit(baseConfig({
     plan: "free", enablePush: true, iosUpload: true,
+    permissions: [{ key: "camera", description: "Scan receipts" }],
     socialAuth: { apple: { enabled: true } }
   }));
   // watermark file present + build injects it
@@ -230,6 +234,7 @@ test("gating: free plan generates iOS-only workflow + watermark, no push/social/
   assert.equal(files["src/nativePush.ts"], undefined);
   assert.equal(files["src/nativeSocialAuth.ts"], undefined);
   assert.equal(files[".github/workflows/nativize-release.yml"], undefined);
+  assert.doesNotMatch(files["nativize-permissions.sh"], /android\.permission\.CAMERA/);
 });
 
 test("gating: pro plan builds all platforms, no watermark, keeps paid features", () => {
@@ -271,9 +276,11 @@ test("premium: rejects junk base64 for the icon", () => {
   assert.equal(bad["resources/icon.b64.txt"], undefined);
 });
 
-test("plans: lockedFeatures lists customIcon + iosHeader on free, not on paid", () => {
+test("plans: lockedFeatures lists permissions + branding on free, not on paid", () => {
+  assert.ok(Plans.lockedFeatures("free").indexOf("permissions") > -1);
   assert.ok(Plans.lockedFeatures("free").indexOf("customIcon") > -1);
   assert.ok(Plans.lockedFeatures("free").indexOf("iosHeader") > -1);
+  assert.equal(Plans.lockedFeatures("pro").indexOf("permissions"), -1);
   assert.equal(Plans.lockedFeatures("pro").indexOf("customIcon"), -1);
   assert.equal(Plans.lockedFeatures("pro").indexOf("iosHeader"), -1);
 });

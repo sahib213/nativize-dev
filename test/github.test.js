@@ -118,7 +118,7 @@ test("findWorkflowRun returns the newest dispatched run after the start time", a
   assert.equal(run.id, 3); // newest of the ones after `now`
 });
 
-test("listArtifacts maps artifacts to name + run-page download url", async () => {
+test("listArtifacts maps artifacts to direct API download url plus fallback run page", async () => {
   mockFetch({
     "GET /repos/octo/demo/actions/runs/77/artifacts": () => ({
       body: { artifacts: [
@@ -130,7 +130,23 @@ test("listArtifacts maps artifacts to name + run-page download url", async () =>
   assert.equal(arts.length, 1);
   assert.equal(arts[0].name, "android-aab");
   assert.equal(arts[0].sizeBytes, 1234);
-  assert.match(arts[0].downloadUrl, /\/actions\/runs\/77$/);
+  assert.equal(arts[0].downloadUrl, "https://api.github.com/x");
+  assert.equal(arts[0].apiUrl, "https://api.github.com/x");
+  assert.match(arts[0].fallbackUrl, /\/actions\/runs\/77$/);
+});
+
+test("downloadArtifact fetches the artifact archive directly with auth", async () => {
+  let calledUrl = "";
+  let auth = "";
+  global.fetch = async (url, opts) => {
+    calledUrl = String(url);
+    auth = opts.headers.Authorization;
+    return { ok: true, status: 200, blob: async () => new Blob([new Uint8Array([80, 75, 3, 4])], { type: "application/zip" }) };
+  };
+  const blob = await GitHub.downloadArtifact({ apiUrl: "https://api.github.com/artifact.zip", name: "ios-app" }, "tok");
+  assert.equal(calledUrl, "https://api.github.com/artifact.zip");
+  assert.match(auth, /Bearer tok/);
+  assert.ok(blob.size >= 4);
 });
 
 test("buildAndWait dispatches, waits for completion, returns artifacts + progress", async () => {

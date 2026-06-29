@@ -49,7 +49,7 @@ test("content script stores config per Lovable project and token in local storag
   assert.match(source, /chrome\.storage\.local/);
 });
 
-test("extension actions require a live paid Supabase billing check", () => {
+test("extension downloads are paid and builds require live Supabase plan activation", () => {
   const source = read("src/content.js");
   assert.match(source, /function fetchBillingStrict\(\)/);
   assert.match(source, /function requirePaidSubscription\(action\)/);
@@ -57,7 +57,8 @@ test("extension actions require a live paid Supabase billing check", () => {
   assert.match(source, /\["starter", "pro", "max"\]\.indexOf\(planId\) > -1/);
   assert.match(source, /requirePaidSubscription\("download the full project"\)/);
   assert.match(source, /requirePaidSubscription\("download a native kit"\)/);
-  assert.match(source, /requirePaidSubscription\("build an app"\)/);
+  assert.match(source, /fetchBillingStrict\(\)\s*\.then\(function \(\) \{ return activateRepo\(state\.githubRepo\); \}\)/);
+  assert.doesNotMatch(source, /requirePaidSubscription\("build an app"\)/);
   assert.doesNotMatch(source, /if \(Billing && supabaseAccess\) return activateRepo/);
   assert.doesNotMatch(source, /return null;\s*\}\)\s*\.then\(function \(\) \{\s*var files = Kit\.generateKit/);
 });
@@ -71,7 +72,7 @@ test("panel uses a shadow root and masks the GitHub token", () => {
 test("panel copy does not present a manual GitHub token as a billing bypass", () => {
   const source = read("src/panel.js");
   assert.match(source, /plan still requires sign-in/);
-  assert.match(source, /Plan is checked before build/);
+  assert.match(source, /Free builds a watermarked/);
   assert.doesNotMatch(source, /skip Sign in/);
   assert.doesNotMatch(source, /or paste a token under Options/);
 });
@@ -99,7 +100,7 @@ test("extension and web studio require Supabase sign-in before builder actions",
   assert.match(web, /authRequired: true/);
   assert.match(web, /refreshBillingStrict\("download the full project"\)/);
   assert.match(web, /refreshBillingStrict\("download a native kit"\)/);
-  assert.match(web, /refreshBillingStrict\("build an app"\)/);
+  assert.match(web, /return ensureCanPush\(repo\)\.then\(function \(\) \{/);
   assert.match(web, /refreshBillingStrict\("rebuild an app"\)/);
   assert.doesNotMatch(web, /if \(nativizedRepos\.indexOf\(repo\) > -1\) return Promise\.resolve/);
 });
@@ -190,11 +191,13 @@ test("panel locks paid-only feature controls on the free plan", () => {
   const web = read("website/app.js");
 
   assert.match(source, /id="nz-pushLock"/);
+  assert.match(source, /id="nz-permLock"/);
   assert.match(source, /id="nz-storeLock"/);
   assert.match(source, /id="nz-socialLock"/);
   assert.match(source, /function setPlan\(nextPlanId\)/);
   assert.ok(source.includes('var storeOn = isPaidUi() && $("nz-store").checked;'));
   assert.ok(source.includes('enablePush: isPaidUi() && $("nz-push").checked,'));
+  assert.ok(source.includes('permissions: isPaidUi() ? collectPermissions() : [],'));
 
   assert.match(content, /planId: currentPlanId\(\)/);
   assert.match(content, /panelApi = Panel\.mount/);

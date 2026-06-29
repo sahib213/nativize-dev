@@ -241,11 +241,15 @@
           save(state);
         });
       },
+      onDownloadArtifact: function (artifact, state) {
+        var filename = (Kit.slugify((artifact && artifact.name) || state.appName || "nativize-artifact") || "nativize-artifact") + ".zip";
+        return GitHub.downloadArtifact(artifact, state.token).then(function (blob) {
+          triggerDownload(blob, filename);
+        });
+      },
       onPush: function (state, token, onProgress) {
-        return requirePaidSubscription("build an app")
-          .then(function () {
-            return activateRepo(state.githubRepo);
-          })
+        return fetchBillingStrict()
+          .then(function () { return activateRepo(state.githubRepo); })
           .then(function () {
         var files = Kit.generateKit(withPlan(state));
         save(state);

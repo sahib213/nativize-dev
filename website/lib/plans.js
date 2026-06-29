@@ -6,7 +6,7 @@
  * extension AND the website are gated identically and can't drift.
  *
  * Tiers (prices are editable placeholders — set them to your real prices):
- *   free    — iOS only, Nativize watermark, no push / sign-in / store upload, 1 app
+ *   free    — iOS only, Nativize watermark, no permissions / push / sign-in / store upload, 1 app
  *   starter — low-cost one-time launch pass, all platforms + features, 1 app
  *   pro     — monthly, all platforms + features, keep updating, up to 3 apps
  *   max     — monthly, all platforms + features, keep updating, up to 10 apps
@@ -26,34 +26,34 @@
       price: "$0", priceNote: "forever", billing: "free",
       apps: 1, platforms: ["ios"],
       push: false, social: false, storeUpload: false, updates: false,
-      customIcon: false, iosHeader: false,
+      permissions: false, customIcon: false, iosHeader: false,
       watermark: true,
-      highlights: ["1 iOS app", "Download the native kit", "Cloud build (iOS)", "“Built with Nativize” badge"]
+      highlights: ["1 watermarked iOS app", "iOS cloud build", "Paid unlocks permissions + every platform"]
     },
     {
       id: "starter", name: "Starter", tagline: "One app launch pass",
       price: "$12 CAD", priceNote: "one-time", billing: "one-time",
       apps: 1, platforms: ALL_PLATFORMS,
       push: true, social: true, storeUpload: true, updates: false,
-      customIcon: true, iosHeader: true,
+      permissions: true, customIcon: true, iosHeader: true,
       watermark: false,
-      highlights: ["1 app, all platforms", "Custom app icon", "Push + social sign-in", "Store auto-upload", "No watermark"]
+      highlights: ["1 app, all platforms", "App permissions", "Custom app icon", "Push + social sign-in", "Store auto-upload", "No watermark"]
     },
     {
       id: "pro", name: "Pro", tagline: "Keep shipping", popular: true,
       price: "$29 CAD", priceNote: "per month", billing: "monthly",
       apps: 3, platforms: ALL_PLATFORMS,
       push: true, social: true, storeUpload: true, updates: true,
-      customIcon: true, iosHeader: true,
+      permissions: true, customIcon: true, iosHeader: true,
       watermark: false,
-      highlights: ["Up to 3 apps", "Custom icon + iOS header", "Everything in Starter", "Unlimited updates & rebuilds"]
+      highlights: ["Up to 3 apps", "Permissions + custom branding", "Everything in Starter", "Unlimited updates & rebuilds"]
     },
     {
       id: "max", name: "Max", tagline: "For agencies",
       price: "$79 CAD", priceNote: "per month", billing: "monthly",
       apps: 10, platforms: ALL_PLATFORMS,
       push: true, social: true, storeUpload: true, updates: true,
-      customIcon: true, iosHeader: true,
+      permissions: true, customIcon: true, iosHeader: true,
       watermark: false,
       highlights: ["Up to 10 apps", "Everything in Pro", "Unlimited updates & rebuilds"]
     }
@@ -69,6 +69,7 @@
     var p = planById(planId);
     var locked = [];
     if (!p.push) locked.push("push");
+    if (!p.permissions) locked.push("permissions");
     if (!p.social) locked.push("social");
     if (!p.storeUpload) locked.push("storeUpload");
     if (!p.customIcon) locked.push("customIcon");
@@ -90,6 +91,7 @@
     cfg.platforms = p.platforms.slice();
     cfg.watermark = p.watermark === true;
     if (!p.push) cfg.enablePush = false;
+    if (!p.permissions) cfg.permissions = [];
     if (!p.social) cfg.socialAuth = {};
     if (!p.storeUpload) { cfg.iosUpload = false; cfg.androidUpload = false; }
     // Premium-only: a custom uploaded logo/icon and the iOS Dynamic Island header.

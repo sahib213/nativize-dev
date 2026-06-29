@@ -259,9 +259,9 @@
 
   /**
    * List a finished run's downloadable artifacts (the .apk / .aab / iOS app).
-   * The API's archive_download_url needs auth, so we hand the user the run page
-   * URL — one click, no token handling in the page — plus the API url for tools.
-   * @returns {Promise<Array<{name, sizeBytes, downloadUrl, apiUrl}>>}
+   * The artifact API URL needs auth; the app uses it to download directly in
+   * the browser, with fallbackUrl only for debugging failed builds.
+   * @returns {Promise<Array<{name, sizeBytes, downloadUrl, apiUrl, fallbackUrl}>>}
    */
   async function listArtifacts(repoStr, token, runId) {
     var r = splitRepo(repoStr);
@@ -270,8 +270,20 @@
     var arts = (data && data.artifacts) || [];
     var runUrl = "https://github.com/" + r.owner + "/" + r.repo + "/actions/runs/" + runId;
     return arts.map(function (a) {
-      return { name: a.name, sizeBytes: a.size_in_bytes, downloadUrl: runUrl, apiUrl: a.archive_download_url };
+      return { name: a.name, sizeBytes: a.size_in_bytes, downloadUrl: a.archive_download_url, apiUrl: a.archive_download_url, fallbackUrl: runUrl };
     });
+  }
+
+  /** Download a GitHub Actions artifact archive as a Blob. */
+  async function downloadArtifact(artifact, token) {
+    var url = artifact && (artifact.apiUrl || artifact.downloadUrl);
+    if (!url) throw new Error("Artifact download URL is missing.");
+    var res = await fetch(url, { headers: authHeaders(token) });
+    if (!res.ok) {
+      var detail = ""; try { detail = (await res.json()).message; } catch (e) {}
+      throw new Error("Couldn't download the artifact (GitHub " + res.status + (detail ? " — " + detail : "") + ").");
+    }
+    return res.blob();
   }
 
   function defaultSleep(ms) { return new Promise(function (res) { setTimeout(res, ms); }); }
@@ -376,6 +388,6 @@
   return {
     pushKit: pushKit, setSecrets: setSecrets, triggerWorkflow: triggerWorkflow, splitRepo: splitRepo,
     findWorkflowRun: findWorkflowRun, getRun: getRun, listArtifacts: listArtifacts, buildAndWait: buildAndWait,
-    downloadRepoZip: downloadRepoZip, detectKit: detectKit, rebuild: rebuild
+    downloadRepoZip: downloadRepoZip, downloadArtifact: downloadArtifact, detectKit: detectKit, rebuild: rebuild
   };
 });
