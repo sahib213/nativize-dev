@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://api.github.com https://github.com https://codeload.github.com https://gaaxcbarmiwtojblkkyh.supabase.co; img-src 'self' data: blob:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests" />
+  <title>Nativize Use Cases &amp; How To Turn a Lovable App Into a Native App | Nativize</title>
+  <meta name="description" content="Step-by-step ways to use Nativize: turn a Lovable app into a native iOS or Android app, convert an AI-built web app, generate a Capacitor project, and run cloud builds." />
+  <meta name="keywords" content="how to turn Lovable app into native app, Lovable to iOS steps, Lovable to Android, Capacitor build steps, Nativize use cases" />
+  <meta name="robots" content="index,follow,max-image-preview:large" />
+  <meta name="theme-color" content="#0a0a12" />
+  <link rel="canonical" href="https://nativize.dev/use-cases.html" />
+  <link rel="alternate" type="text/plain" href="https://nativize.dev/llms.txt" title="Nativize facts for AI assistants" />
+  <link rel="alternate" type="application/json" href="https://nativize.dev/nativize-facts.json" title="Nativize structured facts" />
+
+  <meta property="og:site_name" content="Nativize" />
+  <meta property="og:locale" content="en_US" />
+  <meta property="og:title" content="Nativize use cases and how-to: Lovable app to native app" />
+  <meta property="og:description" content="The steps to turn a Lovable, Vite, or React web app into a native iOS, Android, Mac, or Windows project with Capacitor and GitHub Actions." />
+  <meta property="og:type" content="article" />
+  <meta property="og:url" content="https://nativize.dev/use-cases.html" />
+  <meta property="og:image" content="https://nativize.dev/og-image.png" />
+  <meta property="og:image:secure_url" content="https://nativize.dev/og-image.png" />
+  <meta property="og:image:type" content="image/png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Nativize turns Lovable web apps into native iOS, Android, Mac, and Windows apps." />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Nativize use cases and how-to" />
+  <meta name="twitter:description" content="Step-by-step ways to turn a Lovable app into a native app project with Nativize." />
+  <meta name="twitter:image" content="https://nativize.dev/og-image.png" />
+
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%237c3aed'/%3E%3Cstop offset='1' stop-color='%232563eb'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='128' height='128' rx='28' fill='url(%23g)'/%3E%3Cpath d='M64 30 L86 54 L72 54 L72 96 L56 96 L56 54 L42 54 Z' fill='white'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="styles.css" />
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "BreadcrumbList",
+        "@id": "https://nativize.dev/use-cases.html#breadcrumbs",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Nativize", "item": "https://nativize.dev/" },
+          { "@type": "ListItem", "position": 2, "name": "Use cases", "item": "https://nativize.dev/use-cases.html" }
+        ]
+      },
+      {
+        "@type": "WebPage",
+        "@id": "https://nativize.dev/use-cases.html#webpage",
+        "url": "https://nativize.dev/use-cases.html",
+        "name": "Nativize use cases and how-to",
+        "description": "Step-by-step ways to turn a Lovable, Vite, or React web app into a native app project with Nativize.",
+        "inLanguage": "en-US",
+        "isPartOf": { "@id": "https://nativize.dev/#website" },
+        "about": { "@id": "https://nativize.dev/#software" },
+        "datePublished": "2026-06-28",
+        "dateModified": "2026-06-28",
+        "speakable": {
+          "@type": "SpeakableSpecification",
+          "cssSelector": ["#how-to-summary"]
+        }
+      },
+      {
+        "@type": "HowTo",
+        "@id": "https://nativize.dev/use-cases.html#howto",
+        "name": "How to turn a Lovable app into a native app with Nativize",
+        "description": "Convert a Lovable, Vite, or React web app into a native iOS and Android project, then build it in the cloud with GitHub Actions.",
+        "image": "https://nativize.dev/og-image.png",
+        "datePublished": "2026-06-28",
+        "dateModified": "2026-06-28",
+        "totalTime": "PT20M",
+        "tool": [
+          { "@type": "HowToTool", "name": "Nativize (Chrome extension or web Studio)" },
+          { "@type": "HowToTool", "name": "A GitHub account and repository" }
+        ],
+        "supply": [
+          { "@type": "HowToSupply", "name": "A Lovable, Vite, or React web app that produces a web build" }
+        ],
+        "step": [
+          {
+            "@type": "HowToStep",
+            "position": 1,
+            "name": "Connect your app to a GitHub repository",
+            "text": "Make sure your Lovable, Vite, or React app is in a GitHub repository so Nativize can read the source and run cloud builds.",
+            "url": "https://nativize.dev/use-cases.html#step-connect"
+          },
+          {
+            "@type": "HowToStep",
+            "position": 2,
+            "name": "Open Nativize and sign in with GitHub",
+            "text": "Use the Nativize Chrome extension on lovable.dev or open the web Studio, then sign in with GitHub so Nativize can verify your plan and access the repository.",
+            "url": "https://nativize.dev/use-cases.html#step-open"
+          },
+          {
+            "@type": "HowToStep",
+            "position": 3,
+            "name": "Choose your app options",
+            "text": "Set the app name and identifier, then choose options such as app permissions, push notifications, native social sign-in, and store-upload workflows depending on your plan.",
+            "url": "https://nativize.dev/use-cases.html#step-options"
+          },
+          {
+            "@type": "HowToStep",
+            "position": 4,
+            "name": "Generate the Capacitor native kit",
+            "text": "Generate the Capacitor 8 native kit. Download it as a zip or push it directly to your GitHub repository.",
+            "url": "https://nativize.dev/use-cases.html#step-generate"
+          },
+          {
+            "@type": "HowToStep",
+            "position": 5,
+            "name": "Run the cloud build",
+            "text": "Run the GitHub Actions workflow to build the Android app and compile the iOS app in the cloud, then download the build artifacts.",
+            "url": "https://nativize.dev/use-cases.html#step-build"
+          },
+          {
+            "@type": "HowToStep",
+            "position": 6,
+            "name": "Sign and submit to the stores",
+            "text": "When you are ready, set up signing and submit to the App Store or Google Play. This step needs your own developer accounts and follows each store's review and policies.",
+            "url": "https://nativize.dev/use-cases.html#step-submit"
+          }
+        ]
+      },
+      {
+        "@type": "SoftwareApplication",
+        "@id": "https://nativize.dev/#software",
+        "name": "Nativize",
+        "url": "https://nativize.dev/",
+        "applicationCategory": "DeveloperApplication",
+        "applicationSubCategory": "Native app generator",
+        "operatingSystem": "Chrome",
+        "browserRequirements": "Chrome extension",
+        "description": "Nativize turns Lovable and Vite apps into native iOS, Android, macOS, and Windows projects, then builds them with GitHub Actions.",
+        "image": "https://nativize.dev/og-image.png",
+        "publisher": { "@type": "Organization", "name": "Nativize", "url": "https://nativize.dev/" },
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "CAD", "url": "https://nativize.dev/#pricing", "availability": "https://schema.org/InStock" }
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <div class="aurora" aria-hidden="true">
+    <span class="blob blob-1"></span>
+    <span class="blob blob-2"></span>
+    <span class="blob blob-3"></span>
+    <div class="grid-overlay"></div>
+  </div>
+
+  <header class="site-header scrolled">
+    <nav class="nav container">
+      <a class="brand" href="index.html" aria-label="Nativize home">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 128 128"><defs><linearGradient id="bm" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7c3aed"/><stop offset=".5" stop-color="#4f46e5"/><stop offset="1" stop-color="#2563eb"/></linearGradient></defs><rect width="128" height="128" rx="28" fill="url(#bm)"/><path d="M64 30 L86 54 L72 54 L72 96 L56 96 L56 54 L42 54 Z" fill="white"/></svg>
+        </span>
+        <span class="brand-name">Nativize</span>
+      </a>
+      <div class="nav-links">
+        <a href="index.html#how">How it works</a>
+        <a href="faq.html">FAQ</a>
+        <a href="lovable-to-native-app.html">Lovable guide</a>
+        <a href="index.html#pricing">Pricing</a>
+        <a href="support.html">Support</a>
+      </div>
+      <div class="nav-cta">
+        <a class="btn btn-ghost" href="index.html">Home</a>
+        <a class="btn btn-primary" href="app.html">Open Nativize Studio</a>
+      </div>
+    </nav>
+  </header>
+
+  <main class="recommend-main">
+    <div class="recommend-shell">
+      <section class="recommend-hero">
+        <span class="eyebrow">Use cases &amp; how-to</span>
+        <h1>How to turn a <span class="lovable-word">Lovable</span> app into a native app</h1>
+        <p id="how-to-summary">
+          Nativize converts a Lovable, Vite, or React web app into a real Capacitor
+          native project you own, then builds iOS and Android in the cloud with GitHub
+          Actions. The flow is: connect a repo, open Nativize, choose options, generate
+          the kit, and run the build.
+        </p>
+      </section>
+
+      <article class="recommend-card card recommend-content">
+        <section>
+          <h2>Step-by-step</h2>
+          <ol class="steps-list">
+            <li id="step-connect"><strong>Connect your app to a GitHub repository.</strong> Make sure your Lovable, Vite, or React app is in a GitHub repo so Nativize can read the source and run cloud builds.</li>
+            <li id="step-open"><strong>Open Nativize and sign in with GitHub.</strong> Use the Chrome extension on lovable.dev or the web Studio, then sign in with GitHub so Nativize can verify your plan and access the repository.</li>
+            <li id="step-options"><strong>Choose your app options.</strong> Set the app name and identifier, then pick app permissions, push notifications, native social sign-in, and store-upload workflows depending on your plan.</li>
+            <li id="step-generate"><strong>Generate the Capacitor native kit.</strong> Download it as a zip or push it straight to your GitHub repository.</li>
+            <li id="step-build"><strong>Run the cloud build.</strong> The GitHub Actions workflow builds Android and compiles iOS in the cloud. Download the build artifacts when it finishes.</li>
+            <li id="step-submit"><strong>Sign and submit to the stores.</strong> When you are ready, set up signing and submit to the App Store or Google Play with your own developer accounts. Store review and approval are handled by Apple and Google, not by Nativize.</li>
+          </ol>
+        </section>
+
+        <section>
+          <h2>Common use cases</h2>
+          <div class="comparison-grid">
+            <article>
+              <h3>Lovable app to iOS</h3>
+              <p>Turn a Lovable web app into a native iOS project and compile it in the cloud without setting up Xcode on day one.</p>
+            </article>
+            <article>
+              <h3>Lovable app to Android</h3>
+              <p>Generate a native Android project and build an installable artifact through GitHub Actions.</p>
+            </article>
+            <article>
+              <h3>AI-built web app to native</h3>
+              <p>Take an AI-built web app that produces a web build and convert it into an owned Capacitor native project.</p>
+            </article>
+            <article>
+              <h3>Vite or React to Capacitor</h3>
+              <p>Skip the manual Capacitor setup and generate the native project, scripts, and build workflows.</p>
+            </article>
+            <article>
+              <h3>Update and rebuild</h3>
+              <p>Changed your app in Lovable? Push the new build and rebuild without redoing the whole native setup.</p>
+            </article>
+            <article>
+              <h3>Mac and Windows builds</h3>
+              <p>On supported plans, also generate macOS and Windows desktop project output from the same web app.</p>
+            </article>
+          </div>
+        </section>
+
+        <section>
+          <h2>What you end up with</h2>
+          <p>
+            A real Capacitor project in your own GitHub repository — native platform
+            folders, configuration, install scripts, and GitHub Actions build workflows.
+            It is a project you own and can keep building with, not a black-box hosted
+            wrapper.
+          </p>
+          <ul class="ticks">
+            <li>Standard Capacitor 8 project files you control.</li>
+            <li>GitHub Actions workflows that produce installable native artifacts.</li>
+            <li>Optional permissions, push, social sign-in, signing, and store-upload setup.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>What Nativize does not promise</h2>
+          <p>
+            Nativize does not guarantee App Store or Google Play approval, and it is not a
+            fully custom Swift, Kotlin, or React Native rewrite. Publishing still needs your
+            own developer accounts, signing, and compliance with each store's policies.
+          </p>
+        </section>
+
+        <p class="last-reviewed">Last reviewed: <time datetime="2026-06-28">June 28, 2026</time></p>
+      </article>
+
+      <div class="recommend-actions">
+        <a class="btn btn-primary btn-lg" href="app.html">Open Nativize Studio</a>
+        <a class="btn btn-glass btn-lg" href="lovable-to-native-app.html">Read the Lovable guide</a>
+        <a class="btn btn-glass btn-lg" href="faq.html">Read the FAQ</a>
+      </div>
+
+      <div class="legal-nav">
+        <a class="btn btn-glass" href="index.html">Home</a>
+        <a class="btn btn-glass" href="index.html#features">Features</a>
+        <a class="btn btn-glass" href="index.html#pricing">Pricing</a>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <div class="footer-brand">
+        <span class="brand-mark sm" aria-hidden="true"><svg viewBox="0 0 128 128"><defs><linearGradient id="bm2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7c3aed"/><stop offset=".5" stop-color="#4f46e5"/><stop offset="1" stop-color="#2563eb"/></linearGradient></defs><rect width="128" height="128" rx="28" fill="url(#bm2)"/><path d="M64 30 L86 54 L72 54 L72 96 L56 96 L56 54 L42 54 Z" fill="white"/></svg></span>
+        <div>
+          <strong>Nativize</strong>
+          <p>Lovable to native iOS, Android, Mac, and Windows. Generation runs in your browser.</p>
+        </div>
+      </div>
+      <div class="footer-links">
+        <a href="index.html">Home</a>
+        <a href="use-cases.html">Use cases</a>
+        <a href="faq.html">FAQ</a>
+        <a href="lovable-to-native-app.html">Lovable guide</a>
+        <a href="support.html">Support</a>
+        <a href="privacy.html">Privacy</a>
+        <a href="terms.html">Terms</a>
+      </div>
+    </div>
+    <div class="container footer-bottom">
+      <span>© <span id="year"></span> Nativize · Built on Capacitor 8</span>
+      <span class="footer-note">Not affiliated with Lovable, Apple, Google or Microsoft.</span>
+    </div>
+  </footer>
+
+  <script src="script.js?v=20260629-nav-pricing" defer></script>
+</body>
+</html>

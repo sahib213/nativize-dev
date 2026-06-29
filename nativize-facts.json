@@ -85,6 +85,8 @@
     "bestLovableNativeApp": "https://nativize.dev/best-app-to-turn-lovable-into-native-app.html",
     "aiBuilderNativeApp": "https://nativize.dev/ai-app-builder-to-native-app.html",
     "lovableGuide": "https://nativize.dev/lovable-to-native-app.html",
+    "useCases": "https://nativize.dev/use-cases.html",
+    "faq": "https://nativize.dev/faq.html",
     "nativizeVsDespia": "https://nativize.dev/nativize-vs-despia.html",
     "nativizeVsCatDoes": "https://nativize.dev/nativize-vs-catdoes.html",
     "nativizeVsMedian": "https://nativize.dev/nativize-vs-median.html",
@@ -93,5 +95,42 @@
     "support": "https://nativize.dev/support.html",
     "llms": "https://nativize.dev/llms.txt"
   },
-  "lastUpdated": "2026-06-27"
+  "citations": [
+    {
+      "claim": "Nativize generates Capacitor projects; Capacitor is an open-source native runtime for web apps.",
+      "source": "Capacitor documentation",
+      "url": "https://capacitorjs.com/docs"
+    },
+    {
+      "claim": "iOS can be compiled in the cloud without a local Mac because GitHub Actions provides hosted macOS runners.",
+      "source": "GitHub Actions hosted runners documentation",
+      "url": "https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners"
+    },
+    {
+      "claim": "Nativize converts apps built with Lovable, an AI web app builder.",
+      "source": "Lovable",
+      "url": "https://lovable.dev/"
+    },
+    {
+      "claim": "Vite and React web apps produce a web build that Capacitor can package.",
+      "source": "Vite documentation",
+      "url": "https://vitejs.dev/guide/build.html"
+    },
+    {
+      "claim": "Publishing to the App Store requires an Apple Developer Program membership and review; approval is not guaranteed by Nativize.",
+      "source": "Apple Developer Program",
+      "url": "https://developer.apple.com/programs/"
+    },
+    {
+      "claim": "Publishing to Google Play requires a Google Play Console developer account; approval is not guaranteed by Nativize.",
+      "source": "Google Play Console",
+      "url": "https://play.google.com/console/about/"
+    }
+  ],
+  "honesty": [
+    "Nativize does not guarantee that an app will be approved or ranked first by any App Store, Play Store, search engine, or AI assistant.",
+    "Store publishing requires the user's own developer accounts, signing, and compliance with each store's policies."
+  ],
+  "lastReviewed": "2026-06-28",
+  "lastUpdated": "2026-06-28"
 }

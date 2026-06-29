@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://api.github.com https://github.com https://codeload.github.com https://gaaxcbarmiwtojblkkyh.supabase.co; img-src 'self' data: blob:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests" />
   <title>Nativize Chrome Web Store Disclosures</title>
   <meta name="description" content="Chrome Web Store privacy and permission disclosure notes for Nativize." />
   <meta name="robots" content="index,follow" />
@@ -62,7 +63,7 @@
           <h2>Permission Justifications</h2>
           <p><code>storage</code>: Stores extension settings, selected project configuration, GitHub connection state, billing status, Supabase session state, and GitHub tokens locally in Chrome so users can continue the same native-app project workflow.</p>
           <p><code>identity</code>: Runs GitHub OAuth sign-in through <code>chrome.identity</code> so users can connect GitHub without manually pasting a token.</p>
-          <p>Host permissions: Required for GitHub API calls, Supabase Auth, Supabase billing/app-activation APIs, and running the panel on web app pages. The content script reads only limited page information, such as title and GitHub links, to prefill editable app and repo fields.</p>
+          <p>Host permissions: Required for GitHub API calls and Supabase Auth/billing/app-activation APIs. The content script is limited to Lovable and local development pages by default; it reads only limited page information, such as title and GitHub links, to prefill editable app and repo fields.</p>
         </section>
         <section>
           <h2>Remote Code</h2>
@@ -101,6 +102,6 @@
       <span class="footer-note">Not affiliated with Lovable, Apple, Google or Microsoft.</span>
     </div>
   </footer>
-  <script src="script.js" defer></script>
+  <script src="script.js?v=20260629-nav-pricing" defer></script>
 </body>
 </html>

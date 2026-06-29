@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://api.github.com https://github.com https://codeload.github.com https://gaaxcbarmiwtojblkkyh.supabase.co; img-src 'self' data: blob:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests" />
   <title>Nativize Privacy Policy</title>
   <meta name="description" content="Privacy policy for Nativize, the Chrome extension and website for generating native app projects from web apps." />
   <meta name="robots" content="index,follow" />
@@ -85,7 +86,7 @@
 
         <section>
           <h2>Storage</h2>
-          <p>Nativize stores extension settings, selected project configuration, GitHub connection state, billing status, Supabase session state, and GitHub tokens locally in <code>chrome.storage.local</code> on the user's device. Optional store-upload credentials are not saved as normal extension settings; when the user enables store upload, they are sent to GitHub to be stored as encrypted GitHub Actions secrets.</p>
+          <p>Nativize stores extension settings, selected project configuration, GitHub connection state, billing status, Supabase session state, and GitHub tokens locally on the user's device. The Chrome extension uses <code>chrome.storage.local</code>; the web Studio keeps auth tokens in <code>sessionStorage</code> so they clear when the browser session ends. Optional store-upload credentials are not saved as normal extension settings; when the user enables store upload, they are sent to GitHub to be stored as encrypted GitHub Actions secrets.</p>
           <p>Users can remove locally stored data by signing out in the extension, clearing extension data in Chrome, or uninstalling the extension.</p>
           <p>Support requests and feature requests submitted through the website are stored in the Nativize Supabase project.</p>
         </section>
@@ -137,6 +138,6 @@
       <span class="footer-note">Not affiliated with Lovable, Apple, Google or Microsoft.</span>
     </div>
   </footer>
-  <script src="script.js" defer></script>
+  <script src="script.js?v=20260629-nav-pricing" defer></script>
 </body>
 </html>

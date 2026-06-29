@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://api.github.com https://github.com https://codeload.github.com https://gaaxcbarmiwtojblkkyh.supabase.co; img-src 'self' data: blob:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests" />
   <title>Nativize Studio — generate native apps from your repo</title>
   <meta name="description" content="Open Nativize Studio to sign in with GitHub, verify your plan, and generate native app builds from a GitHub repository." />
   <meta name="robots" content="noindex" />
@@ -73,7 +74,7 @@
   </main>
 
   <!-- Shared runtime (same modules the extension uses) -->
-  <script src="lib/plans.js?v=20260627-authlock"></script>
+  <script src="lib/plans.js?v=20260629-pricing"></script>
   <script src="lib/billing.js?v=20260627-authlock"></script>
   <script src="lib/kit-generator.js?v=20260627-authlock"></script>
   <script src="lib/zip.js?v=20260627-authlock"></script>

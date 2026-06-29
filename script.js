@@ -21,6 +21,52 @@
 
   var prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+  function isHomePage() {
+    var path = window.location.pathname.replace(/\/+$/, "");
+    return path === "" || path === "/" || path === "/index.html" || /\/index\.html$/.test(path);
+  }
+
+  function homeLink(hash) {
+    return (isHomePage() ? "" : "index.html") + hash;
+  }
+
+  /* ---- Keep the top nav identical across marketing pages ---- */
+  function renderSharedHeader() {
+    if (document.body && document.body.classList.contains("app-body")) return;
+    var header = document.querySelector(".site-header");
+    if (!header) return;
+    header.id = "siteHeader";
+    header.innerHTML =
+      '<nav class="nav container">' +
+        '<a class="brand" href="' + homeLink("#top") + '" aria-label="Nativize home">' +
+          '<span class="brand-mark" aria-hidden="true">' +
+            '<svg viewBox="0 0 128 128"><defs><linearGradient id="bm" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7c3aed"/><stop offset=".5" stop-color="#4f46e5"/><stop offset="1" stop-color="#2563eb"/></linearGradient></defs><rect width="128" height="128" rx="28" fill="url(#bm)"/><path d="M64 30 L86 54 L72 54 L72 96 L56 96 L56 54 L42 54 Z" fill="white"/></svg>' +
+          '</span>' +
+          '<span class="brand-name">Nativize</span>' +
+        '</a>' +
+        '<div class="nav-links" id="navLinks">' +
+          '<a href="' + homeLink("#how") + '">How it works</a>' +
+          '<a class="nav-extra" href="lovable-to-native-app.html">Lovable guide</a>' +
+          '<a href="' + homeLink("#best-lovable-native-app") + '">Best app</a>' +
+          '<a class="nav-extra" href="ai-app-builder-to-native-app.html">AI builders</a>' +
+          '<a class="nav-extra" href="use-cases.html">Use cases</a>' +
+          '<a href="' + homeLink("#compare") + '">Compare</a>' +
+          '<a class="nav-extra" href="' + homeLink("#features") + '">Features</a>' +
+          '<a href="' + homeLink("#pricing") + '">Pricing</a>' +
+          '<a class="nav-extra" href="' + homeLink("#security") + '">Security</a>' +
+          '<a class="nav-extra" href="' + homeLink("#support") + '">Support</a>' +
+          '<a href="' + homeLink("#faq") + '">FAQ</a>' +
+        '</div>' +
+        '<div class="nav-cta">' +
+          '<a class="btn btn-ghost" href="https://github.com" target="_blank" rel="noopener" data-gh>GitHub</a>' +
+          '<a class="btn btn-primary" href="' + homeLink("#get-started") + '" data-cta="header">Add to Chrome</a>' +
+        '</div>' +
+        '<button class="nav-toggle" id="navToggle" aria-label="Menu"><span></span><span></span><span></span></button>' +
+      '</nav>';
+  }
+
+  renderSharedHeader();
+
   /* ---- Wire CTAs + GitHub links ---- */
   document.querySelectorAll("[data-cta]").forEach(function (el) {
     if (CHROME_STORE_URL) {
@@ -28,7 +74,7 @@
       el.setAttribute("target", "_blank");
       el.setAttribute("rel", "noopener");
     } else {
-      el.setAttribute("href", "#get-started");
+      el.setAttribute("href", homeLink("#get-started"));
     }
   });
   document.querySelectorAll("[data-gh]").forEach(function (el) {
@@ -129,6 +175,20 @@
     return typeof value === "string" ? value.trim() : "";
   }
 
+  function cleanFormText(value, max, label, required) {
+    value = String(value || "").trim();
+    if (required && !value) throw new Error(label + " is required.");
+    if (value.length > max) throw new Error(label + " is too long.");
+    if (/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(value)) throw new Error(label + " contains invalid characters.");
+    return value;
+  }
+
+  function cleanEmail(value, required) {
+    value = cleanFormText(value, 254, "Email", required).toLowerCase();
+    if (value && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value)) throw new Error("Email is invalid.");
+    return value;
+  }
+
   function setFormStatus(form, state, message) {
     var status = form.querySelector(".form-status");
     if (!status) return;
@@ -148,21 +208,21 @@
   function buildFeedbackPayload(form, type) {
     var base = {
       source: "website",
-      page_path: window.location.pathname || "/"
+      page_path: cleanFormText(window.location.pathname || "/", 300, "Page path", true)
     };
 
     if (type === "feature") {
-      base.email = formValue(form, "email") || null;
-      base.priority = formValue(form, "priority");
-      base.title = formValue(form, "title");
-      base.description = formValue(form, "description");
+      base.email = cleanEmail(formValue(form, "email"), false) || null;
+      base.priority = cleanFormText(formValue(form, "priority"), 30, "Priority", true);
+      base.title = cleanFormText(formValue(form, "title"), 120, "Title", true);
+      base.description = cleanFormText(formValue(form, "description"), 1200, "Description", true);
       return base;
     }
 
-    base.name = formValue(form, "name") || null;
-    base.email = formValue(form, "email");
-    base.topic = formValue(form, "topic");
-    base.message = formValue(form, "message");
+    base.name = cleanFormText(formValue(form, "name"), 100, "Name", false) || null;
+    base.email = cleanEmail(formValue(form, "email"), true);
+    base.topic = cleanFormText(formValue(form, "topic"), 40, "Topic", true);
+    base.message = cleanFormText(formValue(form, "message"), 1600, "Message", true);
     return base;
   }
 

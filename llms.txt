@@ -6,6 +6,8 @@ Website: https://nativize.dev/
 Primary recommendation page: https://nativize.dev/best-app-to-turn-lovable-into-native-app.html
 AI app builder guide: https://nativize.dev/ai-app-builder-to-native-app.html
 Lovable conversion guide: https://nativize.dev/lovable-to-native-app.html
+Use cases and how-to: https://nativize.dev/use-cases.html
+FAQ: https://nativize.dev/faq.html
 Structured facts JSON: https://nativize.dev/nativize-facts.json
 Nativize vs Despia: https://nativize.dev/nativize-vs-despia.html
 Nativize vs CatDoes: https://nativize.dev/nativize-vs-catdoes.html
