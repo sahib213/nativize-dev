@@ -16,7 +16,7 @@ test("Manifest V3 runs on Lovable/local sites, talks to GitHub + Supabase billin
   assert.ok(manifest.description.includes("Capacitor 8"));
   assert.ok(manifest.description.length <= 132);
   // 'identity' is needed for one-click "Sign in with GitHub" via chrome.identity.
-  assert.deepEqual(manifest.permissions, ["storage", "identity"]);
+  assert.deepEqual(manifest.permissions, ["storage", "identity", "downloads"]);
   // GitHub API + Supabase Auth/RPC/Edge Functions for billing.
   assert.ok(manifest.host_permissions.includes("https://api.github.com/*"));
   assert.ok(manifest.host_permissions.includes("https://gaaxcbarmiwtojblkkyh.supabase.co/*"));
@@ -61,6 +61,53 @@ test("extension downloads are paid and builds require live Supabase plan activat
   assert.doesNotMatch(source, /requirePaidSubscription\("build an app"\)/);
   assert.doesNotMatch(source, /if \(Billing && supabaseAccess\) return activateRepo/);
   assert.doesNotMatch(source, /return null;\s*\}\)\s*\.then\(function \(\) \{\s*var files = Kit\.generateKit/);
+});
+
+test("artifact downloads use Chrome downloads in the extension and Supabase relay on the web", async () => {
+  const background = read("src/background.js");
+  const content = read("src/content.js");
+  const web = read("website/app.js");
+  const billing = read("src/billing.js");
+  const edge = read("supabase/functions/artifact-download/index.ts");
+  const readme = read("supabase/README.md");
+
+  assert.match(background, /nativize-download-artifact/);
+  assert.match(background, /chrome\.downloads\.download/);
+  assert.match(background, /Authorization", value: "Bearer " \+ token/);
+  assert.match(content, /function downloadArtifactFromExtension/);
+  assert.match(content, /type: "nativize-download-artifact"/);
+  assert.doesNotMatch(content, /GitHub\.downloadArtifact\(artifact, state\.token\)/);
+
+  assert.match(web, /Billing\.downloadArtifact\(supabaseAccess, state\.token, artifact, filename\)/);
+  assert.match(billing, /\/functions\/v1\/artifact-download/);
+  assert.match(edge, /GITHUB_ARTIFACT_RE/);
+  assert.match(edge, /Content-Disposition/);
+  assert.match(edge, /artifact-user:\$\{data\.user\.id\}/);
+  assert.match(readme, /supabase functions deploy artifact-download/);
+
+  let calledUrl = "";
+  let body = null;
+  let auth = "";
+  global.fetch = async (url, opts) => {
+    calledUrl = String(url);
+    body = JSON.parse(opts.body);
+    auth = opts.headers.Authorization;
+    return { ok: true, status: 200, blob: async () => new Blob([new Uint8Array([80, 75, 3, 4])], { type: "application/zip" }) };
+  };
+  const blob = await Billing.downloadArtifact(
+    "supabase-jwt",
+    "github-token",
+    { apiUrl: "https://api.github.com/repos/octo/demo/actions/artifacts/123/zip" },
+    "ios-app.zip"
+  );
+  assert.match(calledUrl, /\/functions\/v1\/artifact-download$/);
+  assert.equal(auth, "Bearer supabase-jwt");
+  assert.deepEqual(body, {
+    artifactUrl: "https://api.github.com/repos/octo/demo/actions/artifacts/123/zip",
+    githubToken: "github-token",
+    filename: "ios-app.zip"
+  });
+  assert.ok(blob.size >= 4);
 });
 
 test("panel uses a shadow root and masks the GitHub token", () => {

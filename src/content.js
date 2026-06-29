@@ -97,6 +97,28 @@
     setTimeout(function () { a.remove(); URL.revokeObjectURL(url); }, 1000);
   }
 
+  function downloadArtifactFromExtension(artifact, token, filename) {
+    var artifactUrl = artifact && (artifact.apiUrl || artifact.downloadUrl);
+    if (!artifactUrl) return Promise.reject(new Error("Artifact download URL is missing."));
+    return new Promise(function (resolve, reject) {
+      try {
+        chrome.runtime.sendMessage({
+          type: "nativize-download-artifact",
+          artifactUrl: artifactUrl,
+          token: token,
+          filename: filename
+        }, function (res) {
+          var err = chrome.runtime.lastError;
+          if (err) return reject(new Error(err.message || String(err)));
+          if (!res || !res.ok) return reject(new Error(res && res.error || "Chrome could not start the download."));
+          resolve(res);
+        });
+      } catch (e) {
+        reject(e);
+      }
+    });
+  }
+
   // ---- Mount -------------------------------------------------------------
   loadSaved().then(function (saved) {
     var supabaseAccess = saved.supabaseAccess || "";
@@ -243,9 +265,7 @@
       },
       onDownloadArtifact: function (artifact, state) {
         var filename = (Kit.slugify((artifact && artifact.name) || state.appName || "nativize-artifact") || "nativize-artifact") + ".zip";
-        return GitHub.downloadArtifact(artifact, state.token).then(function (blob) {
-          triggerDownload(blob, filename);
-        });
+        return downloadArtifactFromExtension(artifact, state.token, filename);
       },
       onPush: function (state, token, onProgress) {
         return fetchBillingStrict()

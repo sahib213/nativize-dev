@@ -436,7 +436,9 @@
     },
     onDownloadArtifact: function (artifact, state) {
       var filename = (Kit.slugify((artifact && artifact.name) || state.appName || "nativize-artifact") || "nativize-artifact") + ".zip";
-      return GitHub.downloadArtifact(artifact, state.token).then(function (blob) {
+      return Billing.downloadArtifact(supabaseAccess, state.token, artifact, filename).catch(function (edgeError) {
+        return GitHub.downloadArtifact(artifact, state.token).catch(function () { throw edgeError; });
+      }).then(function (blob) {
         triggerDownload(blob, filename);
       });
     },

@@ -107,6 +107,17 @@ function normalizeSession(data) {
   };
 }
 
+function safeDownloadFilename(name) {
+  let out = String(name || "nativize-artifact.zip")
+    .trim()
+    .replace(/[<>:"\\|?*\u0000-\u001f]/g, "-")
+    .replace(/^[/\\]+/, "")
+    .replace(/\.\.+/g, ".");
+  if (!out || out === "." || out === "..") out = "nativize-artifact.zip";
+  if (!/\.zip$/i.test(out)) out += ".zip";
+  return out.slice(0, 180);
+}
+
 async function exchangeCodeForSession(code, codeVerifier) {
   const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=pkce`, {
     method: "POST",
@@ -146,6 +157,27 @@ async function signInWithGitHub() {
   return t;
 }
 
+async function downloadArtifact(msg) {
+  const url = String((msg && msg.artifactUrl) || "").trim();
+  const token = String((msg && msg.token) || "").trim();
+  if (!/^https:\/\/api\.github\.com\/repos\/[^/]+\/[^/]+\/actions\/artifacts\/\d+\/zip$/i.test(url)) {
+    throw new Error("Artifact download URL is invalid.");
+  }
+  if (!token || token.length > 5000) throw new Error("GitHub access is missing. Sign in again.");
+  const id = await chrome.downloads.download({
+    url,
+    filename: safeDownloadFilename(msg.filename),
+    conflictAction: "uniquify",
+    saveAs: false,
+    headers: [
+      { name: "Authorization", value: "Bearer " + token },
+      { name: "Accept", value: "application/vnd.github+json" },
+      { name: "X-GitHub-Api-Version", value: "2022-11-28" }
+    ]
+  });
+  return { downloadId: id };
+}
+
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (!msg) return;
   if (msg.type === "nativize-signin") {
@@ -175,6 +207,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       "nativize:billing",
       "nativize:signedIn"
     ]).then(() => sendResponse({ ok: true }));
+    return true;
+  }
+  if (msg.type === "nativize-download-artifact") {
+    downloadArtifact(msg)
+      .then((result) => sendResponse({ ok: true, downloadId: result.downloadId }))
+      .catch((e) => sendResponse({ ok: false, error: (e && e.message) || String(e) }));
     return true;
   }
 });

@@ -255,6 +255,30 @@
     return data;
   }
 
+  async function downloadArtifact(accessToken, githubToken, artifact, filename, opts) {
+    if (!accessToken) throw new Error("Sign in is required before downloading this app.");
+    githubToken = String(githubToken || "").trim();
+    if (!githubToken) throw new Error("GitHub access is missing. Sign in again.");
+    var artifactUrl = artifact && (artifact.apiUrl || artifact.downloadUrl);
+    artifactUrl = String(artifactUrl || "").trim();
+    if (!artifactUrl) throw new Error("Artifact download URL is missing.");
+    var base = (opts && opts.supabaseUrl) || SUPABASE_URL;
+    var res = await doFetch(opts)(base + "/functions/v1/artifact-download", {
+      method: "POST",
+      headers: authHeaders(accessToken),
+      body: JSON.stringify({
+        artifactUrl: artifactUrl,
+        githubToken: githubToken,
+        filename: filename || (artifact && artifact.name) || "nativize-artifact.zip"
+      })
+    });
+    if (!res.ok) {
+      var data = await readJson(res);
+      throw apiError(res, data, "Could not download this app.");
+    }
+    return res.blob();
+  }
+
   function authorizeUrl(redirectTo, opts) {
     var base = (opts && opts.supabaseUrl) || SUPABASE_URL;
     var anon = (opts && opts.supabaseAnonKey) || SUPABASE_ANON_KEY;
@@ -321,6 +345,7 @@
     status: status,
     activate: activate,
     checkout: checkout,
+    downloadArtifact: downloadArtifact,
     refreshSession: refreshSession,
     exchangeCodeForSession: exchangeCodeForSession,
     authorizeUrl: authorizeUrl,

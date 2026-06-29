@@ -73,6 +73,7 @@ Endpoint ID: `we_1TmrFZLmsun3ElyeUzLEoshP`
 supabase functions deploy create-checkout-session
 supabase functions deploy stripe-webhook
 supabase functions deploy feedback-submit
+supabase functions deploy artifact-download
 ```
 
 In Stripe, add a webhook endpoint pointing to:
