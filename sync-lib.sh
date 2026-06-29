@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Copies the shared Nativize runtime modules into website/lib/ so the site is a
-# self-contained static deploy (the web app at app.html reuses the SAME code the
+# self-contained static deploy (the web app at /app/ reuses the SAME code the
 # extension runs). Re-run this whenever you change anything under ../src.
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"

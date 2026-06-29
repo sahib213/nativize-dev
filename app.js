@@ -257,7 +257,7 @@
   function startCheckout(planId) {
     planId = String(planId || "").trim();
     if (["starter", "pro", "max"].indexOf(planId) < 0) {
-      window.location.href = "index.html#pricing";
+      window.location.href = "/#pricing";
       return Promise.resolve();
     }
     if (!supabaseAccess) return signInWithGitHub(planId);
@@ -281,7 +281,7 @@
     else signInWithGitHub();
   });
   $("checkoutBtn").addEventListener("click", function () {
-    window.location.href = "index.html#pricing";
+    window.location.href = "/#pricing";
   });
 
   /* ---------- Download helper ---------- */
@@ -308,7 +308,7 @@
     if (!stripped.length) return;
     var status = $("licStatus");
     status.innerHTML = "Heads up - your plan did not include: <b>" + stripped.join(", ") +
-      "</b>. <a href='index.html#pricing'>Upgrade -></a>";
+      "</b>. <a href='/#pricing'>Upgrade -></a>";
     status.className = "lic-status warn";
   }
 
