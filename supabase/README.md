@@ -32,6 +32,18 @@ supabase secrets set SUPABASE_SERVICE_ROLE_KEY=...
 
 `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are provided automatically by Supabase in hosted edge functions. If you run locally, set them too.
 
+For support auto-replies and owner escalations, create a Resend API key and set:
+
+```bash
+supabase secrets set RESEND_API_KEY=re_...
+supabase secrets set SUPPORT_FROM_EMAIL="Nativize Support <support@nativize.dev>"
+supabase secrets set SUPPORT_TO_EMAIL=you@example.com
+supabase secrets set SUPPORT_REPLY_TO_EMAIL=you@example.com # optional
+```
+
+If these email secrets are missing, `feedback-submit` still saves the request and
+stores the bot's suggested reply in Supabase, but it will not send email yet.
+
 The current Stripe sandbox setup uses CAD prices:
 
 - Starter: $12 CAD one-time
@@ -60,6 +72,7 @@ Endpoint ID: `we_1TmrFZLmsun3ElyeUzLEoshP`
 ```bash
 supabase functions deploy create-checkout-session
 supabase functions deploy stripe-webhook
+supabase functions deploy feedback-submit
 ```
 
 In Stripe, add a webhook endpoint pointing to:

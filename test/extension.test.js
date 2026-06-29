@@ -150,6 +150,7 @@ test("login routes are throttled and dynamic panel inputs are size-bounded", () 
 test("checkout and feedback endpoints have rate limits and malformed-input guards", () => {
   const checkout = read("supabase/functions/create-checkout-session/index.ts");
   const webhook = read("supabase/functions/stripe-webhook/index.ts");
+  const feedbackFn = read("supabase/functions/feedback-submit/index.ts");
   const feedback = read("website/supabase-feedback.sql");
   const site = read("website/script.js");
   assert.match(checkout, /MAX_BODY_BYTES = 4096/);
@@ -157,8 +158,17 @@ test("checkout and feedback endpoints have rate limits and malformed-input guard
   assert.match(checkout, /return json\(\{ error: "Checkout failed\." \}, 500\)/);
   assert.match(webhook, /MAX_WEBHOOK_BODY_BYTES = 2 \* 1024 \* 1024/);
   assert.match(webhook, /return json\(\{ error: "Invalid signature" \}, 400\)/);
+  assert.match(feedbackFn, /RESEND_API_KEY/);
+  assert.match(feedbackFn, /SUPPORT_TO_EMAIL/);
+  assert.match(feedbackFn, /feedback-edge:\$\{requestIp\(req\)\}`,\s*20,\s*900/);
+  assert.match(feedbackFn, /supportReply\(row\)/);
   assert.match(feedback, /nativize_check_rate_limit\(bucket, 5, 900\)/);
   assert.match(feedback, /Invalid email address/);
+  assert.match(feedback, /support_inbox/);
+  assert.match(feedback, /bot_reply_body/);
+  assert.match(site, /FEEDBACK_FUNCTION_URL/);
+  assert.match(site, /submitFeedbackFunction\(type, payload\)/);
+  assert.match(site, /insertFeedback\(table, payload\)/);
   assert.match(site, /function feedbackFallbackUrl\(type, payload\)/);
   assert.match(site, /Open a GitHub support draft/);
   assert.match(site, /Name and email are omitted/);

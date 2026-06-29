@@ -18,6 +18,7 @@
     feature: "feature_requests",
     support: "support_requests"
   };
+  var FEEDBACK_FUNCTION_URL = SUPABASE_URL + "/functions/v1/feedback-submit";
 
   var prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -321,6 +322,39 @@
     }
   }
 
+  async function submitFeedbackFunction(type, payload) {
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+      throw new Error("Supabase is not configured yet.");
+    }
+
+    var response = await fetch(FEEDBACK_FUNCTION_URL, {
+      method: "POST",
+      headers: {
+        "apikey": SUPABASE_ANON_KEY,
+        "Authorization": "Bearer " + SUPABASE_ANON_KEY,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ type: type, payload: payload })
+    });
+
+    if (!response.ok) {
+      var detail = await response.text();
+      var err = new Error(detail || ("Feedback function failed with status " + response.status));
+      err.status = response.status;
+      throw err;
+    }
+  }
+
+  async function submitFeedback(type, table, payload) {
+    try {
+      await submitFeedbackFunction(type, payload);
+      return;
+    } catch (err) {
+      if (err && (err.status === 400 || err.status === 413 || err.status === 429)) throw err;
+      await insertFeedback(table, payload);
+    }
+  }
+
   function feedbackFallbackUrl(type, payload) {
     var title = type === "feature"
       ? "Feature request: " + (payload.title || "Nativize request")
@@ -375,7 +409,7 @@
       var payload = null;
       try {
         payload = buildFeedbackPayload(form, type);
-        await insertFeedback(table, payload);
+        await submitFeedback(type, table, payload);
         form.reset();
         setFormStatus(form, "success", type === "feature" ? "Feature request sent. Thank you." : "Support request sent. Thank you.");
       } catch (err) {
