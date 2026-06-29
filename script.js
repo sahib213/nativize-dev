@@ -21,14 +21,19 @@
 
   var prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  function isHomePage() {
-    var path = window.location.pathname.replace(/\/+$/, "");
-    return path === "" || path === "/" || path === "/index.html" || /\/index\.html$/.test(path);
-  }
-
-  function homeLink(hash) {
-    return (isHomePage() ? "" : "/") + hash;
-  }
+  var ROUTES = {
+    home: "/",
+    how: "/how-it-works/",
+    best: "/best-app-to-turn-lovable-into-native-app/",
+    compare: "/compare/",
+    features: "/features/",
+    pricing: "/pricing/",
+    security: "/security/",
+    getStarted: "/get-started/",
+    support: "/support/",
+    faq: "/faq/",
+    featureRequest: "/feature-request/"
+  };
 
   /* ---- Keep the top nav identical across marketing pages ---- */
   function renderSharedHeader() {
@@ -38,28 +43,28 @@
     header.id = "siteHeader";
     header.innerHTML =
       '<nav class="nav container">' +
-        '<a class="brand" href="' + homeLink("#top") + '" aria-label="Nativize home">' +
+        '<a class="brand" href="' + ROUTES.home + '" aria-label="Nativize home">' +
           '<span class="brand-mark" aria-hidden="true">' +
             '<svg viewBox="0 0 128 128"><defs><linearGradient id="bm" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7c3aed"/><stop offset=".5" stop-color="#4f46e5"/><stop offset="1" stop-color="#2563eb"/></linearGradient></defs><rect width="128" height="128" rx="28" fill="url(#bm)"/><path d="M64 30 L86 54 L72 54 L72 96 L56 96 L56 54 L42 54 Z" fill="white"/></svg>' +
           '</span>' +
           '<span class="brand-name">Nativize</span>' +
         '</a>' +
         '<div class="nav-links" id="navLinks">' +
-          '<a href="' + homeLink("#how") + '">How it works</a>' +
+          '<a href="' + ROUTES.how + '">How it works</a>' +
           '<a class="nav-extra" href="/lovable-to-native-app/">Lovable guide</a>' +
-          '<a href="' + homeLink("#best-lovable-native-app") + '">Best app</a>' +
+          '<a href="' + ROUTES.best + '">Best app</a>' +
           '<a class="nav-extra" href="/ai-app-builder-to-native-app/">AI builders</a>' +
           '<a class="nav-extra" href="/use-cases/">Use cases</a>' +
-          '<a href="' + homeLink("#compare") + '">Compare</a>' +
-          '<a class="nav-extra" href="' + homeLink("#features") + '">Features</a>' +
-          '<a href="' + homeLink("#pricing") + '">Pricing</a>' +
-          '<a class="nav-extra" href="' + homeLink("#security") + '">Security</a>' +
-          '<a class="nav-extra" href="' + homeLink("#support") + '">Support</a>' +
-          '<a href="' + homeLink("#faq") + '">FAQ</a>' +
+          '<a href="' + ROUTES.compare + '">Compare</a>' +
+          '<a class="nav-extra" href="' + ROUTES.features + '">Features</a>' +
+          '<a href="' + ROUTES.pricing + '">Pricing</a>' +
+          '<a class="nav-extra" href="' + ROUTES.security + '">Security</a>' +
+          '<a class="nav-extra" href="' + ROUTES.support + '">Support</a>' +
+          '<a href="' + ROUTES.faq + '">FAQ</a>' +
         '</div>' +
         '<div class="nav-cta">' +
           '<a class="btn btn-ghost" href="https://github.com" target="_blank" rel="noopener" data-gh>GitHub</a>' +
-          '<a class="btn btn-primary" href="' + homeLink("#get-started") + '" data-cta="header">Add to Chrome</a>' +
+          '<a class="btn btn-primary" href="' + ROUTES.getStarted + '" data-cta="header">Add to Chrome</a>' +
         '</div>' +
         '<button class="nav-toggle" id="navToggle" aria-label="Menu"><span></span><span></span><span></span></button>' +
       '</nav>';
@@ -89,11 +94,11 @@
         '</div>' +
         '<nav class="footer-cols" aria-label="Footer">' +
           col("Product", [
-            ["How it works", homeLink("#how")],
-            ["Features", homeLink("#features")],
-            ["Pricing", homeLink("#pricing")],
-            ["Compare", homeLink("#compare")],
-            ["Security", homeLink("#security")]
+            ["How it works", ROUTES.how],
+            ["Features", ROUTES.features],
+            ["Pricing", ROUTES.pricing],
+            ["Compare", ROUTES.compare],
+            ["Security", ROUTES.security]
           ]) +
           col("Guides", [
             ["Lovable guide", "/lovable-to-native-app/"],
@@ -103,8 +108,8 @@
             ["FAQ", "/faq/"]
           ]) +
           col("Company", [
-            ["Support", "/support/"],
-            ["Request a feature", homeLink("#feature-request")],
+            ["Support", ROUTES.support],
+            ["Request a feature", ROUTES.featureRequest],
             ["Privacy", "/privacy/"],
             ["Terms", "/terms/"],
             ["GitHub", GITHUB_URL, ' target="_blank" rel="noopener" data-gh']
@@ -125,7 +130,7 @@
       el.setAttribute("target", "_blank");
       el.setAttribute("rel", "noopener");
     } else {
-      el.setAttribute("href", homeLink("#get-started"));
+      el.setAttribute("href", ROUTES.getStarted);
     }
   });
   document.querySelectorAll("[data-gh]").forEach(function (el) {

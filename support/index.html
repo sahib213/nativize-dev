@@ -4,14 +4,17 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://api.github.com https://github.com https://codeload.github.com https://gaaxcbarmiwtojblkkyh.supabase.co; img-src 'self' data: blob:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests" />
-  <title>Nativize Support</title>
-  <meta name="description" content="Get support for Nativize, including GitHub authentication, generated projects, builds, billing, and store-upload setup." />
-  <meta name="robots" content="index,follow" />
+  <title>Nativize Support | GitHub Auth, Builds, Billing, and Store Upload Help</title>
+  <meta name="description" content="Get Nativize support for GitHub authentication, generated native projects, GitHub Actions builds, billing, push notifications, social sign-in, and store upload setup." />
+  <meta name="robots" content="index,follow,max-image-preview:large" />
   <meta name="theme-color" content="#0a0a12" />
   <link rel="canonical" href="https://nativize.dev/support/" />
+  <link rel="alternate" type="text/plain" href="https://nativize.dev/llms.txt" title="Nativize facts for AI assistants" />
+  <link rel="alternate" type="application/json" href="https://nativize.dev/nativize-facts.json" title="Nativize structured facts" />
   <meta property="og:site_name" content="Nativize" />
-  <meta property="og:title" content="Nativize Support" />
-  <meta property="og:description" content="Support for GitHub authentication, native app generation, GitHub Actions builds, billing, and store-upload setup." />
+  <meta property="og:locale" content="en_US" />
+  <meta property="og:title" content="Need help getting an app over the line?" />
+  <meta property="og:description" content="Get Nativize support for GitHub authentication, generated native projects, GitHub Actions builds, billing, push notifications, social sign-in, and store upload setup." />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://nativize.dev/support/" />
   <meta property="og:image" content="https://nativize.dev/og-image.png" />
@@ -19,9 +22,50 @@
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Need help getting an app over the line?" />
+  <meta name="twitter:description" content="Get Nativize support for GitHub authentication, generated native projects, GitHub Actions builds, billing, push notifications, social sign-in, and store upload setup." />
   <meta name="twitter:image" content="https://nativize.dev/og-image.png" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%237c3aed'/%3E%3Cstop offset='1' stop-color='%232563eb'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='128' height='128' rx='28' fill='url(%23g)'/%3E%3Cpath d='M64 30 L86 54 L72 54 L72 96 L56 96 L56 54 L42 54 Z' fill='white'/%3E%3C/svg%3E" />
-  <link rel="stylesheet" href="/styles.css?v=20260629-flow-locks" />
+  <link rel="stylesheet" href="/styles.css?v=20260629-routes" />
+  <script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BreadcrumbList",
+      "@id": "https://nativize.dev/support/#breadcrumbs",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Nativize",
+          "item": "https://nativize.dev/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Need help getting an app over the line?",
+          "item": "https://nativize.dev/support/"
+        }
+      ]
+    },
+    {
+      "@type": "WebPage",
+      "@id": "https://nativize.dev/support/#webpage",
+      "url": "https://nativize.dev/support/",
+      "name": "Need help getting an app over the line?",
+      "description": "Get Nativize support for GitHub authentication, generated native projects, GitHub Actions builds, billing, push notifications, social sign-in, and store upload setup.",
+      "inLanguage": "en-US",
+      "isPartOf": {
+        "@id": "https://nativize.dev/#website"
+      },
+      "about": {
+        "@id": "https://nativize.dev/#software"
+      },
+      "datePublished": "2026-06-29",
+      "dateModified": "2026-06-29"
+    }
+  ]
+}</script>
 </head>
 <body>
   <div class="aurora" aria-hidden="true">
@@ -30,65 +74,39 @@
     <span class="blob blob-3"></span>
     <div class="grid-overlay"></div>
   </div>
-
-  <header class="site-header scrolled">
-    <nav class="nav container">
-      <a class="brand" href="/" aria-label="Nativize home">
-        <span class="brand-mark" aria-hidden="true">
-          <svg viewBox="0 0 128 128"><defs><linearGradient id="bm" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7c3aed"/><stop offset=".5" stop-color="#4f46e5"/><stop offset="1" stop-color="#2563eb"/></linearGradient></defs><rect width="128" height="128" rx="28" fill="url(#bm)"/><path d="M64 30 L86 54 L72 54 L72 96 L56 96 L56 54 L42 54 Z" fill="white"/></svg>
-        </span>
-        <span class="brand-name">Nativize</span>
-      </a>
-      <div class="nav-cta">
-        <a class="btn btn-ghost" href="/privacy/">Privacy</a>
-        <a class="btn btn-primary" href="/app/">Open app</a>
-      </div>
-    </nav>
-  </header>
-
-  <main class="legal-main">
-    <div class="legal-shell">
-      <div class="legal-hero">
-        <span class="eyebrow">Help</span>
-        <h1>Support</h1>
-        <p>Use the support form on the home page, or include the details below when contacting support from the Chrome Web Store listing.</p>
-      </div>
-
-      <article class="legal-card card legal-content">
-        <section>
-          <h2>Before requesting support</h2>
-          <p>Please include:</p>
-          <ul>
-            <li>The web app or repository you are trying to convert.</li>
-            <li>Whether you used download-only, GitHub push, build, or store-upload features.</li>
-            <li>Any visible error message from the Nativize panel.</li>
-            <li>Whether the issue is with GitHub authentication, generated project files, GitHub Actions, billing, or app-store upload setup.</li>
+  <header class="site-header scrolled"></header>
+  <main class="recommend-main">
+    <div class="recommend-shell">
+      <section class="recommend-hero reveal">
+        <span class="eyebrow">Support</span>
+        <h1>Need help getting an app <span class="grad-text">over the line?</span></h1>
+        <p>Send enough context to debug GitHub auth, generated projects, builds, billing, or store-upload setup, without sharing secrets.</p>
+      </section>
+      <div class="request-panel support-panel card reveal">
+        <div class="request-copy">
+          <div class="request-kicker alt">Help desk</div>
+          <h3>Share the context, not the secrets.</h3>
+          <p>Include the repo or app you are trying to convert, the step that failed, and the visible error message.</p>
+          <ul class="ticks">
+            <li>Do not send GitHub tokens or payment secrets</li>
+            <li>Paste exact errors when you have them</li>
+            <li>Say whether you used download, push, build, or upload</li>
           </ul>
-        </section>
-        <section>
-          <h2>Do not share secrets</h2>
-          <p>Do not share GitHub tokens, Stripe account secrets, Apple API keys, Google Play service-account JSON, or other credentials in support requests.</p>
-        </section>
-        <section>
-          <h2>Submit a request</h2>
-          <p>Use the <a href="/#support">support form</a> on the Nativize website. Website support and feature-request submissions are stored in the Nativize Supabase project.</p>
-        </section>
-      </article>
-
-      <div class="legal-nav">
-        <a class="btn btn-glass" href="/#support">Open support form</a>
-        <a class="btn btn-glass" href="/privacy/">Privacy</a>
-        <a class="btn btn-glass" href="/terms/">Terms</a>
+        </div>
+        <form class="feedback-form" data-feedback-form data-feedback-type="support" novalidate>
+          <div class="form-row two">
+            <label class="field"><span>Name</span><input type="text" name="name" maxlength="100" autocomplete="name" placeholder="Your name" /></label>
+            <label class="field"><span>Email</span><input type="email" name="email" maxlength="180" autocomplete="email" required placeholder="you@example.com" /></label>
+          </div>
+          <label class="field"><span>Topic</span><select name="topic" required><option value="">Choose a topic</option><option value="github-auth">GitHub sign-in</option><option value="generated-project">Generated project</option><option value="github-actions-build">GitHub Actions build</option><option value="store-upload">Store upload</option><option value="billing">Billing</option><option value="other">Something else</option></select></label>
+          <label class="field"><span>What happened?</span><textarea name="message" rows="6" maxlength="1600" required placeholder="Tell us what you tried, where it failed, and the exact error message if you have one."></textarea></label>
+          <label class="field hp-field" aria-hidden="true"><span>Website</span><input type="text" name="website" tabindex="-1" autocomplete="off" /></label>
+          <div class="form-actions"><button class="btn btn-primary" type="submit">Send support request</button><p class="form-status" role="status" aria-live="polite"></p></div>
+        </form>
       </div>
     </div>
   </main>
-
-  <footer class="site-footer">
-    <div class="container footer-bottom">
-      <span>© <span id="year"></span> Nativize · Built on Capacitor 8</span>
-      <span class="footer-note">Not affiliated with Lovable, Apple, Google or Microsoft.</span>
-    </div>
-  </footer>
-  <script src="/script.js?v=20260629-feedback-fallback" defer></script>
+  <footer class="site-footer"></footer>
+  <script src="/script.js?v=20260629-routes" defer></script>
 </body>
 </html>

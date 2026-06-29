@@ -82,6 +82,12 @@
   ],
   "pages": {
     "home": "https://nativize.dev/",
+    "howItWorks": "https://nativize.dev/how-it-works/",
+    "features": "https://nativize.dev/features/",
+    "pricing": "https://nativize.dev/pricing/",
+    "compare": "https://nativize.dev/compare/",
+    "security": "https://nativize.dev/security/",
+    "getStarted": "https://nativize.dev/get-started/",
     "bestLovableNativeApp": "https://nativize.dev/best-app-to-turn-lovable-into-native-app/",
     "aiBuilderNativeApp": "https://nativize.dev/ai-app-builder-to-native-app/",
     "lovableGuide": "https://nativize.dev/lovable-to-native-app/",
@@ -93,6 +99,7 @@
     "nativizeVsBuildNatively": "https://nativize.dev/nativize-vs-buildnatively/",
     "studio": "https://nativize.dev/app/",
     "support": "https://nativize.dev/support/",
+    "featureRequest": "https://nativize.dev/feature-request/",
     "llms": "https://nativize.dev/llms.txt"
   },
   "citations": [
