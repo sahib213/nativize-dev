@@ -47,6 +47,18 @@
     return out;
   }
 
+  // Accept a base64 PNG (optionally a data: URL) for the uploaded logo/splash.
+  // Returns clean base64 (no prefix/whitespace) or null. Caps size so a huge
+  // upload can't bloat the kit (~8MB of base64 ≈ a 6MB PNG, plenty for an icon).
+  function sanitizeBase64(raw) {
+    if (!raw) return null;
+    var s = String(raw).replace(/^data:image\/[a-z.+-]+;base64,/i, "").replace(/\s+/g, "");
+    if (!s) return null;
+    if (!/^[A-Za-z0-9+/]+={0,2}$/.test(s)) return null;
+    if (s.length > 8 * 1024 * 1024) throw new Error("Uploaded image is too large.");
+    return s;
+  }
+
   function normalizeWebDir(raw) {
     var value = boundedText(raw || "dist", LIMITS.webDir, "Web build dir").replace(/^\.\//, "");
     if (!value) return "dist";
@@ -152,9 +164,15 @@
       plan: gated.plan || planId || null,
       platforms: platforms,
       watermark: gated.watermark === true,
+      // Premium: a custom app icon + splash (base64 PNG) and the iOS Dynamic
+      // Island header. gateConfig() already nulls these out on the Free plan.
+      appIcon: sanitizeBase64(gated.appIcon),
+      appSplash: sanitizeBase64(gated.appSplash),
+      iosHeader: gated.iosHeader === true,
       agpVersion: AGP_VERSION,
       gradleVersion: GRADLE_VERSION
     };
+    cfg.hasCustomIcon = !!cfg.appIcon;
     cfg.storeUpload = cfg.iosUpload || cfg.androidUpload;
     cfg.enableSocialAuth = cfg.socialAuth.length > 0;
     cfg.appleSignIn = hasSocialProvider(cfg.socialAuth, "apple");
@@ -369,7 +387,10 @@
       "  // Lovable apps are SPAs; bundledWebRuntime stays false (we ship the web build).",
       "  plugins: {",
       plugins.join("\n"),
-      "  }",
+      "  }" + (c.iosHeader ? "," : ""),
+      // iOS Dynamic Island header: let the WebView draw under the status bar so
+      // the injected frosted bar (CSS env(safe-area-inset-top)) owns the strip.
+      (c.iosHeader ? "  ios: { contentInset: \"never\" }" : ""),
       "};",
       "",
       "export default config;",
@@ -423,6 +444,7 @@
       "",
       "echo '==> Syncing web assets + native config'",
       "npx cap sync",
+      (c.hasCustomIcon ? "\necho '==> Generating app icons from your logo'\nbash ./nativize-icons.sh" : ""),
       (c.enableSocialAuth ? "\necho '==> Applying social sign-in native config (iOS)'\nbash ./nativize-social-auth.sh" : ""),
       "",
       "echo '==> Done. Open native projects with:'",
@@ -529,13 +551,14 @@
       "        run: |",
       "          npm ci --legacy-peer-deps || npm install --legacy-peer-deps",
       "          npm install --no-save --legacy-peer-deps typescript @capacitor/core@^8 @capacitor/cli@^8 @capacitor/android@^8 @capacitor/splash-screen@^8" + (c.enablePush ? " @capacitor-firebase/messaging firebase" : "") + (c.enableSocialAuth ? " @capgo/capacitor-social-login" : ""),
-      "          npm run build" + (c.watermark ? "\n          node -e \"const fs=require('fs');const p='" + c.webDir + "/index.html',w='nativize-watermark.html';try{if(fs.existsSync(w)){var h=fs.readFileSync(p,'utf8');if(h.indexOf('nativize-wm')<0){fs.writeFileSync(p,h.replace('</body>',fs.readFileSync(w,'utf8')+'</body>'));}}}catch(e){}\"" : ""),
+      "          npm run build" + ((c.watermark || c.iosHeader) ? "\n          bash ./nativize-inject.sh" : ""),
       "      - name: Add Android platform + sync",
       "        run: |",
       "          if [ -d android ]; then echo 'android already added'; else npx cap add android; fi",
       "          bash ./nativize-patch-android.sh",
       "          npx cap sync android",
       "          bash ./nativize-permissions.sh",
+      (c.hasCustomIcon ? "          bash ./nativize-icons.sh" : ""),
       "      - name: Assemble debug APK",
       "        working-directory: android",
       "        run: ./gradlew assembleDebug --stacktrace",
@@ -563,7 +586,7 @@
       "        run: |",
       "          npm ci --legacy-peer-deps || npm install --legacy-peer-deps",
       "          npm install --no-save --legacy-peer-deps typescript @capacitor/core@^8 @capacitor/cli@^8 @capacitor/ios@^8 @capacitor/splash-screen@^8" + (c.enablePush ? " @capacitor-firebase/messaging firebase" : "") + (c.enableSocialAuth ? " @capgo/capacitor-social-login" : ""),
-      "          npm run build" + (c.watermark ? "\n          node -e \"const fs=require('fs');const p='" + c.webDir + "/index.html',w='nativize-watermark.html';try{if(fs.existsSync(w)){var h=fs.readFileSync(p,'utf8');if(h.indexOf('nativize-wm')<0){fs.writeFileSync(p,h.replace('</body>',fs.readFileSync(w,'utf8')+'</body>'));}}}catch(e){}\"" : ""),
+      "          npm run build" + ((c.watermark || c.iosHeader) ? "\n          bash ./nativize-inject.sh" : ""),
       "      - name: Add iOS platform + sync",
       "        env:",
       "          LANG: en_US.UTF-8",
@@ -578,6 +601,7 @@
       "          npx cap sync ios",
       "          bash ./nativize-permissions.sh",
       (c.enableSocialAuth ? "          bash ./nativize-social-auth.sh" : ""),
+      (c.hasCustomIcon ? "          bash ./nativize-icons.sh" : ""),
       "      - name: AdMob iOS guard (GADApplicationIdentifier)",
       "        run: |",
       "          # iOS counterpart of the Android AdMob fix: the Google Mobile Ads SDK",
@@ -644,7 +668,7 @@
       "      - name: Install deps + build web",
       "        run: |",
       "          npm ci --legacy-peer-deps || npm install --legacy-peer-deps",
-      "          npm run build" + (c.watermark ? "\n          node -e \"const fs=require('fs');const p='" + c.webDir + "/index.html',w='nativize-watermark.html';try{if(fs.existsSync(w)){var h=fs.readFileSync(p,'utf8');if(h.indexOf('nativize-wm')<0){fs.writeFileSync(p,h.replace('</body>',fs.readFileSync(w,'utf8')+'</body>'));}}}catch(e){}\"" : ""),
+      "          npm run build" + ((c.watermark || c.iosHeader) ? "\n          bash ./nativize-inject.sh" : ""),
       "      - name: Package desktop app",
       "        run: |",
       "          rm -rf desktop/app && cp -r dist desktop/app",
@@ -670,7 +694,7 @@
       "        shell: bash",
       "        run: |",
       "          npm ci --legacy-peer-deps || npm install --legacy-peer-deps",
-      "          npm run build" + (c.watermark ? "\n          node -e \"const fs=require('fs');const p='" + c.webDir + "/index.html',w='nativize-watermark.html';try{if(fs.existsSync(w)){var h=fs.readFileSync(p,'utf8');if(h.indexOf('nativize-wm')<0){fs.writeFileSync(p,h.replace('</body>',fs.readFileSync(w,'utf8')+'</body>'));}}}catch(e){}\"" : ""),
+      "          npm run build" + ((c.watermark || c.iosHeader) ? "\n          bash ./nativize-inject.sh" : ""),
       "      - name: Package desktop app",
       "        shell: bash",
       "        run: |",
@@ -701,7 +725,7 @@
       "      - name: Install deps + build web",
       "        run: |",
       "          npm ci --legacy-peer-deps || npm install --legacy-peer-deps",
-      "          npm run build" + (c.watermark ? "\n          node -e \"const fs=require('fs');const p='" + c.webDir + "/index.html',w='nativize-watermark.html';try{if(fs.existsSync(w)){var h=fs.readFileSync(p,'utf8');if(h.indexOf('nativize-wm')<0){fs.writeFileSync(p,h.replace('</body>',fs.readFileSync(w,'utf8')+'</body>'));}}}catch(e){}\"" : ""),
+      "          npm run build" + ((c.watermark || c.iosHeader) ? "\n          bash ./nativize-inject.sh" : ""),
       "      - name: Generate native projects (idempotent)",
       "        run: |",
       "          if [ ! -f ios/App/App.xcodeproj/project.pbxproj ] && [ ! -f ios/App/Podfile ]; then rm -rf ios; npx cap add ios; fi",
@@ -711,6 +735,7 @@
       "          npx cap sync",
       "          bash ./nativize-permissions.sh",
       (c.enableSocialAuth ? "          bash ./nativize-social-auth.sh" : ""),
+      (c.hasCustomIcon ? "          bash ./nativize-icons.sh" : ""),
       "          # iOS AdMob guard so the committed project doesn't crash on launch.",
       "          PLIST=ios/App/App/Info.plist",
       "          if grep -qi admob package.json && [ -f \"$PLIST\" ] && ! /usr/libexec/PlistBuddy -c 'Print :GADApplicationIdentifier' \"$PLIST\" >/dev/null 2>&1; then",
@@ -914,12 +939,13 @@
         "        run: |",
         "          npm ci --legacy-peer-deps || npm install --legacy-peer-deps",
         "          npm install --no-save --legacy-peer-deps typescript @capacitor/core@^8 @capacitor/cli@^8 @capacitor/android@^8 @capacitor/splash-screen@^8" + (c.enablePush ? " @capacitor-firebase/messaging firebase" : "") + (c.enableSocialAuth ? " @capgo/capacitor-social-login" : ""),
-        "          npm run build" + (c.watermark ? "\n          node -e \"const fs=require('fs');const p='" + c.webDir + "/index.html',w='nativize-watermark.html';try{if(fs.existsSync(w)){var h=fs.readFileSync(p,'utf8');if(h.indexOf('nativize-wm')<0){fs.writeFileSync(p,h.replace('</body>',fs.readFileSync(w,'utf8')+'</body>'));}}}catch(e){}\"" : ""),
+        "          npm run build" + ((c.watermark || c.iosHeader) ? "\n          bash ./nativize-inject.sh" : ""),
         "      - name: Add Android platform + sync",
         "        run: |",
         "          if [ -d android ]; then echo 'android already added'; else npx cap add android; fi",
         "          bash ./nativize-patch-android.sh",
         "          npx cap sync android",
+        (c.hasCustomIcon ? "          bash ./nativize-icons.sh" : ""),
         "      - name: Decode upload keystore",
         "        run: echo \"$ANDROID_KEYSTORE_BASE64\" | base64 -d > \"$RUNNER_TEMP/upload-keystore.jks\"",
         "        env:",
@@ -962,7 +988,7 @@
         "        run: |",
         "          npm ci --legacy-peer-deps || npm install --legacy-peer-deps",
         "          npm install --no-save --legacy-peer-deps typescript @capacitor/core@^8 @capacitor/cli@^8 @capacitor/ios@^8 @capacitor/splash-screen@^8" + (c.enablePush ? " @capacitor-firebase/messaging firebase" : "") + (c.enableSocialAuth ? " @capgo/capacitor-social-login" : ""),
-        "          npm run build" + (c.watermark ? "\n          node -e \"const fs=require('fs');const p='" + c.webDir + "/index.html',w='nativize-watermark.html';try{if(fs.existsSync(w)){var h=fs.readFileSync(p,'utf8');if(h.indexOf('nativize-wm')<0){fs.writeFileSync(p,h.replace('</body>',fs.readFileSync(w,'utf8')+'</body>'));}}}catch(e){}\"" : ""),
+        "          npm run build" + ((c.watermark || c.iosHeader) ? "\n          bash ./nativize-inject.sh" : ""),
         "      - name: Add iOS platform + sync",
         "        env:",
         "          LANG: en_US.UTF-8",
@@ -970,6 +996,7 @@
         "        run: |",
         "          if [ -d ios ]; then echo 'ios already added'; else npx cap add ios --packagemanager CocoaPods; fi",
         "          npx cap sync ios",
+        (c.hasCustomIcon ? "          bash ./nativize-icons.sh" : ""),
         "      - name: Resolve CocoaPods",
         "        working-directory: ios/App",
         "        env:",
@@ -1423,6 +1450,72 @@
     ].join("\n");
   }
 
+  // nativize-island-header.html — a frosted top bar that fills the iOS Dynamic
+  // Island / notch strip, injected before </body> of the built app (like the
+  // watermark). Height is the real safe-area inset, so it collapses to 0 on
+  // devices without a notch and is a no-op on the web.
+  function fileIslandHeader(c) {
+    return [
+      '<style id="nativize-island-style">',
+      '  #nativize-island{position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top,0px);',
+      '    z-index:2147483646;pointer-events:none;background:rgba(10,10,18,.72);',
+      '    -webkit-backdrop-filter:blur(22px) saturate(180%);backdrop-filter:blur(22px) saturate(180%);}',
+      '</style>',
+      '<script>(function(){try{',
+      '  var m=document.querySelector(\'meta[name="viewport"]\');',
+      '  if(m){ if(m.content.indexOf("viewport-fit")<0) m.content+=", viewport-fit=cover"; }',
+      '  else { m=document.createElement("meta"); m.name="viewport"; m.content="width=device-width, initial-scale=1, viewport-fit=cover"; document.head.appendChild(m); }',
+      '  if(!document.getElementById("nativize-island")){ var d=document.createElement("div"); d.id="nativize-island"; d.setAttribute("aria-hidden","true"); document.body.appendChild(d); }',
+      '}catch(e){}})();</script>',
+      ''
+    ].join("\n");
+  }
+
+  // nativize-inject.sh — injects the generated snippets (watermark, iOS island
+  // header) into the built web app before Capacitor copies it native. One place,
+  // idempotent, each snippet only injects if its file exists.
+  function fileInjectSh(c) {
+    return [
+      "#!/usr/bin/env bash",
+      "# Generated by Nativize — injects HTML snippets into the built web app.",
+      "set -uo pipefail",
+      "P='" + c.webDir + "/index.html'",
+      "inject(){",
+      "  [ -f \"$1\" ] || return 0",
+      "  [ -f \"$P\" ] || return 0",
+      "  grep -q \"$2\" \"$P\" && return 0",
+      "  node -e \"const fs=require('fs');const p='$P';fs.writeFileSync(p,fs.readFileSync(p,'utf8').replace('</body>',fs.readFileSync(process.argv[1],'utf8')+'</body>'))\" \"$1\"",
+      "}",
+      "inject nativize-watermark.html nativize-wm",
+      "inject nativize-island-header.html nativize-island",
+      ""
+    ].join("\n");
+  }
+
+  // nativize-icons.sh — decodes the uploaded logo (shipped as base64 text) and
+  // runs @capacitor/assets to generate every iOS/Android/Mac/Windows icon size.
+  // Run after the native platforms exist (cap add/sync). Idempotent + safe.
+  function fileIconsSh(c) {
+    return [
+      "#!/usr/bin/env bash",
+      "# Generated by Nativize — turns your uploaded logo into all native app icons.",
+      "set -uo pipefail",
+      "mkdir -p resources",
+      "if [ -f resources/icon.b64.txt ]; then",
+      "  node -e \"const fs=require('fs');fs.writeFileSync('resources/icon.png',Buffer.from(fs.readFileSync('resources/icon.b64.txt','utf8').replace(/\\s+/g,''),'base64'))\"",
+      "fi",
+      "if [ -f resources/splash.b64.txt ]; then",
+      "  node -e \"const fs=require('fs');fs.writeFileSync('resources/splash.png',Buffer.from(fs.readFileSync('resources/splash.b64.txt','utf8').replace(/\\s+/g,''),'base64'))\"",
+      "fi",
+      "if [ -f resources/icon.png ]; then",
+      "  echo '==> Generating native app icons from your logo'",
+      "  npm install --no-save --legacy-peer-deps @capacitor/assets@^3 >/dev/null 2>&1 || npm install --no-save @capacitor/assets >/dev/null 2>&1 || true",
+      "  npx --yes @capacitor/assets generate --iconBackgroundColor '#ffffff' --iconBackgroundColorDark '#0b0b12' --splashBackgroundColor '#0b0b12' --splashBackgroundColorDark '#0b0b12' || npx @capacitor/assets generate || echo 'Icon generation skipped (assets tool unavailable).'",
+      "fi",
+      ""
+    ].join("\n");
+  }
+
   /**
    * Main entry. Returns a { path: contents } map for the whole kit.
    */
@@ -1458,6 +1551,26 @@
 
     if (c.watermark) {
       files["nativize-watermark.html"] = fileWatermark(c);
+    }
+
+    // Premium: a custom app icon. We ship the logo as base64 text (keeps the kit
+    // text-only) plus a script + workflow step that decodes it and runs
+    // @capacitor/assets to generate every iOS/Android/Mac/Windows icon size.
+    if (c.appIcon) {
+      files["resources/icon.b64.txt"] = c.appIcon + "\n";
+      if (c.appSplash) files["resources/splash.b64.txt"] = c.appSplash + "\n";
+      files["nativize-icons.sh"] = fileIconsSh(c);
+    }
+
+    // Premium: the iOS Dynamic Island / notch header, injected into the built
+    // index.html (like the watermark) so the app gets a clean frosted top bar.
+    if (c.iosHeader) {
+      files["nativize-island-header.html"] = fileIslandHeader(c);
+    }
+
+    // Shared injector for whichever HTML snippets are enabled.
+    if (c.watermark || c.iosHeader) {
+      files["nativize-inject.sh"] = fileInjectSh(c);
     }
 
     return files;

@@ -222,7 +222,8 @@ test("gating: free plan generates iOS-only workflow + watermark, no push/social/
   assert.ok(files["nativize-watermark.html"]);
   assert.match(files["nativize-watermark.html"], /Built with Nativize/);
   const wf = files[".github/workflows/nativize-build.yml"];
-  assert.match(wf, /nativize-watermark\.html/);          // injection step
+  assert.match(wf, /bash \.\/nativize-inject\.sh/);      // build injects snippets
+  assert.match(files["nativize-inject.sh"], /nativize-watermark\.html/); // injector references the watermark
   assert.match(wf, /Android \(\.apk \+ \.aab\)\n    if: \$\{\{ false \}\}/); // android gated off
   assert.match(wf, /Desktop \(macOS \.dmg\)\n    if: \$\{\{ false \}\}/);    // mac gated off
   // paid-only artifacts are absent
@@ -242,6 +243,39 @@ test("gating: pro plan builds all platforms, no watermark, keeps paid features",
   assert.doesNotMatch(wf, /nativize-watermark/);
   assert.ok(files["src/nativePush.ts"]);
   assert.ok(files[".github/workflows/nativize-release.yml"]);
+});
+
+test("premium: custom icon + iOS header are stripped on Free, present on paid", () => {
+  const png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M8AAAMBAQDJ/pLvAAAAAElFTkSuQmCC";
+  // Free: both premium features removed by gateConfig
+  const free = Kit.generateKit(baseConfig({ plan: "free", appIcon: png, iosHeader: true }));
+  assert.equal(free["resources/icon.b64.txt"], undefined);
+  assert.equal(free["nativize-icons.sh"], undefined);
+  assert.equal(free["nativize-island-header.html"], undefined);
+
+  // Pro: icon pipeline + island header generated and wired into the workflow
+  const pro = Kit.generateKit(baseConfig({ plan: "pro", appIcon: "data:image/png;base64," + png, iosHeader: true }));
+  assert.match(pro["resources/icon.b64.txt"], /^iVBOR/);            // data: prefix stripped
+  assert.match(pro["nativize-icons.sh"], /@capacitor\/assets/);
+  assert.match(pro["nativize-island-header.html"], /nativize-island/);
+  assert.match(pro["nativize-inject.sh"], /nativize-island-header\.html/);
+  const wf = pro[".github/workflows/nativize-build.yml"];
+  assert.match(wf, /bash \.\/nativize-icons\.sh/);                   // icon step runs
+  assert.match(wf, /bash \.\/nativize-inject\.sh/);                  // island injected
+  assert.match(pro["capacitor.config.ts"], /contentInset: "never"/); // webview under island
+});
+
+test("premium: rejects junk base64 for the icon", () => {
+  // a non-base64 string is dropped (no icon files emitted), not embedded
+  const bad = Kit.generateKit(baseConfig({ plan: "pro", appIcon: "<script>oops" }));
+  assert.equal(bad["resources/icon.b64.txt"], undefined);
+});
+
+test("plans: lockedFeatures lists customIcon + iosHeader on free, not on paid", () => {
+  assert.ok(Plans.lockedFeatures("free").indexOf("customIcon") > -1);
+  assert.ok(Plans.lockedFeatures("free").indexOf("iosHeader") > -1);
+  assert.equal(Plans.lockedFeatures("pro").indexOf("customIcon"), -1);
+  assert.equal(Plans.lockedFeatures("pro").indexOf("iosHeader"), -1);
 });
 
 test("gating: no plan field → ungated/full (back-compat)", () => {
