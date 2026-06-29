@@ -88,8 +88,12 @@
         // No real token in the harness — simulate the full push → build → artifacts
         // flow, including progress callbacks, so the new UX can be verified.
         console.log("[nativize] build (simulated) for", state.githubRepo);
-        // Slower timing so the animated progress UI is visible while testing.
-        ["dispatched","in_progress","completed"].forEach(function (s, i) { setTimeout(function () { onProgress && onProgress(s); }, i * 150); });
+        // Slow enough that the animated progress UI is visible while testing.
+        [
+          ["dispatched", 200],
+          ["in_progress", 900],
+          ["completed", 5200]
+        ].forEach(function (entry) { setTimeout(function () { onProgress && onProgress(entry[0]); }, entry[1]); });
         var runUrl = "https://github.com/" + state.githubRepo + "/actions/runs/123";
         return new Promise(function (resolve) {
           setTimeout(function () {
@@ -102,7 +106,7 @@
                 { name: "desktop-windows", sizeBytes: 78600000, downloadUrl: runUrl }
               ]
             });
-          }, 600);
+          }, 5400);
         });
       }
     });

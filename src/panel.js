@@ -212,16 +212,24 @@
         "background:rgba(96,165,250,.16);color:#bfdbfe;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}" +
       // ---- build progress ----
       ".nz-prog{margin-top:13px;padding:13px;border:1px solid rgba(255,255,255,.09);border-radius:13px;background:rgba(255,255,255,.025)}" +
-      ".nz-prog-top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:9px}" +
-      ".nz-prog-stage{font-size:13px;font-weight:600;color:#ece9f6}" +
-      ".nz-prog-time{font-size:12px;color:#9b94b8;font-variant-numeric:tabular-nums}" +
+      ".nz-prog-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px}" +
+      ".nz-prog-stage-wrap{min-width:0;display:flex;flex-direction:column;gap:3px}" +
+      ".nz-prog-stage{font-size:13px;font-weight:700;color:#ece9f6;line-height:1.25}" +
+      ".nz-prog-detail{font-size:11.5px;color:#aaa3c4;line-height:1.35}" +
+      ".nz-prog-time{font-size:12px;color:#9b94b8;font-variant-numeric:tabular-nums;white-space:nowrap}" +
       ".nz-prog-bar{height:7px;border-radius:999px;background:rgba(255,255,255,.1);overflow:hidden;position:relative}" +
       ".nz-prog-fill{display:block;height:100%;width:0%;border-radius:999px;background:linear-gradient(90deg,#8b5cf6,#ec4899,#22c55e);" +
         "box-shadow:0 0 18px rgba(139,92,246,.38);transition:width .55s cubic-bezier(.22,1,.36,1)}" +
-      ".nz-steps{display:flex;gap:5px;margin-top:10px}" +
-      ".nz-step{flex:1;height:4px;border-radius:999px;background:rgba(255,255,255,.12);transition:background .3s}" +
-      ".nz-step.on{background:linear-gradient(90deg,#8b5cf6,#ec4899)}" +
-      ".nz-step.cur{animation:nzpulse 1.1s ease-in-out infinite}" +
+      ".nz-step-list{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px;margin-top:10px}" +
+      ".nz-step-item{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:4px;min-width:0;padding:6px 3px;border-radius:10px;" +
+        "border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.025);transition:border-color .3s,background .3s}" +
+      ".nz-step-num{width:22px;height:22px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;" +
+        "font-size:11px;font-weight:800;color:#8d86aa;background:rgba(255,255,255,.08)}" +
+      ".nz-step-copy{font-size:9.5px;color:#a9a3c9;line-height:1.1;text-align:center;min-height:20px;overflow-wrap:anywhere}" +
+      ".nz-step-item.on{border-color:rgba(139,92,246,.38);background:rgba(139,92,246,.1)}" +
+      ".nz-step-item.on .nz-step-num{color:#fff;background:linear-gradient(135deg,#8b5cf6,#ec4899)}" +
+      ".nz-step-item.on .nz-step-copy{color:#ece9f6}" +
+      ".nz-step-item.cur{box-shadow:0 0 0 1px rgba(236,72,153,.14);animation:nzpulse 1.1s ease-in-out infinite}" +
       "@keyframes nzpulse{50%{opacity:.45}}" +
       ".nz-prog-note{font-size:11px;color:#8c85ab;margin-top:9px}" +
       // ---- permissions ----
@@ -938,85 +946,83 @@
       });
     }
 
-    // Live progress for the long cloud build. The percent reflects GitHub's
-    // coarse status plus elapsed time, and never reaches 100% until the run
-    // actually completes.
-    var BUILD_MILESTONES = [
-      { pct: 10, text: "Preparing project files" },
-      { pct: 20, text: "Checking app configuration" },
-      { pct: 30, text: "Installing required dependencies" },
-      { pct: 40, text: "Preparing iOS build settings" },
-      { pct: 50, text: "Generating simulator-ready files" },
-      { pct: 60, text: "Validating Xcode project" },
-      { pct: 70, text: "Packaging download files" },
-      { pct: 80, text: "Running final build checks" },
-      { pct: 90, text: "Preparing the final download" },
-      { pct: 100, text: "Build complete" }
+    // Live progress for the long cloud build. GitHub only reports coarse states,
+    // so the UI shows five honest steps and never marks the final step complete
+    // until the run actually completes.
+    var BUILD_STEPS = [
+      { title: "Preparing project files", short: "Files", detail: "Collecting app metadata, icons, and native project files." },
+      { title: "Checking app configuration", short: "Config", detail: "Validating bundle ID, permissions, sign-in, and push settings." },
+      { title: "Installing required dependencies", short: "Deps", detail: "Restoring packages and native build tools in the cloud runner." },
+      { title: "Building and validating iOS", short: "Build", detail: "Generating simulator-ready files and checking the Xcode project." },
+      { title: "Preparing final download", short: "Download", detail: "Packaging the useful project and preview files for download." }
     ];
-    function milestoneFor(percent) {
-      var p = Math.max(10, Math.min(100, Math.ceil(Number(percent || 10) / 10) * 10));
-      for (var i = 0; i < BUILD_MILESTONES.length; i++) {
-        if (BUILD_MILESTONES[i].pct === p) return BUILD_MILESTONES[i];
+    function stageToStepIndex(stage, elapsedSec) {
+      if (stage === "completed") return 4;
+      if (stage === "in_progress") {
+        if (elapsedSec >= 75) return 4;
+        if (elapsedSec >= 30) return 3;
+        return 2;
       }
-      return BUILD_MILESTONES[0];
-    }
-    function stageToStep(stage) {
       if (stage === "dispatched" || stage === "queued") return 1;
-      if (stage === "in_progress") return 2;
-      if (stage === "completed") return 3;
       return 0; // push
+    }
+    function fillForStep(stepIndex, completed) {
+      var fills = [12, 32, 52, 72, completed ? 100 : 88];
+      return fills[Math.max(0, Math.min(4, stepIndex))];
     }
     function startBuildProgress() {
       var t0 = Date.now();
       var s = $("nz-status");
+      var stepItems = BUILD_STEPS.map(function (step, i) {
+        return '<div class="nz-step-item" data-step="' + i + '">' +
+          '<span class="nz-step-num">' + (i + 1) + '</span>' +
+          '<span class="nz-step-copy">' + esc(step.short) + '</span>' +
+        '</div>';
+      }).join("");
       s.className = "nz-status";
       s.innerHTML =
         '<div class="nz-prog">' +
-          '<div class="nz-prog-top"><span class="nz-prog-stage" id="nz-progStage">Starting…</span>' +
-            '<span class="nz-prog-time"><span id="nz-progPct">0%</span> · <span id="nz-progTime">0:00</span></span></div>' +
+          '<div class="nz-prog-top"><span class="nz-prog-stage-wrap">' +
+              '<span class="nz-prog-stage" id="nz-progStage">Starting...</span>' +
+              '<span class="nz-prog-detail" id="nz-progDetail">Getting the build request ready.</span>' +
+            '</span>' +
+            '<span class="nz-prog-time"><span id="nz-progStepText">Step 1 of 5</span> · <span id="nz-progTime">0:00</span></span></div>' +
           '<div class="nz-prog-bar"><span class="nz-prog-fill" id="nz-progFill"></span></div>' +
-          '<div class="nz-steps" id="nz-progSteps">' +
-            '<span class="nz-step"></span><span class="nz-step"></span>' +
-            '<span class="nz-step"></span><span class="nz-step"></span></div>' +
-          '<div class="nz-prog-note">Runs in the cloud — we smoke-test the simulator build before showing downloads.</div>' +
+          '<div class="nz-step-list" id="nz-progSteps">' + stepItems + '</div>' +
+          '<div class="nz-prog-note">Runs in the cloud - we smoke-test the simulator build before showing downloads.</div>' +
         '</div>';
       var stepsEl = $("nz-progSteps");
       var backendStage = "push";
-      var currentPct = 0;
-      function setStep(idx) {
+      var currentStep = 0;
+      function paint(stepIndex) {
+        stepIndex = Math.max(currentStep, Math.min(4, stepIndex));
+        currentStep = stepIndex;
         for (var i = 0; i < stepsEl.children.length; i++) {
-          stepsEl.children[i].className = "nz-step" + (i < idx ? " on" : (i === idx ? " on cur" : ""));
+          stepsEl.children[i].className = "nz-step-item" + (i < stepIndex ? " on" : (i === stepIndex ? " on cur" : ""));
         }
+        var step = BUILD_STEPS[stepIndex];
+        var complete = backendStage === "completed";
+        var st = $("nz-progStage"); if (st) st.textContent = complete ? "Build complete" : step.title;
+        var detail = $("nz-progDetail"); if (detail) detail.textContent = complete ? "The simulator preview was checked and downloads are ready." : step.detail;
+        var label = $("nz-progStepText"); if (label) label.textContent = "Step " + (stepIndex + 1) + " of " + BUILD_STEPS.length;
+        var fill = $("nz-progFill"); if (fill) fill.style.width = fillForStep(stepIndex, complete) + "%";
       }
-      function targetPercent(stage) {
-        var elapsed = Math.floor((Date.now() - t0) / 1000);
-        if (stage === "completed") return 100;
-        if (stage === "in_progress") return Math.min(90, 30 + Math.floor(elapsed / 25) * 10);
-        if (stage === "dispatched" || stage === "queued") return 20;
-        return 10;
-      }
-      function paint(percent) {
-        percent = Math.max(currentPct, Math.min(100, percent));
-        if (backendStage !== "completed") percent = Math.min(percent, 90);
-        currentPct = percent;
-        var milestone = milestoneFor(percent);
-        var st = $("nz-progStage"); if (st) st.textContent = milestone.text;
-        var pct = $("nz-progPct"); if (pct) pct.textContent = milestone.pct + "%";
-        var fill = $("nz-progFill"); if (fill) fill.style.width = milestone.pct + "%";
-      }
-      setStep(0);
-      paint(10);
+      paint(0);
+      setTimeout(function () {
+        var body = panel.querySelector(".nz-body");
+        if (body) body.scrollTop = body.scrollHeight;
+      }, 0);
       var timer = setInterval(function () {
         var el = $("nz-progTime"); if (!el) return;
         var sec = Math.floor((Date.now() - t0) / 1000);
         el.textContent = Math.floor(sec / 60) + ":" + ("0" + (sec % 60)).slice(-2);
-        paint(targetPercent(backendStage));
+        paint(stageToStepIndex(backendStage, sec));
       }, 1000);
       return {
         update: function (stage) {
           backendStage = stage || backendStage;
-          paint(targetPercent(backendStage));
-          setStep(stageToStep(stage));
+          var sec = Math.floor((Date.now() - t0) / 1000);
+          paint(stageToStepIndex(backendStage, sec));
         },
         stop: function () { clearInterval(timer); }
       };

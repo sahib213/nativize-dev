@@ -131,25 +131,28 @@ test("panel copy does not present a manual GitHub token as a billing bypass", ()
   assert.doesNotMatch(source, /or paste a token under Options/);
 });
 
-test("build progress uses distinct ten-percent milestones and does not warn about expected platform limits", () => {
+test("build progress uses five numbered steps and does not warn about expected platform limits", () => {
   const panel = read("src/panel.js");
+  const webPanel = read("website/lib/panel.js");
   const web = read("website/app.js");
 
   [
     "Preparing project files",
     "Checking app configuration",
     "Installing required dependencies",
-    "Preparing iOS build settings",
-    "Generating simulator-ready files",
-    "Validating Xcode project",
-    "Packaging download files",
-    "Running final build checks",
-    "Preparing the final download",
+    "Building and validating iOS",
+    "Preparing final download",
+    "Step 1 of 5",
     "Build complete"
   ].forEach((message) => assert.match(panel, new RegExp(message)));
-  assert.match(panel, /id="nz-progPct"/);
+  assert.match(panel, /class="nz-step-num">'\s*\+\s*\(i \+ 1\)/);
+  assert.match(panel, /id="nz-progStepText"/);
+  assert.match(panel, /label\.textContent = "Step " \+ \(stepIndex \+ 1\) \+ " of " \+ BUILD_STEPS\.length/);
   assert.match(panel, /id="nz-progFill"/);
-  assert.match(panel, /never reaches 100% until the run/);
+  assert.match(panel, /five honest steps/);
+  assert.match(panel, /until the run actually completes/);
+  assert.doesNotMatch(panel, /id="nz-progPct"/);
+  assert.match(webPanel, /Step 1 of 5/);
   assert.doesNotMatch(web, /Android \/ Mac \/ Windows builds/);
 });
 
