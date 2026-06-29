@@ -12,9 +12,10 @@ test("Manifest V3 runs on Lovable/local sites, talks to GitHub + Supabase billin
   const manifest = JSON.parse(read("manifest.json"));
   assert.equal(manifest.manifest_version, 3);
   assert.equal(manifest.name, "Nativize - Lovable to Native Apps");
-  assert.ok(manifest.description.includes("Lovable apps"));
-  assert.ok(manifest.description.includes("Capacitor 8"));
+  assert.ok(manifest.description.includes("Lovable web app"));
+  assert.ok(manifest.description.includes("built in the cloud"));
   assert.ok(manifest.description.length <= 132);
+  assert.doesNotMatch(manifest.description, /Capacitor|GitHub|Apple|Google|Microsoft/);
   // 'identity' is needed for one-click "Sign in with GitHub" via chrome.identity.
   assert.deepEqual(manifest.permissions, ["storage", "identity", "downloads"]);
   // GitHub API + Supabase Auth/RPC/Edge Functions for billing.
