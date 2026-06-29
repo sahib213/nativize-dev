@@ -100,7 +100,9 @@
    * Push a { path: contents } map as a single commit.
    * @returns {Promise<{url: string, sha: string, branch: string}>}
    */
-  async function pushKit(repoStr, token, files, message) {
+  async function pushKit(repoStr, token, files, message, opts) {
+    opts = opts || {};
+    var sleep = opts.sleep || defaultSleep;
     if (!token) throw new Error("A GitHub token with 'repo' + 'workflow' scopes is required.");
     validateFileMap(files);
     var r = splitRepo(repoStr);
@@ -116,17 +118,6 @@
         "Lovable project to GitHub first so your app's source is in the repo, then push the kit.");
     }
 
-    var ref;
-    try {
-      ref = await gh("GET", base + "/git/ref/heads/" + branch, token);
-    } catch (e) {
-      throw new Error("Branch '" + branch + "' has no commits yet. Sync your Lovable app to " +
-        "this repo first (it needs source + a build script), then push the kit.");
-    }
-    var latestCommitSha = ref.object.sha;
-    var latestCommit = await gh("GET", base + "/git/commits/" + latestCommitSha, token);
-    var baseTreeSha = latestCommit.tree.sha;
-
     var tree = Object.keys(files).map(function (path) {
       return {
         path: path,
@@ -136,19 +127,37 @@
       };
     });
 
-    var newTree = await gh("POST", base + "/git/trees", token, { base_tree: baseTreeSha, tree: tree });
-    var commit = await gh("POST", base + "/git/commits", token, {
-      message: message || "Add Nativize native kit (Capacitor 8)",
-      tree: newTree.sha,
-      parents: [latestCommitSha]
-    });
-    await gh("PATCH", base + "/git/refs/heads/" + branch, token, { sha: commit.sha });
+    for (var attempt = 0; attempt < 3; attempt++) {
+      var ref;
+      try {
+        ref = await gh("GET", base + "/git/ref/heads/" + branch, token);
+      } catch (e) {
+        throw new Error("Branch '" + branch + "' has no commits yet. Sync your Lovable app to " +
+          "this repo first (it needs source + a build script), then push the kit.");
+      }
+      var latestCommitSha = ref.object.sha;
+      var latestCommit = await gh("GET", base + "/git/commits/" + latestCommitSha, token);
+      var baseTreeSha = latestCommit.tree.sha;
 
-    return {
-      sha: commit.sha,
-      branch: branch,
-      url: "https://github.com/" + r.owner + "/" + r.repo + "/commit/" + commit.sha
-    };
+      var newTree = await gh("POST", base + "/git/trees", token, { base_tree: baseTreeSha, tree: tree });
+      var commit = await gh("POST", base + "/git/commits", token, {
+        message: message || "Add Nativize native kit (Capacitor 8)",
+        tree: newTree.sha,
+        parents: [latestCommitSha]
+      });
+
+      try {
+        await gh("PATCH", base + "/git/refs/heads/" + branch, token, { sha: commit.sha });
+        return {
+          sha: commit.sha,
+          branch: branch,
+          url: "https://github.com/" + r.owner + "/" + r.repo + "/commit/" + commit.sha
+        };
+      } catch (e) {
+        if (!/not a fast forward|reference update failed/i.test(e.message || "") || attempt === 2) throw e;
+        await sleep(700 * (attempt + 1));
+      }
+    }
   }
 
   /**

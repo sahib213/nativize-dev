@@ -92,6 +92,63 @@ test("triggerWorkflow retries while a freshly-pushed workflow isn't registered y
   assert.match(res.actionsUrl, /octo\/demo\/actions/);
 });
 
+test("pushKit retries on non-fast-forward by rebuilding on the newest branch tip", async () => {
+  let refCalls = 0;
+  let patchCalls = 0;
+  const treeBodies = [];
+  const commitBodies = [];
+  const patchBodies = [];
+  global.fetch = async (url, opts) => {
+    opts = opts || {};
+    const u = new URL(url);
+    const key = (opts.method || "GET") + " " + u.pathname;
+
+    if (key === "GET /repos/octo/demo") {
+      return { ok: true, status: 200, json: async () => ({ default_branch: "main", size: 1 }) };
+    }
+    if (key === "GET /repos/octo/demo/git/ref/heads/main") {
+      refCalls++;
+      return { ok: true, status: 200, json: async () => ({ object: { sha: refCalls === 1 ? "oldsha" : "newsha" } }) };
+    }
+    if (key === "GET /repos/octo/demo/git/commits/oldsha") {
+      return { ok: true, status: 200, json: async () => ({ tree: { sha: "oldtree" } }) };
+    }
+    if (key === "GET /repos/octo/demo/git/commits/newsha") {
+      return { ok: true, status: 200, json: async () => ({ tree: { sha: "newtree" } }) };
+    }
+    if (key === "POST /repos/octo/demo/git/trees") {
+      treeBodies.push(JSON.parse(opts.body));
+      return { ok: true, status: 200, json: async () => ({ sha: "tree" + treeBodies.length }) };
+    }
+    if (key === "POST /repos/octo/demo/git/commits") {
+      commitBodies.push(JSON.parse(opts.body));
+      return { ok: true, status: 200, json: async () => ({ sha: "commit" + commitBodies.length }) };
+    }
+    if (key === "PATCH /repos/octo/demo/git/refs/heads/main") {
+      patchCalls++;
+      patchBodies.push(JSON.parse(opts.body));
+      if (patchCalls === 1) {
+        return { ok: false, status: 422, json: async () => ({ message: "Update is not a fast forward" }) };
+      }
+      return { ok: true, status: 200, json: async () => ({}) };
+    }
+    return { ok: false, status: 404, json: async () => ({ message: "no route " + key }) };
+  };
+
+  const res = await GitHub.pushKit("octo/demo", "tok", { "nativize.sh": "echo ok" }, "Update kit", {
+    sleep: async () => {}
+  });
+
+  assert.equal(res.sha, "commit2");
+  assert.equal(refCalls, 2);
+  assert.equal(patchCalls, 2);
+  assert.equal(treeBodies[0].base_tree, "oldtree");
+  assert.equal(treeBodies[1].base_tree, "newtree");
+  assert.deepEqual(commitBodies[0].parents, ["oldsha"]);
+  assert.deepEqual(commitBodies[1].parents, ["newsha"]);
+  assert.deepEqual(patchBodies, [{ sha: "commit1" }, { sha: "commit2" }]);
+});
+
 test("downloadRepoZip fetches the repo zipball as a blob", async () => {
   let calledUrl = "";
   global.fetch = async (url, opts) => {
