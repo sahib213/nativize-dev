@@ -6,6 +6,12 @@ support and feature-request forms submit user-entered text to Supabase.
 ```
 website/
   /     # landing page (hero, how-it-works, features, pricing, support, FAQ)
+  /how-it-works/
+  /features/
+  /pricing/
+  /compare/
+  /security/
+  /get-started/
   /app/       # "Studio" — the full tool, in the browser (generate/push/update)
   /privacy/   # public privacy policy URL for store listings
   /terms/     # public terms page

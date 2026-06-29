@@ -136,14 +136,14 @@ code {
 /* ---------- Hero visual ---------- */
 .hero-visual { display: grid; place-items: center; }
 .build-console {
-  width: min(560px, 100%);
-  padding: 12px;
-  border: 1px solid rgba(255,255,255,.14);
-  border-radius: 28px;
+  width: min(590px, 100%);
+  padding: 10px;
+  border: 1px solid rgba(255,255,255,.16);
+  border-radius: 24px;
   background:
-    linear-gradient(145deg, rgba(255,255,255,.13), rgba(255,255,255,.035) 34%, rgba(11,12,24,.9)),
-    rgba(14,15,28,.86);
-  box-shadow: 0 34px 90px -36px rgba(0,0,0,.92), 0 26px 80px -48px rgba(20,184,166,.82);
+    linear-gradient(140deg, rgba(255,255,255,.18), rgba(255,255,255,.055) 42%, rgba(7,10,24,.9)),
+    linear-gradient(180deg, rgba(31,41,70,.9), rgba(9,11,24,.92));
+  box-shadow: 0 36px 86px -38px rgba(0,0,0,.92), 0 24px 74px -54px rgba(20,184,166,.75);
   position: relative;
   overflow: hidden;
 }
@@ -161,34 +161,47 @@ code {
 .console-topbar {
   display: flex;
   align-items: center;
-  gap: 12px;
-  height: 44px;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 56px;
   padding: 0 14px;
   border-bottom: 1px solid rgba(255,255,255,.08);
-  color: var(--muted);
-  font-size: 12px;
-  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  color: var(--text);
+  font-size: 13px;
 }
-.console-topbar b {
-  margin-left: auto;
-  color: #7dd3fc;
-  font-family: inherit;
-  font-size: 11px;
-  text-transform: uppercase;
-}
-.window-dots {
+.pipeline-title,
+.pipeline-pills {
   display: flex;
-  gap: 6px;
+  align-items: center;
 }
-.window-dots i {
+.pipeline-title {
+  gap: 10px;
+  font-weight: 760;
+}
+.live-dot {
   width: 9px;
   height: 9px;
-  border-radius: 50%;
-  background: rgba(255,255,255,.18);
+  border-radius: 999px;
+  background: #5eead4;
+  box-shadow: 0 0 0 5px rgba(94,234,212,.13);
 }
-.window-dots i:nth-child(1) { background: #fb7185; }
-.window-dots i:nth-child(2) { background: #fbbf24; }
-.window-dots i:nth-child(3) { background: #34d399; }
+.pipeline-pills {
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.pipeline-pills span {
+  display: flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 999px;
+  background: rgba(255,255,255,.055);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
 .console-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 190px;
@@ -210,6 +223,7 @@ code {
 .source-window {
   border-radius: 20px;
   overflow: hidden;
+  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.035));
 }
 .source-head {
   display: flex;
@@ -244,8 +258,8 @@ code {
 .preview-hero {
   width: 78%;
   height: 44px;
-  border-radius: 14px;
-  background: linear-gradient(135deg, rgba(236,72,153,.42), rgba(37,99,235,.28));
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(20,184,166,.35), rgba(124,58,237,.32) 52%, rgba(255,255,255,.1));
 }
 .preview-line { width: 58%; height: 8px; }
 .preview-line.wide { width: 86%; }
@@ -302,29 +316,35 @@ code {
   min-height: 338px;
 }
 .phone-frame {
-  width: 154px;
-  min-height: 318px;
-  padding: 12px;
-  border-radius: 34px;
-  border: 1px solid rgba(255,255,255,.18);
-  background: linear-gradient(145deg, rgba(255,255,255,.18), rgba(21,23,38,.95));
-  box-shadow: 0 24px 70px -32px rgba(0,0,0,.95), inset 0 0 0 1px rgba(255,255,255,.06);
-  transform: rotate(2deg);
+  position: relative;
+  width: 170px;
+  min-height: 336px;
+  padding: 5px;
+  border-radius: 31px;
+  border: 1px solid rgba(255,255,255,.2);
+  background: linear-gradient(145deg, rgba(255,255,255,.26), rgba(15,18,32,.95));
+  box-shadow: 0 24px 70px -34px rgba(0,0,0,.95), inset 0 0 0 1px rgba(255,255,255,.08);
+  transform: rotate(1.25deg);
 }
 .phone-speaker {
-  width: 54px;
-  height: 5px;
-  margin: 0 auto 10px;
+  position: absolute;
+  z-index: 2;
+  top: 12px;
+  left: 50%;
+  width: 46px;
+  height: 11px;
+  transform: translateX(-50%);
   border-radius: 999px;
-  background: rgba(255,255,255,.24);
+  background: rgba(5,7,15,.86);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.08);
 }
 .phone-screen {
-  min-height: 270px;
-  border-radius: 25px;
-  padding: 18px 15px;
+  min-height: 326px;
+  border-radius: 26px;
+  padding: 38px 14px 16px;
   background:
-    linear-gradient(180deg, rgba(13,15,31,.12), rgba(7,8,17,.72)),
-    linear-gradient(145deg, #27113b, #0a1b32 58%, #0d2f2c);
+    linear-gradient(180deg, rgba(255,255,255,.08), rgba(7,8,17,.34)),
+    linear-gradient(145deg, #14152c, #0d2535 56%, #0e3b35);
   overflow: hidden;
 }
 .app-chip {
@@ -347,13 +367,13 @@ code {
   letter-spacing: 0;
 }
 .screen-art {
-  height: 82px;
+  height: 92px;
   margin: 18px 0;
-  border-radius: 22px;
+  border-radius: 20px;
   background:
-    linear-gradient(135deg, rgba(255,255,255,.24), transparent 24%),
-    linear-gradient(135deg, #ec4899, #2563eb 62%, #14b8a6);
-  box-shadow: 0 18px 44px -24px rgba(236,72,153,.9);
+    linear-gradient(135deg, rgba(255,255,255,.28), transparent 24%),
+    linear-gradient(135deg, #14b8a6, #4f46e5 58%, #ec4899);
+  box-shadow: 0 18px 44px -24px rgba(20,184,166,.9);
 }
 .screen-lines {
   display: grid;
@@ -646,6 +666,9 @@ code {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
+}
+.page-actions {
+  margin-top: 24px;
 }
 
 /* Numbered how-to steps + review date for SEO/how-to pages */
@@ -984,10 +1007,10 @@ code {
   .section { padding: 56px 24px; }
   .hero h1 { font-size: clamp(34px, 9vw, 48px); letter-spacing: 0; }
   .console-grid { grid-template-columns: 1fr; padding: 16px; }
-  .console-topbar span { max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .device-showcase { min-height: 330px; }
-  .phone-frame { width: 166px; min-height: 330px; }
-  .phone-screen { min-height: 282px; }
+  .pipeline-title span:last-child { max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .device-showcase { min-height: 350px; }
+  .phone-frame { width: 172px; min-height: 340px; }
+  .phone-screen { min-height: 328px; }
   .ios-card { left: 14px; top: 34px; }
   .android-card { right: 12px; bottom: 34px; }
   .footer-bottom { flex-direction: column; }
