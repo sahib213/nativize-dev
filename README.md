@@ -61,9 +61,9 @@ app activations through Supabase RPCs.
 generator, so the extension and website are gated identically:
 - **Free** — iOS only, "Built with Nativize" watermark, no push / sign-in / store
   upload, 1 app.
-- **Starter** (one-time) — 1 app, all platforms + features, no watermark, no updates.
-- **Pro** (monthly) — 3 apps, everything, unlimited updates.
-- **Max** (monthly) — 10 apps, everything, unlimited updates.
+- **Starter** ($12 CAD one-time) — 1 app, all platforms + features, no watermark, one launch.
+- **Pro** ($29 CAD/month) — 3 apps, everything, unlimited updates.
+- **Max** ($79 CAD/month) — 10 apps, everything, unlimited updates.
 
 `../src/billing.js` talks to Supabase RPCs and the `create-checkout-session` edge
 function. Supabase stores paid entitlements from Stripe webhooks and enforces the
