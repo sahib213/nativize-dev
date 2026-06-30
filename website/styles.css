@@ -90,6 +90,26 @@ code {
 .btn-glass:hover { background: rgba(255,255,255,.1); transform: translateY(-2px); }
 .btn-ghost { color: var(--muted); background: transparent; }
 .btn-ghost:hover { color: var(--text); background: var(--surface); }
+.btn-github-login {
+  --pad: 10px 17px;
+  color: #11131a;
+  background: #fff;
+  border-color: rgba(255,255,255,.72);
+  box-shadow: 0 18px 34px -22px rgba(0,0,0,.95), 0 10px 24px -18px rgba(255,255,255,.55);
+  font-weight: 760;
+}
+.btn-github-login:hover {
+  color: #050509;
+  background: #fff;
+  transform: translateY(-2px);
+  box-shadow: 0 24px 44px -24px rgba(0,0,0,1), 0 12px 28px -18px rgba(255,255,255,.72);
+}
+.btn-github-login svg {
+  width: 17px;
+  height: 17px;
+  flex: 0 0 auto;
+  fill: currentColor;
+}
 .btn .arr { width: 18px; height: 18px; transition: transform .25s var(--ease); }
 .btn:hover .arr { transform: translateX(4px); }
 
@@ -1001,7 +1021,7 @@ code {
   .nav-links.open { transform: translateY(0); }
   .nav-extra { display: block; }
   .nav-links a { padding: 12px; font-size: 16px; }
-  .nav .nav-cta .btn-ghost { display: none; }
+  .nav .nav-cta .btn-github-login { display: none; }
   .nav-toggle { display: flex; order: 3; }
   .features, .security-grid, .outputs-chips { grid-template-columns: 1fr; }
   .section { padding: 56px 24px; }

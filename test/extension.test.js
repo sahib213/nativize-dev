@@ -257,6 +257,7 @@ test("checkout and feedback endpoints have rate limits and malformed-input guard
   assert.match(site, /insertFeedback\(table, payload\)/);
   assert.match(site, /Log in with GitHub/);
   assert.match(site, /\/app\/\?login=github/);
+  assert.match(site, /btn-github-login/);
   assert.doesNotMatch(site, /function feedbackFallbackUrl\(type, payload\)/);
   assert.doesNotMatch(site, /Open a GitHub support draft/);
   assert.doesNotMatch(site, /Name and email are omitted/);
