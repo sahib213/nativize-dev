@@ -8,6 +8,7 @@ const corsHeaders = {
 
 const MAX_BODY_BYTES = 9000;
 const MAX_AUTH_HEADER = 5000;
+const MAX_ARTIFACT_BYTES = 250 * 1024 * 1024;
 const GITHUB_ARTIFACT_RE = /^https:\/\/api\.github\.com\/repos\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/actions\/artifacts\/\d+\/zip$/;
 
 function env(name: string): string {
@@ -50,7 +51,7 @@ async function checkRateLimit(
   });
   if (error) {
     if (/too many requests/i.test(error.message || "")) throw rateLimitError();
-    throw new Error("Rate limit check failed.");
+    console.warn("Artifact download rate-limit check failed:", error.message || error);
   }
 }
 
@@ -111,15 +112,57 @@ async function githubError(response: Response): Promise<string> {
   }
 }
 
+function githubHeaders(githubToken: string): HeadersInit {
+  return {
+    "Authorization": `Bearer ${githubToken}`,
+    "Accept": "application/vnd.github+json",
+    "X-GitHub-Api-Version": "2022-11-28",
+    "User-Agent": "Nativize-Artifact-Download"
+  };
+}
+
+async function fetchGithubArtifact(artifactUrl: string, githubToken: string): Promise<Response> {
+  const first = await fetch(artifactUrl, {
+    headers: githubHeaders(githubToken),
+    redirect: "manual"
+  });
+
+  if ([301, 302, 303, 307, 308].includes(first.status)) {
+    const location = first.headers.get("Location");
+    if (!location) return first;
+    return fetch(location, {
+      headers: { "User-Agent": "Nativize-Artifact-Download" },
+      redirect: "follow"
+    });
+  }
+
+  return first;
+}
+
+async function readArtifactBytes(response: Response): Promise<ArrayBuffer> {
+  const length = Number(response.headers.get("Content-Length") || "0");
+  if (Number.isFinite(length) && length > MAX_ARTIFACT_BYTES) {
+    throw Object.assign(new Error("Artifact is too large to download here."), { status: 413 });
+  }
+  const bytes = await response.arrayBuffer();
+  if (bytes.byteLength > MAX_ARTIFACT_BYTES) {
+    throw Object.assign(new Error("Artifact is too large to download here."), { status: 413 });
+  }
+  return bytes;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
+  let step = "start";
   try {
+    step = "create-client";
     const supabase = createClient(env("SUPABASE_URL"), env("SUPABASE_SERVICE_ROLE_KEY"), {
       auth: { persistSession: false }
     });
 
+    step = "read-auth";
     const authHeader = req.headers.get("Authorization") || "";
     if (authHeader.length > MAX_AUTH_HEADER) return json({ error: "Invalid authorization header." }, 400);
     const jwt = authHeader.replace(/^Bearer\s+/i, "").trim();
@@ -128,47 +171,45 @@ Deno.serve(async (req) => {
       return json({ error: "Sign in is required." }, 401);
     }
 
+    step = "verify-user";
     const { data, error } = await supabase.auth.getUser(jwt);
     if (error || !data.user) {
       await checkRateLimit(supabase, `artifact-invalid:${requestIp(req)}`, 10, 900);
       return json({ error: "Invalid Supabase session." }, 401);
     }
+    step = "rate-limit";
     await checkRateLimit(supabase, `artifact-user:${data.user.id}`, 30, 900);
 
+    step = "read-body";
     const body = await readJsonBody(req);
     const artifactUrl = cleanArtifactUrl(body.artifactUrl);
     const githubToken = cleanToken(body.githubToken);
     const filename = cleanFilename(body.filename);
 
-    const artifact = await fetch(artifactUrl, {
-      headers: {
-        "Authorization": `Bearer ${githubToken}`,
-        "Accept": "application/vnd.github+json",
-        "X-GitHub-Api-Version": "2022-11-28",
-        "User-Agent": "Nativize-Artifact-Download"
-      },
-      redirect: "follow"
-    });
+    step = "fetch-github";
+    const artifact = await fetchGithubArtifact(artifactUrl, githubToken);
 
-    if (!artifact.ok || !artifact.body) {
+    if (!artifact.ok) {
       const detail = await githubError(artifact);
       return json({ error: `Could not download this app (${detail}).` }, artifact.status === 404 ? 404 : 502);
     }
+    step = "read-artifact";
+    const bytes = await readArtifactBytes(artifact);
 
+    step = "respond";
     const headers = new Headers(corsHeaders);
     headers.set("Content-Type", artifact.headers.get("Content-Type") || "application/zip");
     headers.set("Content-Disposition", `attachment; filename="${filename.replace(/"/g, "")}"`);
     headers.set("Cache-Control", "no-store");
-    const length = artifact.headers.get("Content-Length");
-    if (length) headers.set("Content-Length", length);
+    headers.set("Content-Length", String(bytes.byteLength));
 
-    return new Response(artifact.body, { status: 200, headers });
+    return new Response(bytes, { status: 200, headers });
   } catch (err) {
     console.error(err);
     const status = typeof (err as { status?: unknown }).status === "number" ? (err as { status: number }).status : 500;
     if (status === 400 || status === 401 || status === 413 || status === 429) {
       return json({ error: err instanceof Error ? err.message : "Request failed." }, status);
     }
-    return json({ error: "Artifact download failed." }, 500);
+    return json({ error: `Artifact download failed at ${step}.` }, 500);
   }
 });
