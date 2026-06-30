@@ -881,7 +881,7 @@
         return { hidden: true, legacy: true };
       }
       if (n.indexOf("ios-simulator-preview") >= 0) {
-        return { label: "🍏 iOS Simulator preview", note: "tested in the cloud; unzip and run install-in-simulator.sh with Xcode installed" };
+        return { label: "🍏 iOS Simulator preview", note: "tested in the cloud; unzip, open README.txt, then paste install-in-simulator.txt in Terminal" };
       }
       if (n.indexOf("ios-xcode-project") >= 0) {
         return { label: "🛠 iOS Xcode project", note: "open ios/App/App.xcworkspace in Xcode" };

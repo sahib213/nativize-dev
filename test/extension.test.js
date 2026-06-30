@@ -85,6 +85,8 @@ test("artifact downloads use Chrome downloads in the extension and Supabase rela
   assert.match(panel, /ios-simulator-app/);
   assert.match(panel, /Rebuild required/);
   assert.match(panel, /ios-simulator-preview/);
+  assert.match(panel, /install-in-simulator\.txt/);
+  assert.doesNotMatch(panel, /install-in-simulator\.sh/);
   assert.match(panel, /ios-xcode-project/);
   assert.match(billing, /\/functions\/v1\/artifact-download/);
   assert.match(edge, /GITHUB_ARTIFACT_RE/);
