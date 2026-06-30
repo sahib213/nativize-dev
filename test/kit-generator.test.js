@@ -438,6 +438,8 @@ test("workflow has dispatch trigger + android assembleDebug + ios xcodebuild no-
   assert.match(wf, /iOS simulator launch diagnostics/);
   assert.match(wf, /ios-simulator-preview-app\.tar\.gz/);
   assert.match(wf, /install-in-simulator\.txt/);
+  assert.match(wf, /cd ~\/Downloads\/iossimulatorpreview/);
+  assert.match(wf, /bash install-in-simulator\.txt/);
   assert.match(wf, /Downloads', Path\.home\(\) \/ 'Desktop'/);
   assert.match(wf, /Using Nativize preview folder/);
   assert.match(wf, /open -a Simulator \|\| true/);
