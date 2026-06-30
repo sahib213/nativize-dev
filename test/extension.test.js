@@ -255,9 +255,11 @@ test("checkout and feedback endpoints have rate limits and malformed-input guard
   assert.match(site, /FEEDBACK_FUNCTION_URL/);
   assert.match(site, /submitFeedbackFunction\(type, payload\)/);
   assert.match(site, /insertFeedback\(table, payload\)/);
-  assert.match(site, /function feedbackFallbackUrl\(type, payload\)/);
-  assert.match(site, /Open a GitHub support draft/);
-  assert.match(site, /Name and email are omitted/);
+  assert.doesNotMatch(site, /function feedbackFallbackUrl\(type, payload\)/);
+  assert.doesNotMatch(site, /Open a GitHub support draft/);
+  assert.doesNotMatch(site, /Name and email are omitted/);
+  assert.doesNotMatch(site, /sahib213\/nativize-dev/);
+  assert.doesNotMatch(site, /GITHUB_URL/);
 });
 
 test("panel renders the social sign-in section and feeds it into getState", () => {

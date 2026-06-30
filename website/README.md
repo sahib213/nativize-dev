@@ -45,8 +45,7 @@ provider token locally for GitHub API calls. Users can:
 **`script.js`** (top):
 | Constant | What to set |
 |----------|-------------|
-| `CHROME_STORE_URL` | Chrome Web Store URL. Empty → "Add to Chrome" scrolls to install steps. |
-| `GITHUB_URL` | Public Nativize repo URL. |
+| `CHROME_STORE_URL` | Chrome Web Store URL. Empty -> "Add to Chrome" points to the get-started page. |
 | `SUPABASE_URL` / `SUPABASE_ANON_KEY` | Supabase project used for feedback, Auth, billing RPCs, and edge functions. |
 
 **Supabase feedback forms** — run `website/supabase-feedback.sql` in the Supabase

@@ -4,11 +4,10 @@
 (function () {
   "use strict";
 
-  /* ---- Config: fill these in when the listings go live ---- */
+  /* ---- Config: fill this in when the listing goes live ---- */
   // When the Chrome Web Store listing exists, set CHROME_STORE_URL and every
-  // "Add to Chrome" button points to it. Until then they scroll to install steps.
+  // "Add to Chrome" button points to it. Until then they point to Get Started.
   var CHROME_STORE_URL = ""; // e.g. "https://chrome.google.com/webstore/detail/…"
-  var GITHUB_URL = "https://github.com/sahib213/nativize-dev"; // public Nativize repo
 
   // Supabase feedback forms. The anon key is publishable; protect the tables
   // with RLS so anonymous visitors can insert but cannot read existing rows.
@@ -64,7 +63,6 @@
           '<a href="' + ROUTES.faq + '">FAQ</a>' +
         '</div>' +
         '<div class="nav-cta">' +
-          '<a class="btn btn-ghost" href="https://github.com" target="_blank" rel="noopener" data-gh>GitHub</a>' +
           '<a class="btn btn-primary" href="' + ROUTES.getStarted + '" data-cta="header">Add to Chrome</a>' +
         '</div>' +
         '<button class="nav-toggle" id="navToggle" aria-label="Menu"><span></span><span></span><span></span></button>' +
@@ -112,8 +110,7 @@
             ["Support", ROUTES.support],
             ["Request a feature", ROUTES.featureRequest],
             ["Privacy", "/privacy/"],
-            ["Terms", "/terms/"],
-            ["GitHub", GITHUB_URL, ' target="_blank" rel="noopener" data-gh']
+            ["Terms", "/terms/"]
           ]) +
         '</nav>' +
       '</div>' +
@@ -124,7 +121,7 @@
   }
   renderSharedFooter();
 
-  /* ---- Wire CTAs + GitHub links ---- */
+  /* ---- Wire CTAs ---- */
   document.querySelectorAll("[data-cta]").forEach(function (el) {
     if (CHROME_STORE_URL) {
       el.setAttribute("href", CHROME_STORE_URL);
@@ -134,10 +131,6 @@
       el.setAttribute("href", ROUTES.getStarted);
     }
   });
-  document.querySelectorAll("[data-gh]").forEach(function (el) {
-    el.setAttribute("href", GITHUB_URL);
-  });
-
   /* ---- Year ---- */
   var y = document.getElementById("year");
   if (y) y.textContent = new Date().getFullYear();
@@ -255,20 +248,15 @@
     status.textContent = message || "";
   }
 
-  function setFormFallbackStatus(form, type, url) {
+  function setFormFallbackStatus(form, type) {
     var status = form.querySelector(".form-status");
     if (!status) return;
     status.textContent = "";
     status.classList.remove("is-success", "is-error");
     status.classList.add("is-error");
-    status.appendChild(document.createTextNode(type === "feature" ? "The feature inbox is not ready yet. " : "The support inbox is not ready yet. "));
-    var link = document.createElement("a");
-    link.href = url;
-    link.target = "_blank";
-    link.rel = "noopener";
-    link.textContent = type === "feature" ? "Open a GitHub feature draft" : "Open a GitHub support draft";
-    status.appendChild(link);
-    status.appendChild(document.createTextNode(" instead. Do not include secrets."));
+    status.textContent = type === "feature"
+      ? "Could not send this feature request yet. Please try again in a moment."
+      : "Could not send this support request yet. Please try again in a moment.";
   }
 
   function setFormBusy(form, busy) {
@@ -355,38 +343,6 @@
     }
   }
 
-  function feedbackFallbackUrl(type, payload) {
-    var title = type === "feature"
-      ? "Feature request: " + (payload.title || "Nativize request")
-      : "Support request: " + (payload.topic || "Nativize help");
-    var body = type === "feature"
-      ? [
-          "## Feature request",
-          "",
-          "**Priority:** " + (payload.priority || "nice-to-have"),
-          "**Page:** " + (payload.page_path || "/"),
-          "",
-          "## Description",
-          payload.description || "",
-          "",
-          "_Email is omitted here so this public GitHub draft does not expose private contact info._"
-        ].join("\n")
-      : [
-          "## Support request",
-          "",
-          "**Topic:** " + (payload.topic || "other"),
-          "**Page:** " + (payload.page_path || "/"),
-          "",
-          "## What happened",
-          payload.message || "",
-          "",
-          "_Name and email are omitted here so this public GitHub draft does not expose private contact info._"
-        ].join("\n");
-    var url = GITHUB_URL + "/issues/new";
-    var params = new URLSearchParams({ title: title, body: body });
-    return url + "?" + params.toString();
-  }
-
   document.querySelectorAll("[data-feedback-form]").forEach(function (form) {
     form.addEventListener("submit", async function (event) {
       event.preventDefault();
@@ -415,7 +371,7 @@
       } catch (err) {
         console.error(err);
         if (payload) {
-          setFormFallbackStatus(form, type, feedbackFallbackUrl(type, payload));
+          setFormFallbackStatus(form, type);
         } else {
           setFormStatus(form, "error", (err && err.message) || "Please check the form and try again.");
         }
