@@ -149,15 +149,27 @@ test("pushKit retries on non-fast-forward by rebuilding on the newest branch tip
   assert.deepEqual(patchBodies, [{ sha: "commit1" }, { sha: "commit2" }]);
 });
 
-test("downloadRepoZip fetches the repo zipball as a blob", async () => {
-  let calledUrl = "";
-  global.fetch = async (url, opts) => {
-    calledUrl = String(url);
-    return { ok: true, status: 200, blob: async () => new Blob([new Uint8Array([80, 75, 3, 4])], { type: "application/zip" }) };
-  };
-  const blob = await GitHub.downloadRepoZip("octo/demo", "tok");
-  assert.match(calledUrl, /\/repos\/octo\/demo\/zipball/);
-  assert.ok(blob.size >= 4);
+test("downloadRepoZip rebuilds the project from trees+blobs (CORS-safe, not /zipball)", async () => {
+  const b64 = (s) => Buffer.from(s).toString("base64");
+  const calls = mockFetch({
+    "GET /repos/octo/demo": () => ({ body: { default_branch: "main" } }),
+    "GET /repos/octo/demo/git/ref/heads/main": () => ({ body: { object: { sha: "C1" } } }),
+    "GET /repos/octo/demo/git/commits/C1": () => ({ body: { tree: { sha: "T1" } } }),
+    "GET /repos/octo/demo/git/trees/T1": () => ({ body: { truncated: false, tree: [
+      { path: "README.md", type: "blob", sha: "B1" },
+      { path: "assets/logo.png", type: "blob", sha: "B2" },
+      { path: "sub", type: "tree", sha: "T2" } // directories are skipped
+    ] } }),
+    "GET /repos/octo/demo/git/blobs/B1": () => ({ body: { content: b64("hello"), encoding: "base64" } }),
+    "GET /repos/octo/demo/git/blobs/B2": () => ({ body: { content: b64("\x89PNG\r\n"), encoding: "base64" } })
+  });
+  let progressEnd = 0;
+  const blob = await GitHub.downloadRepoZip("octo/demo", "tok", null, (p) => { progressEnd = p.done; });
+  // Never touches the CORS-blocked zipball endpoint.
+  assert.ok(!calls.some((c) => /\/zipball/.test(c.url)), "must not call /zipball");
+  assert.ok(calls.some((c) => /\/git\/trees\//.test(c.url)), "should read the git tree");
+  assert.equal(progressEnd, 2);       // 2 blobs fetched (the dir was skipped)
+  assert.ok(blob.size > 0);
 });
 
 test("findWorkflowRun returns the newest dispatched run after the start time", async () => {

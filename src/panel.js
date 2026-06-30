@@ -917,11 +917,19 @@
           (d.note ? '<span class="nz-art-note">' + esc(d.note) + '</span>' : '') +
           '</button>';
       });
+      // Also offer the full source project (src + generated ios/android/desktop)
+      // right where the built apps are listed.
+      html += '<button class="nz-art" type="button" id="nz-successProjectBtn">' +
+        '<span class="nz-art-main">⬇ Download full project (source)</span>' +
+        '<span class="nz-art-note">Your whole repo: src + generated ios / android / desktop, as a .zip</span>' +
+        '</button>';
       return html + '</div><div class="nz-hint">Downloads are project/preview packages, not unsupported standalone Mac apps.</div>';
     }
     function wireArtifactDownloads(res) {
       var artifacts = visibleArtifacts(res && res.artifacts);
       if (!artifacts.length) return;
+      var pb = shadow.getElementById("nz-successProjectBtn");
+      if (pb) pb.addEventListener("click", function () { runProjectDownload(pb); });
       Array.prototype.forEach.call(shadow.querySelectorAll("[data-artifact-index]"), function (btn) {
         btn.addEventListener("click", function () {
           var idx = Number(btn.getAttribute("data-artifact-index"));
@@ -1034,18 +1042,19 @@
     }
 
     // Download the whole project (source: src + ios + android + desktop) as a .zip.
-    $("nz-projectBtn").addEventListener("click", function () {
+    function runProjectDownload(b) {
       var st = getState();
       if (!requireSignedInUi("download the full project")) return;
       if (!st.githubRepo) return setStatus("Enter a GitHub repo (owner/repo) first.", "err");
       if (!st.token) return setStatus("GitHub access is missing. Sign out, then sign in with GitHub again.", "err");
       if (typeof opts.onDownloadProject !== "function") return setStatus("Project download isn't wired here.", "err");
-      var b = $("nz-projectBtn"); b.disabled = true;
-      setStatus("Zipping your full project (src + ios + android + desktop)…");
+      if (b) b.disabled = true;
+      setStatus("Zipping your full project (src + ios + android + desktop)… this can take a moment for a big repo.");
       Promise.resolve(opts.onDownloadProject(st))
-        .then(function () { b.disabled = false; setStatus("✓ Full project downloaded (source + all platform folders).", "ok"); })
-        .catch(function (e) { b.disabled = false; setStatus("Project download failed: " + (e && e.message || e), "err"); });
-    });
+        .then(function () { if (b) b.disabled = false; setStatus("✓ Full project downloaded (source + all platform folders).", "ok"); })
+        .catch(function (e) { if (b) b.disabled = false; setStatus("Project download failed: " + (e && e.message || e), "err"); });
+    }
+    $("nz-projectBtn").addEventListener("click", function () { runProjectDownload($("nz-projectBtn")); });
 
     $("nz-buildBtn").addEventListener("click", function () {
       var st = getState();

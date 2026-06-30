@@ -68,7 +68,12 @@
 
     Object.keys(files).forEach(function (path) {
       var nameBytes = utf8(path);
-      var dataBytes = utf8(String(files[path]));
+      // Accept binary entries (Uint8Array / ArrayBuffer) as-is so we can zip
+      // images and other non-text files; coerce everything else to UTF-8 text.
+      var value = files[path];
+      var dataBytes = (value instanceof Uint8Array) ? value
+        : (value instanceof ArrayBuffer) ? new Uint8Array(value)
+        : utf8(String(value));
       var crc = crc32(dataBytes);
       var size = dataBytes.length;
 
