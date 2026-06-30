@@ -285,6 +285,19 @@
     window.location.href = "/pricing/";
   });
 
+  function consumeGitHubLoginIntent() {
+    var url = new URL(window.location.href);
+    if (url.searchParams.get("login") !== "github") return;
+    if (supabaseAccess) {
+      url.searchParams.delete("login");
+      history.replaceState(null, "", url.pathname + (url.search ? url.search : ""));
+      refreshBilling({ flash: true });
+      return;
+    }
+    signInWithGitHub().catch(function () {});
+  }
+  consumeGitHubLoginIntent();
+
   /* ---------- Download helper ---------- */
   function triggerDownload(blob, filename) {
     var url = URL.createObjectURL(blob);

@@ -18,6 +18,7 @@
     support: "support_requests"
   };
   var FEEDBACK_FUNCTION_URL = SUPABASE_URL + "/functions/v1/feedback-submit";
+  var GITHUB_LOGIN_URL = "/app/?login=github";
 
   var prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -63,6 +64,7 @@
           '<a href="' + ROUTES.faq + '">FAQ</a>' +
         '</div>' +
         '<div class="nav-cta">' +
+          '<a class="btn btn-ghost" href="' + GITHUB_LOGIN_URL + '">Log in with GitHub</a>' +
           '<a class="btn btn-primary" href="' + ROUTES.getStarted + '" data-cta="header">Add to Chrome</a>' +
         '</div>' +
         '<button class="nav-toggle" id="navToggle" aria-label="Menu"><span></span><span></span><span></span></button>' +
