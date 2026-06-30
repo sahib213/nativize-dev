@@ -228,6 +228,7 @@ test("gating: free plan generates iOS-only workflow + watermark, no push/social/
   const wf = files[".github/workflows/nativize-build.yml"];
   assert.match(wf, /bash \.\/nativize-inject\.sh/);      // build injects snippets
   assert.match(files["nativize-inject.sh"], /nativize-watermark\.html/); // injector references the watermark
+  assert.doesNotMatch(files["nativize-inject.sh"], /nativize-island-header\.html/);
   assert.match(wf, /Android \(\.apk \+ \.aab\)\n    if: \$\{\{ false \}\}/); // android gated off
   assert.match(wf, /Desktop \(macOS \.dmg\)\n    if: \$\{\{ false \}\}/);    // mac gated off
   assert.match(wf, /ios-simulator-preview/);
@@ -268,8 +269,11 @@ test("premium: custom icon + iOS header are stripped on Free, present on paid", 
   const pro = Kit.generateKit(baseConfig({ plan: "pro", appIcon: "data:image/png;base64," + png, iosHeader: true }));
   assert.match(pro["resources/icon.b64.txt"], /^iVBOR/);            // data: prefix stripped
   assert.match(pro["nativize-icons.sh"], /@capacitor\/assets/);
+  assert.match(pro["nativize-icons.sh"], /resize\(1024,1024/);
+  assert.match(pro["nativize-icons.sh"], /generate --ios --android/);
   assert.match(pro["nativize-island-header.html"], /nativize-island/);
   assert.match(pro["nativize-inject.sh"], /nativize-island-header\.html/);
+  assert.doesNotMatch(pro["nativize-inject.sh"], /nativize-watermark\.html/);
   const wf = pro[".github/workflows/nativize-build.yml"];
   assert.match(wf, /bash \.\/nativize-icons\.sh/);                   // icon step runs
   assert.match(wf, /bash \.\/nativize-inject\.sh/);                  // island injected
@@ -375,6 +379,7 @@ test("desktop build: valid Electron main + package.json with mac/win targets", (
 test("nativePush.ts only present when push enabled", () => {
   assert.equal(Kit.generateKit(baseConfig({ enablePush: false }))["src/nativePush.ts"], undefined);
   assert.ok(Kit.generateKit(baseConfig({ enablePush: true }))["src/nativePush.ts"]);
+  assert.ok(Kit.generateKit(baseConfig({ enablePush: true }))["nativize-push-config.sh"]);
 });
 
 // ---------------------------------------------------------------------------
@@ -470,16 +475,37 @@ test("nativize.sh fails early with a clear Node 22 requirement", () => {
   assert.match(sh, /@capacitor\/cli@\^8 typescript/);
 });
 
+test("nativize.sh runs local snippet injection before sync and permissions after sync", () => {
+  const files = Kit.generateKit(baseConfig({
+    plan: "pro",
+    iosHeader: true,
+    permissions: [{ key: "camera", description: "Take profile photos." }]
+  }));
+  const sh = files["nativize.sh"];
+  assert.match(sh, /bash \.\/nativize-inject\.sh/);
+  assert.match(sh, /bash \.\/nativize-permissions\.sh/);
+  assert.ok(sh.indexOf("bash ./nativize-inject.sh") < sh.indexOf("npx cap sync"));
+  assert.ok(sh.indexOf("npx cap sync") < sh.indexOf("bash ./nativize-permissions.sh"));
+  assert.doesNotMatch(Kit.generateKit(baseConfig())["nativize.sh"], /nativize-inject\.sh/);
+});
+
 test("generated shell scripts and workflow are syntactically valid", () => {
   const os = require("node:os");
   const fs = require("node:fs");
   const path = require("node:path");
   const { execFileSync } = require("node:child_process");
-  const files = Kit.generateKit(baseConfig({ enablePush: true }));
+  const files = Kit.generateKit(baseConfig({
+    enablePush: true,
+    plan: "pro",
+    iosHeader: true,
+    appIcon: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M8AAAMBAQDJ/pLvAAAAAElFTkSuQmCC",
+    socialAuth: { apple: { enabled: true } }
+  }));
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "nz-syntax-"));
 
-  for (const name of ["nativize.sh", "nativize-patch-android.sh"]) {
+  for (const name of Object.keys(files).filter((file) => file.endsWith(".sh"))) {
     const target = path.join(dir, name);
+    fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.writeFileSync(target, files[name]);
     execFileSync("bash", ["-n", target]);
   }
@@ -505,6 +531,20 @@ test("push config targets FirebaseMessaging and avoids the competing Capacitor p
   assert.doesNotMatch(files["capacitor.config.ts"], /\bPushNotifications:/);
   assert.match(files["nativize.sh"], /@capacitor-firebase\/messaging firebase/);
   assert.doesNotMatch(files["nativize.sh"], /@capacitor\/push-notifications/);
+});
+
+test("push config helper keeps preview builds launchable and is wired into all build paths", () => {
+  const files = Kit.generateKit(baseConfig({ enablePush: true, iosUpload: true, androidUpload: true }));
+  const helper = files["nativize-push-config.sh"];
+  assert.match(helper, /GoogleService-Info\.plist/);
+  assert.match(helper, /GoogleService-Info\.plist in Resources/);
+  assert.match(helper, /google-services\.json/);
+  assert.match(helper, /nativize-preview/);
+  assert.match(helper, /AIzaSyDUMMY0000000000000000000000000000/);
+  assert.match(files["nativize.sh"], /bash \.\/nativize-push-config\.sh/);
+  assert.ok(files["nativize.sh"].indexOf("bash ./nativize-push-config.sh") < files["nativize.sh"].indexOf("bash ./nativize-permissions.sh"));
+  assert.match(files[".github/workflows/nativize-build.yml"], /bash \.\/nativize-push-config\.sh/);
+  assert.match(files[".github/workflows/nativize-release.yml"], /bash \.\/nativize-push-config\.sh/);
 });
 
 test("CHECKLIST covers both App Store and Play Store", () => {

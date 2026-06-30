@@ -48,6 +48,18 @@ test("both uploads → both jobs", () => {
   assert.match(wf, /^  ios:/m);
 });
 
+test("release workflow applies native permissions and social config before store upload", () => {
+  const wf = Kit.generateKit(cfg({
+    plan: "max",
+    iosUpload: true,
+    androidUpload: true,
+    permissions: [{ key: "camera", description: "Take profile photos." }],
+    socialAuth: { apple: { enabled: true } }
+  }))[".github/workflows/nativize-release.yml"];
+  assert.match(wf, /Add Android platform \+ sync[\s\S]*bash \.\/nativize-permissions\.sh[\s\S]*Upload to Google Play/);
+  assert.match(wf, /Add iOS platform \+ sync[\s\S]*bash \.\/nativize-permissions\.sh[\s\S]*bash \.\/nativize-social-auth\.sh[\s\S]*Upload to TestFlight/);
+});
+
 test("release workflow uses spaces only (no tabs)", () => {
   const wf = Kit.generateKit(cfg({ iosUpload: true, androidUpload: true }))[".github/workflows/nativize-release.yml"];
   assert.doesNotMatch(wf, /\t/);
