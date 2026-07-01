@@ -164,6 +164,33 @@ test("panel copy does not present a manual GitHub token as a billing bypass", ()
   assert.doesNotMatch(source, /or paste a token under Options/);
 });
 
+test("build-ready download screen is scrollable", () => {
+  const panel = read("src/panel.js");
+  const webPanel = read("website/lib/panel.js");
+
+  assert.match(panel, /\.nz-success \{/);
+  assert.match(panel, /max-height: calc\(80vh - 126px\); overflow-y: auto/);
+  assert.match(panel, /overscroll-behavior: contain/);
+  assert.match(panel, /\$\("nz-success"\)\.scrollTop = 0/);
+  assert.match(webPanel, /max-height: calc\(80vh - 126px\); overflow-y: auto/);
+});
+
+test("Lovable repo detection reads GitHub metadata instead of guessing from app name", () => {
+  const content = read("src/content.js");
+  const panel = read("src/panel.js");
+
+  assert.match(content, /function normalizeGithubRepoCandidate/);
+  assert.match(content, /githubRepo\|github_repo\|githubRepository\|github_repository\|repositoryFullName\|repoFullName\|full_name\|repo/);
+  assert.match(content, /script:not\(\[src\]\)/);
+  assert.match(content, /\[localStorage, sessionStorage\]/);
+  assert.match(content, /new MutationObserver/);
+  assert.match(content, /startRepoAutodetect\(panelApi\)/);
+  assert.match(content, /panelApi\.setRepo\(repo\)/);
+  assert.doesNotMatch(content, /githubRepo:\s*saved\.githubRepo \|\| detectAppName/);
+  assert.match(panel, /function setRepo\(repo\)/);
+  assert.match(panel, /setRepo: setRepo/);
+});
+
 test("build progress uses five numbered steps and does not warn about expected platform limits", () => {
   const panel = read("src/panel.js");
   const webPanel = read("website/lib/panel.js");

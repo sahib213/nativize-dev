@@ -128,6 +128,7 @@
 
   .nz-success {
     display: none; padding: 28px 22px 26px; text-align: center; color: #f5f3ff;
+    max-height: calc(80vh - 126px); overflow-y: auto; overscroll-behavior: contain;
   }
   .nz-success.nz-show { display: block; animation: nz-in .2s ease; }
   .nz-success .nz-check {
@@ -136,7 +137,7 @@
     box-shadow: 0 10px 28px rgba(34,197,94,.4);
   }
   .nz-success h2 { margin: 0 0 6px; font-size: 17px; }
-  .nz-success-msg { margin: 0 0 16px; font-size: 12.5px; color: #d8d3ee; line-height: 1.55; }
+  .nz-success-msg { margin: 0 0 16px; font-size: 12.5px; color: #d8d3ee; line-height: 1.55; overflow-wrap: anywhere; }
   .nz-success-msg b, .nz-success-msg code { color: #fff; }
   .nz-success a { color: #a78bfa; word-break: break-all; }
 
@@ -742,11 +743,20 @@
       $("nz-successMsg").innerHTML = msgHtml || "";
       panel.querySelector(".nz-body").style.display = "none";
       $("nz-success").classList.add("nz-show");
+      $("nz-success").scrollTop = 0;
     }
     function backFromSuccess() {
       $("nz-success").classList.remove("nz-show");
       panel.querySelector(".nz-body").style.display = "block";
       setStatus("");
+    }
+    function setRepo(repo) {
+      repo = String(repo || "").trim();
+      if (!repo) return;
+      var input = $("nz-repo");
+      if (!input || input.value.trim()) return;
+      input.value = repo;
+      emitChange();
     }
 
     function open() { panel.classList.add("nz-show"); }
@@ -1119,7 +1129,7 @@
 
     return {
       open: open, close: close, toggle: toggle,
-      getState: getState, setStatus: setStatus, setPlan: setPlan, showSuccess: showSuccess,
+      getState: getState, setStatus: setStatus, setPlan: setPlan, setRepo: setRepo, showSuccess: showSuccess,
       root: shadow,
       destroy: function () { try { host.remove(); } catch (e) {} }
     };

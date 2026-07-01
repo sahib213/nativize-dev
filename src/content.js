@@ -31,18 +31,132 @@
     return t || "My Lovable App";
   }
 
-  function detectRepo() {
-    var links = document.querySelectorAll('a[href*="github.com/"]');
-    for (var i = 0; i < links.length; i++) {
-      var m = links[i].href.match(/github\.com\/([^\/\s]+)\/([^\/\s#?]+)/i);
-      if (m) {
-        var owner = m[1], repo = m[2].replace(/\.git$/, "");
-        if (owner && repo && owner !== "apps" && owner !== "marketplace") {
-          return owner + "/" + repo;
-        }
-      }
+  var GITHUB_OWNER_DENY = {
+    about: true, apps: true, blog: true, contact: true, customer: true,
+    enterprise: true, explore: true, features: true, github: true,
+    login: true, marketplace: true, new: true, orgs: true, organizations: true,
+    pricing: true, security: true, settings: true, site: true, sponsors: true,
+    topics: true
+  };
+  var GITHUB_REPO_DENY = {
+    actions: true, blob: true, commit: true, commits: true, issues: true,
+    network: true, packages: true, projects: true, pull: true, pulls: true,
+    releases: true, security: true, settings: true, tree: true
+  };
+  function validRepoParts(owner, repo) {
+    owner = String(owner || "").trim();
+    repo = String(repo || "").trim().replace(/\.git$/i, "");
+    if (!/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/.test(owner)) return null;
+    if (!/^[A-Za-z0-9._-]{1,100}$/.test(repo)) return null;
+    if (GITHUB_OWNER_DENY[owner.toLowerCase()] || GITHUB_REPO_DENY[repo.toLowerCase()]) return null;
+    return owner + "/" + repo;
+  }
+  function normalizeGithubRepoCandidate(value, allowPlain) {
+    value = String(value || "").trim();
+    if (!value) return "";
+    var git = value.match(/git@github\.com:([A-Za-z0-9-]{1,39})\/([A-Za-z0-9._-]{1,100})(?:\.git)?(?:\s|$)/i);
+    if (git) return validRepoParts(git[1], git[2]) || "";
+    var url = value.match(/(?:https?:)?\/\/(?:www\.)?github\.com\/([A-Za-z0-9-]{1,39})\/([A-Za-z0-9._-]{1,100})(?:\.git)?(?:[\/?#\s"'<>]|$)/i);
+    if (url) return validRepoParts(url[1], url[2]) || "";
+    if (allowPlain || /github|repo|repository/i.test(value)) {
+      var plain = value.match(/\b([A-Za-z0-9][A-Za-z0-9-]{0,38})\/([A-Za-z0-9._-]{1,100})\b/);
+      if (plain) return validRepoParts(plain[1], plain[2]) || "";
     }
     return "";
+  }
+  function addRepoCandidate(candidates, value, score, allowPlain) {
+    var repo = normalizeGithubRepoCandidate(value, allowPlain);
+    if (!repo) return;
+    for (var i = 0; i < candidates.length; i++) {
+      if (candidates[i].repo.toLowerCase() === repo.toLowerCase()) {
+        candidates[i].score = Math.max(candidates[i].score, score);
+        return;
+      }
+    }
+    candidates.push({ repo: repo, score: score });
+  }
+  function scanRepoText(candidates, text, score) {
+    text = String(text || "");
+    if (!/github|repo|repository/i.test(text)) return;
+    var limited = text.length > 220000 ? text.slice(0, 220000) : text;
+    var re = /(?:https?:)?\/\/(?:www\.)?github\.com\/[A-Za-z0-9-]{1,39}\/[A-Za-z0-9._-]{1,100}(?:\.git)?/ig;
+    var match;
+    while ((match = re.exec(limited)) && candidates.length < 20) {
+      addRepoCandidate(candidates, match[0], score, false);
+    }
+    var keyed = /(?:githubRepo|github_repo|githubRepository|github_repository|repositoryFullName|repoFullName|full_name|repo)\s*["':=]+\s*["']?([A-Za-z0-9-]{1,39}\/[A-Za-z0-9._-]{1,100})/ig;
+    while ((match = keyed.exec(limited)) && candidates.length < 20) {
+      addRepoCandidate(candidates, match[1], score - 1, true);
+    }
+  }
+  function detectRepo() {
+    var candidates = [];
+    var links = document.querySelectorAll('a[href*="github.com/"], a[href^="git@github.com:"]');
+    for (var i = 0; i < links.length; i++) {
+      addRepoCandidate(candidates, links[i].href, 100, false);
+      addRepoCandidate(candidates, links[i].textContent, 80, true);
+    }
+
+    var nodes = document.querySelectorAll("[href], [aria-label], [title], [data-github-repo], [data-repo], [data-repository], [data-github-url]");
+    for (var n = 0; n < nodes.length && n < 1600; n++) {
+      var node = nodes[n];
+      var text = "";
+      for (var a = 0; a < node.attributes.length; a++) {
+        var attr = node.attributes[a];
+        if (/github|repo|repository/i.test(attr.name + " " + attr.value)) text += " " + attr.value;
+      }
+      if (text) scanRepoText(candidates, text, 74);
+    }
+
+    var scripts = document.querySelectorAll("script:not([src])");
+    for (var s = 0; s < scripts.length && s < 30; s++) {
+      scanRepoText(candidates, scripts[s].textContent || "", 62);
+    }
+
+    try {
+      [localStorage, sessionStorage].forEach(function (store) {
+        for (var k = 0; k < store.length && k < 80; k++) {
+          var key = store.key(k) || "";
+          var val = store.getItem(key) || "";
+          if (/github|repo|repository/i.test(key + " " + val)) {
+            scanRepoText(candidates, key + " " + val, 58);
+          }
+        }
+      });
+    } catch (e) {}
+
+    candidates.sort(function (a, b) { return b.score - a.score; });
+    return candidates.length ? candidates[0].repo : "";
+  }
+
+  function startRepoAutodetect(panelApi) {
+    if (!panelApi || typeof panelApi.setRepo !== "function" || typeof panelApi.getState !== "function") return;
+    var done = false;
+    function applyDetectedRepo() {
+      if (done) return true;
+      var current = panelApi.getState().githubRepo;
+      if (current) { done = true; return true; }
+      var repo = detectRepo();
+      if (!repo) return false;
+      panelApi.setRepo(repo);
+      done = true;
+      return true;
+    }
+    if (applyDetectedRepo()) return;
+    var timers = [600, 1600, 3400, 7000, 12000].map(function (ms) {
+      return setTimeout(applyDetectedRepo, ms);
+  });
+    var observer = null;
+    if (typeof MutationObserver !== "undefined") {
+      observer = new MutationObserver(function () {
+        if (applyDetectedRepo() && observer) observer.disconnect();
+      });
+      try { observer.observe(document.documentElement, { childList: true, subtree: true, attributes: true }); } catch (e) {}
+    }
+    setTimeout(function () {
+      timers.forEach(clearTimeout);
+      if (observer) observer.disconnect();
+    }, 15000);
   }
 
   // ---- Storage helpers ---------------------------------------------------
@@ -278,49 +392,50 @@
         return fetchBillingStrict()
           .then(function () { return activateRepo(state.githubRepo); })
           .then(function () {
-        var files = Kit.generateKit(withPlan(state));
-        save(state);
-        // 1) commit the kit, then 2) if store upload is on, encrypt + store the
-        //    credentials as GitHub Actions secrets so the release workflow can run.
-        return GitHub.pushKit(state.githubRepo, token, files,
-          "Add Nativize native kit for " + state.appName + " (Capacitor 8)")
-          .then(function (res) {
-            var secrets = state.storeSecrets || {};
-            var wantStore = (state.iosUpload || state.androidUpload) && Object.keys(secrets).length;
-            if (!wantStore) return res;
-            return GitHub.setSecrets(state.githubRepo, token, secrets).then(function (s) {
-              res.secretsSet = s.set;
-              res.releaseReady = true;
-              return res;
-            });
-          })
-          .then(function (res) {
-            // Start the cloud build AND wait for it, so we can hand the user real
-            // download links to the finished .apk / .aab / iOS app instead of just
-            // "go check Actions". The release workflow (if store upload is on) also
-            // ships to the stores. A dispatch/wait failure is non-fatal — we fall
-            // back to a manual-run message.
-            var workflow = res.releaseReady ? "nativize-release.yml" : "nativize-build.yml";
-            return GitHub.buildAndWait(state.githubRepo, token, workflow, { onProgress: onProgress })
-              .then(function (b) {
-                res.buildStarted = true;
-                res.workflow = workflow;
-                res.runId = b.runId;
-                res.runUrl = b.runUrl;
-                res.conclusion = b.conclusion;
-                res.artifacts = b.artifacts;
-                return res;
+            var files = Kit.generateKit(withPlan(state));
+            save(state);
+            // 1) commit the kit, then 2) if store upload is on, encrypt + store the
+            //    credentials as GitHub Actions secrets so the release workflow can run.
+            return GitHub.pushKit(state.githubRepo, token, files,
+              "Add Nativize native kit for " + state.appName + " (Capacitor 8)")
+              .then(function (res) {
+                var secrets = state.storeSecrets || {};
+                var wantStore = (state.iosUpload || state.androidUpload) && Object.keys(secrets).length;
+                if (!wantStore) return res;
+                return GitHub.setSecrets(state.githubRepo, token, secrets).then(function (s) {
+                  res.secretsSet = s.set;
+                  res.releaseReady = true;
+                  return res;
+                });
               })
-              .catch(function (e) {
-                res.buildStarted = false;
-                res.buildStartError = (e && e.message) || String(e);
-                res.actionsUrl = "https://github.com/" + state.githubRepo + "/actions";
-                return res;
+              .then(function (res) {
+                // Start the cloud build AND wait for it, so we can hand the user real
+                // download links to the finished .apk / .aab / iOS app instead of just
+                // "go check Actions". The release workflow (if store upload is on) also
+                // ships to the stores. A dispatch/wait failure is non-fatal — we fall
+                // back to a manual-run message.
+                var workflow = res.releaseReady ? "nativize-release.yml" : "nativize-build.yml";
+                return GitHub.buildAndWait(state.githubRepo, token, workflow, { onProgress: onProgress })
+                  .then(function (b) {
+                    res.buildStarted = true;
+                    res.workflow = workflow;
+                    res.runId = b.runId;
+                    res.runUrl = b.runUrl;
+                    res.conclusion = b.conclusion;
+                    res.artifacts = b.artifacts;
+                    return res;
+                  })
+                  .catch(function (e) {
+                    res.buildStarted = false;
+                    res.buildStartError = (e && e.message) || String(e);
+                    res.actionsUrl = "https://github.com/" + state.githubRepo + "/actions";
+                    return res;
+                  });
               });
-          });
           });
       }
     });
+    startRepoAutodetect(panelApi);
     refreshBilling();
   });
 })();
