@@ -150,18 +150,31 @@ test("artifact and source downloads use the Supabase relay with server-side plan
   assert.ok(projectBlob.size >= 4);
 });
 
-test("panel uses a shadow root and masks the GitHub token", () => {
+test("panel uses a shadow root and keeps the GitHub token internal", () => {
   const source = read("src/panel.js");
   assert.match(source, /attachShadow\(\{ mode: "open" \}\)/);
-  assert.match(source, /type="password" id="nz-token"/);
+  assert.match(source, /var githubToken = String\(initial\.token \|\| ""\)/);
+  assert.match(source, /token: githubToken\.trim\(\)/);
+  assert.doesNotMatch(source, /id="nz-token"/);
 });
 
-test("panel copy does not present a manual GitHub token as a billing bypass", () => {
+test("panel copy does not present a manual GitHub token path", () => {
   const source = read("src/panel.js");
-  assert.match(source, /plan still requires sign-in/);
   assert.match(source, /Free builds a watermarked/);
   assert.doesNotMatch(source, /skip Sign in/);
-  assert.doesNotMatch(source, /or paste a token under Options/);
+  assert.doesNotMatch(source, /manual token/i);
+  assert.doesNotMatch(source, /GitHub token/i);
+});
+
+test("panel separates app settings, push, and store upload controls", () => {
+  const source = read("src/panel.js");
+  assert.match(source, /id="nz-optToggle"/);
+  assert.match(source, /<span>App settings<\/span><small>ID &amp; build folder<\/small>/);
+  assert.match(source, /id="nz-pushToggle"/);
+  assert.match(source, /<span>Push notifications<\/span><small>Firebase messaging<\/small>/);
+  assert.match(source, /id="nz-storeToggle"/);
+  assert.match(source, /<span>Store upload<\/span><small>TestFlight &amp; Play<\/small>/);
+  assert.doesNotMatch(source, /Options — app ID, push, store upload/);
 });
 
 test("build-ready download screen is scrollable", () => {
@@ -283,7 +296,7 @@ test("login routes are throttled and dynamic panel inputs are size-bounded", () 
   assert.match(background, /recent\.length >= 5/);
   assert.match(web, /throttleLocal\(K\.loginAttempts, 5, 15 \* 60 \* 1000/);
   assert.match(panel, /id="nz-appName" maxlength="80"/);
-  assert.match(panel, /id="nz-token" maxlength="5000"/);
+  assert.match(panel, /id="nz-webDir" maxlength="120"/);
   assert.match(panel, /file\.size > 180000/);
 });
 
