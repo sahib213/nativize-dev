@@ -169,11 +169,11 @@ test("panel copy does not present a manual GitHub token path", () => {
 test("panel separates app settings, push, and store upload controls", () => {
   const source = read("src/panel.js");
   assert.match(source, /id="nz-optToggle"/);
-  assert.match(source, /<span>App settings<\/span><small>ID &amp; build folder<\/small>/);
+  assert.match(source, /<b>App settings<\/b><small>Bundle ID and web build folder<\/small>/);
   assert.match(source, /id="nz-pushToggle"/);
-  assert.match(source, /<span>Push notifications<\/span><small>Firebase messaging<\/small>/);
+  assert.match(source, /<b>Push notifications<\/b><small>Firebase messaging setup<\/small>/);
   assert.match(source, /id="nz-storeToggle"/);
-  assert.match(source, /<span>Store upload<\/span><small>TestFlight &amp; Play<\/small>/);
+  assert.match(source, /<b>Store upload<\/b><small>TestFlight and Play internal testing<\/small>/);
   assert.doesNotMatch(source, /Options — app ID, push, store upload/);
 });
 

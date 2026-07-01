@@ -5,7 +5,7 @@ names (Lovable, Apple, Google, Microsoft, GitHub, Capacitor). The fix is to desc
 the extension's function plainly and mention third-party names only where they're
 functionally necessary, not as a repeated keyword list.
 
-The manifest description + version are already fixed in code (v1.1.5). The text below
+The manifest description + version are already fixed in code (v1.1.6). The text below
 is for the **Store listing → Description** field in the dashboard (that long field is
 not stored in the repo, so paste it manually).
 
