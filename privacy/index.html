@@ -86,7 +86,7 @@
 
         <section>
           <h2>Storage</h2>
-          <p>Nativize stores extension settings, selected project configuration, GitHub connection state, billing status, Supabase session state, and GitHub tokens locally on the user's device. The Chrome extension uses <code>chrome.storage.local</code>; the web Studio keeps auth tokens in <code>sessionStorage</code> so they clear when the browser session ends. Optional store-upload credentials are not saved as normal extension settings; when the user enables store upload, they are sent to GitHub to be stored as encrypted GitHub Actions secrets.</p>
+          <p>Nativize stores extension settings, selected project configuration, GitHub connection state, billing status, Supabase session state, and GitHub tokens locally on the user's device. The Chrome extension uses <code>chrome.storage.local</code>; the web Studio keeps auth tokens in <code>sessionStorage</code> so they clear when the browser session ends. GitHub tokens are sent to Supabase Edge Functions only when preparing secure downloads or completing billing-gated actions. Optional store-upload credentials are not saved as normal extension settings; when the user enables store upload, they are sent to GitHub to be stored as encrypted GitHub Actions secrets.</p>
           <p>Users can remove locally stored data by signing out in the extension, clearing extension data in Chrome, or uninstalling the extension.</p>
           <p>Support requests and feature requests submitted through the website are stored in the Nativize Supabase project.</p>
         </section>
@@ -97,7 +97,7 @@
           <ul>
             <li>GitHub, to authenticate, read repository metadata, push generated files, create encrypted Actions secrets, trigger workflows, and fetch build artifacts.</li>
             <li>Supabase Auth, to complete the GitHub OAuth sign-in flow and return a GitHub provider token to the extension.</li>
-            <li>Supabase, to store billing entitlements, app activations, support requests, and feature requests.</li>
+            <li>Supabase, to store billing entitlements, app activations, support requests, and feature requests, and to relay secure app downloads after plan checks.</li>
             <li>Stripe, to process checkout, subscriptions, one-time purchases, tax, receipts, and payment status.</li>
           </ul>
           <p>Nativize does not sell user data. Nativize does not use or transfer user data for advertising, creditworthiness, lending, or purposes unrelated to generating and building native app projects.</p>

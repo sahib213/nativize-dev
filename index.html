@@ -148,7 +148,7 @@
             "name": "Is my code or GitHub token sent anywhere?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "No. Nativize generation runs in your browser. The Chrome extension stores the GitHub token in chrome.storage.local, the web Studio keeps auth tokens in sessionStorage, and builds happen in your own GitHub repository."
+              "text": "Generation runs in your browser and builds happen in your own GitHub repository. GitHub tokens are stored locally and are sent to Supabase Edge Functions only when preparing secure downloads or completing billing-gated actions."
             }
           },
           {
@@ -587,8 +587,8 @@
         </div>
         <div class="sec card reveal">
           <div class="sec-ico"><svg viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 5 3.4 8 8 9 4.6-1 8-4 8-9V6z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg></div>
-          <h3>Token stays local</h3>
-          <p>Your GitHub token stays local to your browser session or extension storage. Store credentials become encrypted GitHub secrets — never plaintext.</p>
+          <h3>Token stored locally</h3>
+          <p>Your GitHub token stays in your browser storage and is sent to Supabase only for secure download checks. Store credentials become encrypted GitHub secrets — never plaintext.</p>
         </div>
         <div class="sec card reveal">
           <div class="sec-ico"><svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m13-5h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3m13 5h3a2 2 0 0 0 2-2v-3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></div>
@@ -704,7 +704,7 @@
         </details>
         <details class="faq-item reveal">
           <summary>Is my code or GitHub token sent anywhere?<span class="faq-plus"></span></summary>
-          <div class="faq-body"><p>No. Nativize's generation flow runs in your browser and tokens stay local to your browser session or extension storage. Builds happen in your own GitHub repo. Support and feature forms send only the text you submit.</p></div>
+          <div class="faq-body"><p>Nativize's generation flow runs in your browser and builds happen in your own GitHub repo. GitHub tokens stay in browser storage and are sent to Supabase only for secure download checks. Support and feature forms send only the text you submit.</p></div>
         </details>
         <details class="faq-item reveal">
           <summary>What does it cost?<span class="faq-plus"></span></summary>

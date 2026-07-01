@@ -307,6 +307,31 @@
     setTimeout(function () { a.remove(); URL.revokeObjectURL(url); }, 1000);
   }
 
+  function cleanDownloadFilename(name, fallback) {
+    var out = String(name || fallback || "Nativized App Files").trim()
+      .replace(/[<>:"\\|?*\u0000-\u001f]/g, "-")
+      .replace(/^[/\\]+/, "")
+      .replace(/\.\.+/g, ".");
+    if (!out || out === "." || out === "..") out = fallback || "Nativized App Files";
+    if (!/\.zip$/i.test(out)) out += ".zip";
+    return out.slice(0, 180);
+  }
+
+  function artifactDownloadFilename(artifact, state) {
+    var n = String((artifact && artifact.name) || "").toLowerCase();
+    if (n.indexOf("ios-simulator-preview") >= 0 || n.indexOf("nativized ios preview") >= 0) return "Nativized iOS Preview.zip";
+    if (n.indexOf("ios-xcode-project") >= 0 || n.indexOf("nativized ios") >= 0) return "Nativized iOS.zip";
+    if (n.indexOf("android") >= 0 || n.indexOf("nativized android") >= 0) return "Nativized Android.zip";
+    if (n.indexOf("windows") >= 0 || n.indexOf("desktop-windows") >= 0 || n.indexOf("win") >= 0) return "Nativized Windows.zip";
+    if (n.indexOf("desktop") >= 0 || n.indexOf("mac") >= 0) return "Nativized Desktop.zip";
+    return cleanDownloadFilename((artifact && artifact.name) || (state && state.appName), "Nativized App Files");
+  }
+
+  function sourceDownloadFilename(state) {
+    var slug = Kit && Kit.slugify ? Kit.slugify((state && state.appName) || "") : "";
+    return cleanDownloadFilename("Nativized Source Code" + (slug ? " - " + slug : ""), "Nativized Source Code");
+  }
+
   // Note shown when the free/locked plan stripped features the user toggled on.
   function gatedNote(rawState) {
     var planId = currentPlanId();
@@ -434,8 +459,9 @@
     },
     onDownloadProject: function (state) {
       return refreshBillingStrict("download the full project").then(function () {
-        return GitHub.downloadRepoZip(state.githubRepo, state.token).then(function (blob) {
-          triggerDownload(blob, (Kit.slugify(state.appName) || "project") + "-full-project.zip");
+        var filename = sourceDownloadFilename(state);
+        return Billing.downloadProject(supabaseAccess, state.token, state.githubRepo, filename).then(function (blob) {
+          triggerDownload(blob, filename);
         });
       });
     },
@@ -448,9 +474,9 @@
       });
     },
     onDownloadArtifact: function (artifact, state) {
-      var filename = (Kit.slugify((artifact && artifact.name) || state.appName || "nativize-artifact") || "nativize-artifact") + ".zip";
-      return Billing.downloadArtifact(supabaseAccess, state.token, artifact, filename).catch(function (edgeError) {
-        return GitHub.downloadArtifact(artifact, state.token).catch(function () { throw edgeError; });
+      var filename = artifactDownloadFilename(artifact, state);
+      return refreshBillingStrict("download app files").then(function () {
+        return Billing.downloadArtifact(supabaseAccess, state.token, artifact, filename);
       }).then(function (blob) {
         triggerDownload(blob, filename);
       });
