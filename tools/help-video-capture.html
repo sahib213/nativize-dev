@@ -1,0 +1,538 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nativize Help Video Capture</title>
+  <style>
+    :root {
+      --bg: #070811;
+      --panel: #111221;
+      --panel-2: #17182a;
+      --text: #f5f3ff;
+      --muted: #a3a8bf;
+      --soft: rgba(255,255,255,.08);
+      --violet: #7c3aed;
+      --blue: #2563eb;
+      --pink: #ec4899;
+      --green: #22c55e;
+      --grad: linear-gradient(135deg, #7c3aed, #4f46e5 48%, #2563eb);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      width: 1280px;
+      height: 720px;
+      overflow: hidden;
+      background:
+        radial-gradient(900px 520px at 12% -12%, rgba(124,58,237,.34), transparent 62%),
+        radial-gradient(760px 480px at 100% 6%, rgba(37,99,235,.28), transparent 60%),
+        radial-gradient(680px 420px at 50% 100%, rgba(236,72,153,.16), transparent 62%),
+        var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .stage {
+      width: 1280px;
+      height: 720px;
+      padding: 42px;
+      display: grid;
+      grid-template-columns: 390px 1fr;
+      gap: 34px;
+      position: relative;
+    }
+
+    .stage::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,.026) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.026) 1px, transparent 1px);
+      background-size: 48px 48px;
+      mask-image: radial-gradient(100% 80% at 50% 0%, #000 20%, transparent 86%);
+      pointer-events: none;
+    }
+
+    .copy, .screen { position: relative; z-index: 1; }
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 32px;
+      font-weight: 800;
+      letter-spacing: 0;
+      font-size: 24px;
+    }
+    .mark {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      background: var(--grad);
+      box-shadow: 0 18px 42px -20px rgba(124,58,237,.9);
+    }
+    .mark svg { width: 24px; height: 24px; color: white; }
+
+    .eyebrow {
+      display: inline-flex;
+      padding: 7px 12px;
+      border: 1px solid rgba(167,139,250,.26);
+      border-radius: 999px;
+      color: #c4b5fd;
+      background: rgba(124,58,237,.12);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 18px 0 14px;
+      font-size: 54px;
+      line-height: .98;
+      letter-spacing: 0;
+    }
+    .lede {
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1.55;
+      margin: 0 0 28px;
+    }
+
+    .steps {
+      display: grid;
+      gap: 12px;
+      margin-top: 28px;
+    }
+    .step {
+      display: grid;
+      grid-template-columns: 34px 1fr;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 16px;
+      background: rgba(255,255,255,.035);
+      color: var(--muted);
+      opacity: .56;
+      animation: stepFocus 25s linear infinite;
+    }
+    .step:nth-child(1) { animation-delay: 0s; }
+    .step:nth-child(2) { animation-delay: -20s; }
+    .step:nth-child(3) { animation-delay: -15s; }
+    .step:nth-child(4) { animation-delay: -10s; }
+    .step:nth-child(5) { animation-delay: -5s; }
+    .step-num {
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      font-weight: 900;
+      color: white;
+      background: rgba(255,255,255,.09);
+    }
+    .step b { display: block; color: var(--text); font-size: 14px; }
+    .step span:last-child { font-size: 12.5px; line-height: 1.35; }
+
+    @keyframes stepFocus {
+      0%, 15% {
+        opacity: 1;
+        color: #dfe3ff;
+        border-color: rgba(124,58,237,.52);
+        background: linear-gradient(135deg, rgba(124,58,237,.22), rgba(37,99,235,.12));
+        transform: translateX(4px);
+      }
+      20%, 100% {
+        opacity: .56;
+        color: var(--muted);
+        border-color: rgba(255,255,255,.08);
+        background: rgba(255,255,255,.035);
+        transform: translateX(0);
+      }
+    }
+
+    .screen {
+      min-width: 0;
+      align-self: center;
+      height: 610px;
+      padding: 16px;
+      border-radius: 28px;
+      background:
+        linear-gradient(145deg, rgba(255,255,255,.18), rgba(255,255,255,.045) 44%, rgba(6,8,20,.92)),
+        linear-gradient(180deg, rgba(25,28,50,.95), rgba(8,9,19,.96));
+      border: 1px solid rgba(255,255,255,.16);
+      box-shadow: 0 36px 90px -36px rgba(0,0,0,.96), 0 18px 80px -46px rgba(37,99,235,.82);
+      overflow: hidden;
+    }
+    .browser {
+      height: 100%;
+      border-radius: 20px;
+      overflow: hidden;
+      background: #0d0f1c;
+      border: 1px solid rgba(255,255,255,.08);
+      position: relative;
+    }
+    .browserbar {
+      height: 44px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 15px;
+      background: rgba(255,255,255,.045);
+      border-bottom: 1px solid rgba(255,255,255,.07);
+    }
+    .dot { width: 10px; height: 10px; border-radius: 999px; background: #ef4444; }
+    .dot:nth-child(2) { background: #f59e0b; }
+    .dot:nth-child(3) { background: #22c55e; }
+    .url {
+      margin-left: 8px;
+      flex: 1;
+      height: 26px;
+      border-radius: 999px;
+      display: flex;
+      align-items: center;
+      padding-inline: 14px;
+      color: #8e95ad;
+      background: rgba(0,0,0,.26);
+      font-size: 12px;
+    }
+    .workspace {
+      position: relative;
+      height: calc(100% - 44px);
+      padding: 28px;
+      background:
+        radial-gradient(420px 240px at 18% 10%, rgba(124,58,237,.17), transparent 70%),
+        radial-gradient(460px 280px at 92% 18%, rgba(37,99,235,.14), transparent 68%),
+        #0b0c16;
+    }
+    .fake-page {
+      width: 52%;
+      height: 100%;
+      border-radius: 22px;
+      padding: 24px;
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(255,255,255,.08);
+    }
+    .fake-page h2 {
+      margin: 0 0 12px;
+      font-size: 28px;
+      line-height: 1.05;
+      letter-spacing: 0;
+    }
+    .line {
+      height: 11px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.12);
+      margin: 10px 0;
+    }
+    .line.short { width: 62%; }
+    .line.med { width: 78%; }
+    .fake-card {
+      height: 172px;
+      border-radius: 18px;
+      margin-top: 26px;
+      background: linear-gradient(135deg, rgba(124,58,237,.28), rgba(37,99,235,.2));
+      border: 1px solid rgba(255,255,255,.12);
+    }
+
+    .fab {
+      position: absolute;
+      right: 34px;
+      bottom: 34px;
+      width: 58px;
+      height: 58px;
+      border-radius: 18px;
+      display: grid;
+      place-items: center;
+      background: var(--grad);
+      box-shadow: 0 16px 46px -14px rgba(124,58,237,.98);
+      animation: fabPulse 25s linear infinite;
+    }
+    .fab svg { width: 28px; height: 28px; color: #fff; }
+    @keyframes fabPulse {
+      0%, 19%, 100% { transform: scale(1); }
+      6%, 12% { transform: scale(1.08); box-shadow: 0 18px 56px -8px rgba(124,58,237,1); }
+    }
+
+    .panel {
+      position: absolute;
+      top: 54px;
+      right: 28px;
+      width: 340px;
+      border-radius: 24px;
+      overflow: hidden;
+      color: #eef0fb;
+      background: rgba(16,17,30,.92);
+      border: 1px solid rgba(255,255,255,.12);
+      box-shadow: 0 24px 70px -24px rgba(0,0,0,.95);
+      transform-origin: bottom right;
+      animation: panelIn 25s linear infinite;
+    }
+    @keyframes panelIn {
+      0%, 15% { opacity: 0; transform: translateY(18px) scale(.94); }
+      19%, 100% { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .panel-head {
+      padding: 17px 18px 15px;
+      background: var(--grad);
+    }
+    .panel-head b { display: block; font-size: 16px; }
+    .panel-head span { display: block; margin-top: 3px; font-size: 11px; opacity: .86; }
+    .panel-body { padding: 16px 18px 18px; }
+    .gh {
+      height: 42px;
+      border-radius: 13px;
+      display: grid;
+      place-items: center;
+      background: #fff;
+      color: #10121c;
+      font-size: 13px;
+      font-weight: 800;
+      margin-bottom: 14px;
+      animation: signin 25s linear infinite;
+    }
+    @keyframes signin {
+      0%, 24% { opacity: 1; transform: scale(1); }
+      28%, 100% { opacity: .28; transform: scale(.98); }
+    }
+    .field {
+      margin-top: 11px;
+    }
+    .label {
+      display: block;
+      color: #9097ad;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      margin-bottom: 6px;
+    }
+    .input {
+      height: 37px;
+      border-radius: 12px;
+      background: rgba(255,255,255,.055);
+      border: 1px solid rgba(255,255,255,.11);
+      display: flex;
+      align-items: center;
+      padding: 0 11px;
+      color: #dfe3ff;
+      font-size: 12px;
+    }
+    .section-row {
+      margin-top: 12px;
+      padding: 12px 13px;
+      border-radius: 15px;
+      border: 1px solid rgba(255,255,255,.09);
+      background: rgba(255,255,255,.04);
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      animation: optionGlow 25s linear infinite;
+    }
+    .section-row b { display: block; font-size: 12px; }
+    .section-row small { display: block; margin-top: 2px; color: #8f96aa; font-size: 10.5px; }
+    .chev {
+      width: 24px;
+      height: 24px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.08);
+      position: relative;
+      flex: none;
+    }
+    .chev::before {
+      content: "";
+      position: absolute;
+      left: 8px;
+      top: 7px;
+      width: 7px;
+      height: 7px;
+      border-right: 2px solid #b8bed6;
+      border-bottom: 2px solid #b8bed6;
+      transform: rotate(45deg);
+    }
+    @keyframes optionGlow {
+      0%, 40%, 100% { border-color: rgba(255,255,255,.09); background: rgba(255,255,255,.04); }
+      44%, 58% { border-color: rgba(124,58,237,.58); background: linear-gradient(135deg, rgba(124,58,237,.16), rgba(37,99,235,.1)); }
+    }
+    .build {
+      margin-top: 16px;
+      height: 44px;
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      background: var(--grad);
+      font-size: 13px;
+      font-weight: 900;
+      box-shadow: 0 12px 34px -14px rgba(124,58,237,.9);
+      animation: buildPress 25s linear infinite;
+    }
+    @keyframes buildPress {
+      0%, 59%, 100% { transform: scale(1); filter: brightness(1); }
+      62%, 66% { transform: scale(.985); filter: brightness(1.18); }
+    }
+    .progress {
+      margin-top: 14px;
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 14px;
+      padding: 12px;
+      background: rgba(255,255,255,.035);
+      opacity: 0;
+      animation: progressIn 25s linear infinite;
+    }
+    @keyframes progressIn {
+      0%, 62% { opacity: 0; transform: translateY(8px); }
+      67%, 100% { opacity: 1; transform: none; }
+    }
+    .bar {
+      height: 8px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.11);
+      overflow: hidden;
+      margin-top: 8px;
+    }
+    .fill {
+      width: 0%;
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--violet), var(--pink), var(--green));
+      animation: fill 25s linear infinite;
+    }
+    @keyframes fill {
+      0%, 65% { width: 0%; }
+      76% { width: 56%; }
+      88%, 100% { width: 100%; }
+    }
+    .download {
+      margin-top: 12px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 9px;
+      opacity: 0;
+      animation: downloadsIn 25s linear infinite;
+    }
+    @keyframes downloadsIn {
+      0%, 86% { opacity: 0; transform: translateY(8px); }
+      91%, 100% { opacity: 1; transform: none; }
+    }
+    .download div {
+      padding: 10px;
+      border-radius: 13px;
+      text-align: center;
+      font-size: 11px;
+      font-weight: 850;
+      color: #dfe3ff;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.1);
+    }
+
+    .caption {
+      position: absolute;
+      left: 432px;
+      right: 42px;
+      bottom: 40px;
+      z-index: 2;
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 18px;
+      padding: 14px 18px;
+      min-height: 58px;
+      background: rgba(8,9,18,.76);
+      backdrop-filter: blur(14px);
+      font-size: 18px;
+      font-weight: 750;
+      text-align: center;
+      box-shadow: 0 18px 50px -24px rgba(0,0,0,.95);
+    }
+    .caption span {
+      display: inline-block;
+      opacity: 0;
+      position: absolute;
+      left: 18px;
+      right: 18px;
+      top: 14px;
+      animation: captionSwap 25s linear infinite;
+    }
+    .caption span:nth-child(1) { animation-delay: 0s; }
+    .caption span:nth-child(2) { animation-delay: 5s; }
+    .caption span:nth-child(3) { animation-delay: 10s; }
+    .caption span:nth-child(4) { animation-delay: 15s; }
+    .caption span:nth-child(5) { animation-delay: 20s; }
+    @keyframes captionSwap {
+      0%, 17% { opacity: 1; transform: translateY(0); }
+      20%, 100% { opacity: 0; transform: translateY(-4px); }
+    }
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <section class="copy">
+      <div class="brand">
+        <span class="mark">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M12 6v8"/><path d="M9 9l3-3 3 3"/></svg>
+        </span>
+        Nativize
+      </div>
+      <span class="eyebrow">Quick help</span>
+      <h1>Build app files in minutes.</h1>
+      <p class="lede">A short walkthrough for turning a Lovable or GitHub web app into native project files.</p>
+
+      <div class="steps">
+        <div class="step"><span class="step-num">1</span><span><b>Open your app</b>Start from Lovable or Nativize Studio.</span></div>
+        <div class="step"><span class="step-num">2</span><span><b>Connect GitHub</b>Sign in so builds and downloads can be verified.</span></div>
+        <div class="step"><span class="step-num">3</span><span><b>Confirm details</b>Check app name, repo, and bundle ID.</span></div>
+        <div class="step"><span class="step-num">4</span><span><b>Choose features</b>Open only the sections your app needs.</span></div>
+        <div class="step"><span class="step-num">5</span><span><b>Build and download</b>Use the generated files in Xcode or Android Studio.</span></div>
+      </div>
+    </section>
+
+    <section class="screen">
+      <div class="browser">
+        <div class="browserbar">
+          <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+          <div class="url">https://nativize.dev/app/</div>
+        </div>
+        <div class="workspace">
+          <div class="fake-page">
+            <h2>Rooh Music</h2>
+            <div class="line med"></div>
+            <div class="line"></div>
+            <div class="line short"></div>
+            <div class="fake-card"></div>
+          </div>
+          <div class="fab">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M12 6v8"/><path d="M9 9l3-3 3 3"/></svg>
+          </div>
+          <aside class="panel">
+            <div class="panel-head"><b>Nativize</b><span>Ship this app to the App Store and Play Store</span></div>
+            <div class="panel-body">
+              <div class="gh">Sign in with GitHub</div>
+              <div class="field"><span class="label">App name</span><div class="input">Rooh Music</div></div>
+              <div class="field"><span class="label">GitHub repo</span><div class="input">sahib213/rooh-music</div></div>
+              <div class="section-row"><span><b>App settings</b><small>Bundle ID and build folder</small></span><span class="chev"></span></div>
+              <div class="section-row"><span><b>Push notifications</b><small>Firebase messaging setup</small></span><span class="chev"></span></div>
+              <div class="build">Build iOS App</div>
+              <div class="progress">
+                <b style="font-size:12px">Generating simulator-ready files</b>
+                <div class="bar"><div class="fill"></div></div>
+              </div>
+              <div class="download"><div>Nativized iOS</div><div>README included</div></div>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <div class="caption" aria-hidden="true">
+      <span>Open your Lovable project or start from Nativize Studio.</span>
+      <span>Sign in with GitHub so your plan and repo access can be verified.</span>
+      <span>Confirm the app name, repo, bundle ID, and web build folder.</span>
+      <span>Choose only the native features your app needs.</span>
+      <span>Build, download, then open the files in Xcode or Android Studio.</span>
+    </div>
+  </div>
+</body>
+</html>

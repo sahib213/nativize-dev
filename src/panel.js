@@ -196,7 +196,9 @@
       ".nz-section-copy b{font-size:13.5px;line-height:1.2;font-weight:760;color:#f4f1ff}" +
       ".nz-section-copy small{font-size:11.2px;line-height:1.35;font-weight:500;color:#8d94a8;white-space:normal;text-transform:none;letter-spacing:0}" +
       ".nz-chevron{flex:0 0 auto;width:24px;height:24px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;" +
-        "background:rgba(255,255,255,.06);color:#a9a3c9;font-size:14px}" +
+        "position:relative;background:rgba(255,255,255,.06);color:#a9a3c9}" +
+      ".nz-chevron::before{content:\"\";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;" +
+        "transform:translateY(-1px) rotate(45deg)}" +
       ".nz-section-toggle:hover{background:rgba(255,255,255,.045);color:#fff}" +
       ".nz-section-toggle:hover .nz-chevron{background:rgba(255,255,255,.1);color:#fff}" +
       ".nz-advBody{display:none;padding:0 15px 15px;margin-top:0}" +
@@ -294,7 +296,7 @@
         '<div class="nz-status" id="nz-status"></div>' +
         // ---- App settings (collapsed) ----
         '<div class="nz-advanced">' +
-          '<button class="nz-link nz-section-toggle" id="nz-optToggle" type="button"><span class="nz-section-copy"><b>App settings</b><small>Bundle ID and web build folder</small></span><span class="nz-chevron">⌄</span></button>' +
+          '<button class="nz-link nz-section-toggle" id="nz-optToggle" type="button"><span class="nz-section-copy"><b>App settings</b><small>Bundle ID and web build folder</small></span><span class="nz-chevron"></span></button>' +
           '<div class="nz-advBody" id="nz-optBody">' +
             '<div class="nz-field"><label>App ID (reverse-DNS)</label>' +
               '<input type="text" id="nz-appId" maxlength="120" placeholder="app.lovable.myapp">' +
@@ -305,7 +307,7 @@
         '</div>' +
         // ---- Push notifications (collapsed) ----
         '<div class="nz-advanced">' +
-          '<button class="nz-link nz-section-toggle" id="nz-pushToggle" type="button"><span class="nz-section-copy"><b>Push notifications</b><small>Firebase messaging setup</small></span><span class="nz-chevron">⌄</span></button>' +
+          '<button class="nz-link nz-section-toggle" id="nz-pushToggle" type="button"><span class="nz-section-copy"><b>Push notifications</b><small>Firebase messaging setup</small></span><span class="nz-chevron"></span></button>' +
           '<div class="nz-advBody" id="nz-pushBody">' +
             '<div class="nz-hint">Adds native Firebase messaging setup with a static web-safe import path.</div>' +
             '<div class="nz-toggle-row">' +
@@ -318,7 +320,7 @@
         '</div>' +
         // ---- Store upload (collapsed) ----
         '<div class="nz-advanced">' +
-          '<button class="nz-link nz-section-toggle" id="nz-storeToggle" type="button"><span class="nz-section-copy"><b>Store upload</b><small>TestFlight and Play internal testing</small></span><span class="nz-chevron">⌄</span></button>' +
+          '<button class="nz-link nz-section-toggle" id="nz-storeToggle" type="button"><span class="nz-section-copy"><b>Store upload</b><small>TestFlight and Play internal testing</small></span><span class="nz-chevron"></span></button>' +
           '<div class="nz-advBody" id="nz-storeBody">' +
             '<div class="nz-hint">Configure signed upload workflows when you are ready to submit builds.</div>' +
             '<div class="nz-toggle-row">' +
@@ -359,7 +361,7 @@
         '</div>' +
         // ---- App permissions (populated from the catalog at mount) ----
         '<div class="nz-advanced">' +
-          '<button class="nz-link nz-section-toggle" id="nz-permToggle" type="button"><span class="nz-section-copy"><b>App permissions</b><small>Camera, location, media, and device access</small></span><span class="nz-chevron">⌄</span></button>' +
+          '<button class="nz-link nz-section-toggle" id="nz-permToggle" type="button"><span class="nz-section-copy"><b>App permissions</b><small>Camera, location, media, and device access</small></span><span class="nz-chevron"></span></button>' +
           '<div class="nz-advBody" id="nz-permBody">' +
             '<div class="nz-hint">Turn on only what your app needs. iOS requires a short reason for each — write it in plain language. This writes the iOS Info.plist + Android manifest for you.</div>' +
             '<div class="nz-paid-lock" id="nz-permLock">Paid plan required for app permissions. Free builds stay iOS-only with the Nativize watermark.</div>' +
@@ -369,7 +371,7 @@
         '</div>' +
         // ---- Social sign-in (populated from the catalog at mount) ----
         '<div class="nz-advanced">' +
-          '<button class="nz-link nz-section-toggle" id="nz-socialToggle" type="button"><span class="nz-section-copy"><b>Social sign-in</b><small>Native Apple and Google login</small></span><span class="nz-chevron">⌄</span></button>' +
+          '<button class="nz-link nz-section-toggle" id="nz-socialToggle" type="button"><span class="nz-section-copy"><b>Social sign-in</b><small>Native Apple and Google login</small></span><span class="nz-chevron"></span></button>' +
           '<div class="nz-advBody" id="nz-socialBody">' +
             '<div class="nz-hint">Add native Sign in with Apple / Google. Returns an idToken your app passes to Supabase. We install the plugin, write the iOS URL scheme + Apple entitlement, and drop a ready-to-use helper at <code>src/nativeSocialAuth.ts</code>.</div>' +
             '<div class="nz-paid-lock" id="nz-socialLock">Paid plan required for native Apple and Google sign-in.</div>' +
@@ -379,7 +381,7 @@
         '</div>' +
         // ---- Branding: custom app icon + iOS Dynamic Island header (premium) ----
         '<div class="nz-advanced">' +
-          '<button class="nz-link nz-section-toggle" id="nz-brandToggle" type="button"><span class="nz-section-copy"><b>App icon &amp; iOS header</b><small>Logo, splash assets, and native header polish</small></span><span class="nz-chevron">⌄</span></button>' +
+          '<button class="nz-link nz-section-toggle" id="nz-brandToggle" type="button"><span class="nz-section-copy"><b>App icon &amp; iOS header</b><small>Logo, splash assets, and native header polish</small></span><span class="nz-chevron"></span></button>' +
           '<div class="nz-advBody" id="nz-brandBody">' +
             '<div class="nz-hint">Upload your logo once. We resize it in your browser and generate every iOS, Android, Mac &amp; Windows app icon for you.</div>' +
             '<div class="nz-paid-lock" id="nz-brandLock">Paid plan required for a custom app icon and the iOS Dynamic Island header.</div>' +
@@ -402,7 +404,7 @@
           '</div>' +
         '</div>' +
         '<div class="nz-advanced">' +
-          '<button class="nz-link nz-section-toggle" id="nz-advToggle" type="button"><span class="nz-section-copy"><b>Advanced</b><small>Manual setup kit for local projects</small></span><span class="nz-chevron">⌄</span></button>' +
+          '<button class="nz-link nz-section-toggle" id="nz-advToggle" type="button"><span class="nz-section-copy"><b>Advanced</b><small>Manual setup kit for local projects</small></span><span class="nz-chevron"></span></button>' +
           '<div class="nz-advBody" id="nz-advBody">' +
             '<div class="nz-hint"><b>This is not your built app.</b> It downloads the Capacitor config + setup scripts as a .zip — the recipe you add to your project, then run <code>bash nativize.sh</code> yourself to create the native projects.</div>' +
             '<button class="nz-btn nz-btn-ghost" id="nz-download" style="margin-top:8px">Download setup kit (.zip)</button>' +
