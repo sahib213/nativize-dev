@@ -138,8 +138,9 @@ code {
   border: 1px solid rgba(255,255,255,.105);
   border-radius: 999px;
   background:
-    linear-gradient(180deg, rgba(29,30,35,.93), rgba(13,14,21,.9)),
-    radial-gradient(120% 120% at 50% -40%, rgba(124,58,237,.22), transparent 58%);
+    linear-gradient(180deg, rgba(18,18,31,.94), rgba(9,10,20,.91)),
+    radial-gradient(130% 120% at 12% -45%, rgba(124,58,237,.28), transparent 52%),
+    radial-gradient(130% 120% at 88% -42%, rgba(37,99,235,.22), transparent 54%);
   box-shadow:
     0 28px 70px -38px rgba(0,0,0,.95),
     inset 0 1px 0 rgba(255,255,255,.1),
@@ -152,8 +153,9 @@ code {
 .site-header.scrolled .nav {
   border-color: rgba(255,255,255,.15);
   background:
-    linear-gradient(180deg, rgba(24,25,31,.96), rgba(10,11,18,.93)),
-    radial-gradient(120% 120% at 50% -40%, rgba(37,99,235,.2), transparent 60%);
+    linear-gradient(180deg, rgba(17,18,30,.97), rgba(8,9,18,.94)),
+    radial-gradient(130% 120% at 12% -45%, rgba(124,58,237,.3), transparent 52%),
+    radial-gradient(130% 120% at 88% -42%, rgba(37,99,235,.24), transparent 54%);
   box-shadow:
     0 32px 76px -36px rgba(0,0,0,.98),
     0 18px 58px -48px rgba(124,58,237,.75),
@@ -164,7 +166,7 @@ code {
 .brand-mark.sm { width: 34px; height: 34px; }
 .brand-mark svg { width: 100%; height: 100%; display: block; border-radius: 9px; filter: drop-shadow(0 8px 18px rgba(124,58,237,.48)); }
 .nav-links { display: flex; gap: 6px; margin-left: 10px; }
-.nav-links a { color: rgba(236,237,245,.72); font-size: 14px; font-weight: 650; padding: 9px 12px; border-radius: 999px; transition: color .2s, background .2s, transform .2s; }
+.nav-links a { color: rgba(236,237,245,.72); font-size: 14px; font-weight: 650; padding: 9px 12px; border-radius: 999px; white-space: nowrap; transition: color .2s, background .2s, transform .2s; }
 .nav-links a:hover { color: var(--text); background: rgba(255,255,255,.075); transform: translateY(-1px); }
 .nav-cta { display: flex; gap: 8px; margin-left: auto; align-items: center; }
 .site-header .btn { min-height: 40px; }
@@ -182,25 +184,30 @@ code {
 }
 .site-header .btn-github-login svg { display: none; }
 .site-header .btn-primary {
-  color: #07110d;
-  background: linear-gradient(135deg, #b7ff65, #69f871 58%, #5eead4);
-  box-shadow: 0 18px 38px -22px rgba(105,248,113,.95);
+  color: #fff;
+  background: var(--grad);
+  background-size: 160% 160%;
+  box-shadow: 0 18px 42px -22px rgba(124,58,237,.95);
   animation: none;
 }
 .site-header .btn-primary:hover {
-  box-shadow: 0 24px 48px -22px rgba(105,248,113,.95);
+  box-shadow: 0 24px 52px -22px rgba(79,70,229,.95);
 }
 .nav-toggle { display: none; flex-direction: column; gap: 5px; background: none; border: 0; cursor: pointer; padding: 8px; }
 .nav-toggle span { width: 22px; height: 2px; background: var(--text); border-radius: 2px; transition: .3s var(--ease); }
-@media (min-width: 981px) {
-  .nav-extra { display: none; }
-  .brand,
-  .nav-cta { min-width: 252px; }
-  .nav-links {
-    margin-inline: auto;
-    justify-content: center;
+@media (min-width: 1081px) {
+  .nav {
+    display: grid;
+    grid-template-columns: minmax(240px, 1fr) auto minmax(240px, 1fr);
   }
-  .nav-cta { justify-content: flex-end; }
+  .nav-extra { display: none; }
+  .brand { justify-self: start; min-width: 0; }
+  .nav-links {
+    justify-self: center;
+    justify-content: center;
+    margin: 0;
+  }
+  .nav-cta { justify-self: end; justify-content: flex-end; margin-left: 0; min-width: 0; }
 }
 
 /* ---------- Hero ---------- */
@@ -1098,7 +1105,7 @@ code {
   .split, .outputs, .request-panel, .answer-card, .comparison-grid { grid-template-columns: 1fr; }
   .footer-inner { grid-template-columns: 1fr; gap: 34px; }
 }
-@media (max-width: 720px) {
+@media (max-width: 1080px) {
   :root {
     --header-top: 10px;
     --header-height: 62px;
@@ -1145,6 +1152,8 @@ code {
   .nav-links a { padding: 12px 14px; font-size: 15px; border-radius: 16px; }
   .nav .nav-cta .btn-github-login { display: none; }
   .nav-toggle { display: flex; order: 3; }
+}
+@media (max-width: 720px) {
   .features, .security-grid, .outputs-chips { grid-template-columns: 1fr; }
   .section { padding: 56px 24px; }
   .hero h1 { font-size: clamp(34px, 9vw, 48px); letter-spacing: 0; }
