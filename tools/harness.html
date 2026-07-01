@@ -60,7 +60,7 @@
       githubRepo: detectRepo(),
       webDir: "dist",
       enablePush: true,
-      token: ""
+      token: "ghp_simulated_harness_token"
     };
 
     window.__nz = NativizePanel.mount({
@@ -100,10 +100,10 @@
             resolve({
               runId: 123, runUrl: runUrl, conclusion: "success",
               artifacts: [
-                { name: "android", sizeBytes: 30608473, downloadUrl: runUrl },
-                { name: "ios-unsigned-app", sizeBytes: 9200000, downloadUrl: runUrl },
-                { name: "desktop-mac", sizeBytes: 95400000, downloadUrl: runUrl },
-                { name: "desktop-windows", sizeBytes: 78600000, downloadUrl: runUrl }
+                { name: "Nativized iOS Preview", sizeBytes: 9200000, downloadUrl: runUrl },
+                { name: "Nativized Android", sizeBytes: 30608473, downloadUrl: runUrl },
+                { name: "Nativized Desktop", sizeBytes: 95400000, downloadUrl: runUrl },
+                { name: "Nativized Windows", sizeBytes: 78600000, downloadUrl: runUrl }
               ]
             });
           }, 5400);

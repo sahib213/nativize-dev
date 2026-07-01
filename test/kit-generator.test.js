@@ -231,9 +231,10 @@ test("gating: free plan generates iOS-only workflow + watermark, no push/social/
   assert.doesNotMatch(files["nativize-inject.sh"], /nativize-island-header\.html/);
   assert.match(wf, /Android \(\.apk \+ \.aab\)\n    if: \$\{\{ false \}\}/); // android gated off
   assert.match(wf, /Desktop \(macOS \.dmg\)\n    if: \$\{\{ false \}\}/);    // mac gated off
-  assert.match(wf, /ios-simulator-preview/);
+  assert.match(wf, /Nativized iOS Preview/);
   assert.match(wf, /Smoke test iOS Simulator launch/);
-  assert.match(wf, /Upload iOS Xcode project\n        if: \$\{\{ false \}\}/);
+  assert.match(wf, /Stage iOS Xcode project\n        if: \$\{\{ false \}\}/);
+  assert.match(wf, /Upload Nativized iOS\n        if: \$\{\{ false \}\}/);
   assert.match(wf, /materialize-project:\n    name: Commit native projects into the repo\n    if: \$\{\{ false \}\}/);
   assert.doesNotMatch(wf, /ios-unsigned-app/);
   assert.doesNotMatch(wf, /ios-simulator-app/);
@@ -443,7 +444,7 @@ test("workflow has dispatch trigger + android assembleDebug + ios xcodebuild no-
   assert.match(wf, /iOS simulator launch diagnostics/);
   assert.match(wf, /ios-simulator-preview-app\.tar\.gz/);
   assert.match(wf, /install-in-simulator\.txt/);
-  assert.match(wf, /cd ~\/Downloads\/iossimulatorpreview/);
+  assert.match(wf, /cd into the unzipped Nativized iOS Preview folder/);
   assert.match(wf, /bash install-in-simulator\.txt/);
   assert.match(wf, /Downloads', Path\.home\(\) \/ 'Desktop'/);
   assert.match(wf, /Using Nativize preview folder/);
@@ -453,10 +454,12 @@ test("workflow has dispatch trigger + android assembleDebug + ios xcodebuild no-
   assert.doesNotMatch(wf, /install-in-simulator\.sh/);
   assert.doesNotMatch(wf, /chmod \+x/);
   assert.doesNotMatch(wf, /DEVICE="\$\{1:-iPhone 16\}"/);
-  assert.match(wf, /ios-simulator-preview/);
-  assert.match(wf, /ios-xcode-project/);
-  assert.match(wf, /android-studio-project/);
-  assert.match(wf, /android-installable-builds/);
+  assert.match(wf, /Nativized iOS Preview/);
+  assert.match(wf, /Nativized iOS/);
+  assert.match(wf, /Nativized Android/);
+  assert.match(wf, /Nativized Desktop/);
+  assert.match(wf, /Nativized Windows/);
+  assert.match(wf, /NATIVIZE_README\.md/);
   assert.doesNotMatch(wf, /ios-unsigned-app/);
   assert.doesNotMatch(wf, /bundleRelease.*\|\|/);
 });

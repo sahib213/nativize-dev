@@ -5,7 +5,7 @@ names (Lovable, Apple, Google, Microsoft, GitHub, Capacitor). The fix is to desc
 the extension's function plainly and mention third-party names only where they're
 functionally necessary, not as a repeated keyword list.
 
-The manifest description + version are already fixed in code (v1.1.2). The text below
+The manifest description + version are already fixed in code (v1.1.3). The text below
 is for the **Store listing → Description** field in the dashboard (that long field is
 not stored in the repo, so paste it manually).
 
@@ -32,7 +32,7 @@ What you can do:
 • Configure app permissions, push notifications, and sign-in
 • Download the full project as a .zip whenever you want
 
-You stay in control. The generated code is a standard project in your own repository that you can keep building with — Nativize is not a closed, hosted wrapper. Your access token and source code stay in your browser; nothing is stored on a Nativize server.
+You stay in control. The generated code is a standard project in your own repository that you can keep building with — Nativize is not a closed, hosted wrapper. Your access token is stored in your browser and used by Nativize only for repository actions and secure download checks; it is not stored on a Nativize server.
 
 Note: publishing an app to a mobile app store requires the usual developer account and that store's review. Nativize is an independent tool and is not affiliated with or endorsed by the platforms it integrates with.
 ```
@@ -46,9 +46,9 @@ Note: publishing an app to a mobile app store requires the usual developer accou
 
 ## How to resubmit (you must do this in your dashboard — I can't)
 
-1. Build is ready: **`dist/nativize-extension-1.1.2.zip`** (manifest v1.1.2, cleaned description).
+1. Build is ready: **`dist/nativize-extension-1.1.3.zip`** (manifest v1.1.3, cleaned description).
 2. Go to the **Chrome Web Store Developer Dashboard** → your item.
-3. **Package**: upload `dist/nativize-extension-1.1.2.zip` (new version 1.1.2).
+3. **Package**: upload `dist/nativize-extension-1.1.3.zip` (new version 1.1.3).
 4. **Store listing → Description**: replace the current text with the *Detailed description* above.
    Also check the **Summary/short description** field uses the short version above.
 5. Re-check **screenshots, title, and promo images** for the same issue — no keyword

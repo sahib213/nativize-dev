@@ -64,7 +64,7 @@ test("extension downloads are paid and builds require live Supabase plan activat
   assert.doesNotMatch(source, /return null;\s*\}\)\s*\.then\(function \(\) \{\s*var files = Kit\.generateKit/);
 });
 
-test("artifact downloads use Chrome downloads in the extension and Supabase relay on the web", async () => {
+test("artifact and source downloads use the Supabase relay with server-side plan checks", async () => {
   const background = read("src/background.js");
   const content = read("src/content.js");
   const web = read("website/app.js");
@@ -76,21 +76,34 @@ test("artifact downloads use Chrome downloads in the extension and Supabase rela
   assert.match(background, /nativize-download-artifact/);
   assert.match(background, /chrome\.downloads\.download/);
   assert.match(background, /Authorization", value: "Bearer " \+ token/);
-  assert.match(content, /function downloadArtifactFromExtension/);
-  assert.match(content, /type: "nativize-download-artifact"/);
+  assert.match(content, /Billing\.downloadArtifact\(supabaseAccess, state\.token, artifact, filename\)/);
+  assert.match(content, /Billing\.downloadProject\(supabaseAccess, state\.token, state\.githubRepo, filename\)/);
+  assert.doesNotMatch(content, /type: "nativize-download-artifact"/);
   assert.doesNotMatch(content, /GitHub\.downloadArtifact\(artifact, state\.token\)/);
 
   assert.match(web, /Billing\.downloadArtifact\(supabaseAccess, state\.token, artifact, filename\)/);
+  assert.match(web, /Billing\.downloadProject\(supabaseAccess, state\.token, state\.githubRepo, filename\)/);
+  assert.doesNotMatch(web, /GitHub\.downloadArtifact\(artifact, state\.token\)/);
   assert.match(panel, /ios-unsigned-app/);
   assert.match(panel, /ios-simulator-app/);
   assert.match(panel, /Rebuild required/);
   assert.match(panel, /ios-simulator-preview/);
+  assert.match(panel, /Nativized iOS Preview/);
+  assert.match(panel, /Download Full Source Code/);
+  assert.match(panel, /Full Source Code Available on Paid Plans/);
+  assert.doesNotMatch(panel, /id="nz-projectBtn"/);
   assert.match(panel, /install-in-simulator\.txt/);
   assert.doesNotMatch(panel, /install-in-simulator\.sh/);
   assert.match(panel, /setStatus\("✓ Downloaded "/);
   assert.match(panel, /ios-xcode-project/);
   assert.match(billing, /\/functions\/v1\/artifact-download/);
+  assert.match(billing, /downloadProject: downloadProject/);
   assert.match(edge, /GITHUB_ARTIFACT_RE/);
+  assert.match(edge, /fetchGithubArtifactMetadata/);
+  assert.match(edge, /artifactRequiresPaid/);
+  assert.match(edge, /billing_entitlements/);
+  assert.match(edge, /kind === "project"/);
+  assert.match(edge, /A paid Nativize plan is required to download Full Source Code/);
   assert.match(edge, /Content-Disposition/);
   assert.match(edge, /redirect: "manual"/);
   assert.match(edge, /arrayBuffer\(\)/);
@@ -121,6 +134,20 @@ test("artifact downloads use Chrome downloads in the extension and Supabase rela
     filename: "ios-app.zip"
   });
   assert.ok(blob.size >= 4);
+
+  const projectBlob = await Billing.downloadProject(
+    "supabase-jwt",
+    "github-token",
+    "octo/demo",
+    "Nativized Source Code.zip"
+  );
+  assert.deepEqual(body, {
+    kind: "project",
+    repo: "octo/demo",
+    githubToken: "github-token",
+    filename: "Nativized Source Code.zip"
+  });
+  assert.ok(projectBlob.size >= 4);
 });
 
 test("panel uses a shadow root and masks the GitHub token", () => {

@@ -83,5 +83,6 @@ Vercel/Netlify (publish dir = `website`), GitHub Pages, Cloudflare Pages, S3, an
 
 - Respects `prefers-reduced-motion`. Platform icons + favicon are inline SVG.
 - Fully responsive (desktop / tablet / mobile slide-down menu).
-- Privacy copy is honest (generation stays local, token stays local, feedback
-  forms go to Supabase only on submit) — keep it accurate.
+- Privacy copy is honest (generation stays local, tokens are stored locally and
+  sent to Supabase only for secure download checks, feedback forms go to
+  Supabase only on submit) — keep it accurate.

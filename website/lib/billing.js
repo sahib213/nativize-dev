@@ -269,12 +269,37 @@
       body: JSON.stringify({
         artifactUrl: artifactUrl,
         githubToken: githubToken,
+        artifactName: artifact && artifact.name,
         filename: filename || (artifact && artifact.name) || "nativize-artifact.zip"
       })
     });
     if (!res.ok) {
       var data = await readJson(res);
       throw apiError(res, data, "Could not download this app.");
+    }
+    return res.blob();
+  }
+
+  async function downloadProject(accessToken, githubToken, repo, filename, opts) {
+    if (!accessToken) throw new Error("Sign in is required before downloading Full Source Code.");
+    githubToken = String(githubToken || "").trim();
+    if (!githubToken) throw new Error("GitHub access is missing. Sign in again.");
+    repo = String(repo || "").trim();
+    if (!repo) throw new Error("GitHub repo is required.");
+    var base = (opts && opts.supabaseUrl) || SUPABASE_URL;
+    var res = await doFetch(opts)(base + "/functions/v1/artifact-download", {
+      method: "POST",
+      headers: authHeaders(accessToken),
+      body: JSON.stringify({
+        kind: "project",
+        repo: repo,
+        githubToken: githubToken,
+        filename: filename || "Nativized Source Code.zip"
+      })
+    });
+    if (!res.ok) {
+      var data = await readJson(res);
+      throw apiError(res, data, "Could not download Full Source Code.");
     }
     return res.blob();
   }
@@ -346,6 +371,7 @@
     activate: activate,
     checkout: checkout,
     downloadArtifact: downloadArtifact,
+    downloadProject: downloadProject,
     refreshSession: refreshSession,
     exchangeCodeForSession: exchangeCodeForSession,
     authorizeUrl: authorizeUrl,

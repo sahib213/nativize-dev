@@ -97,26 +97,29 @@
     setTimeout(function () { a.remove(); URL.revokeObjectURL(url); }, 1000);
   }
 
-  function downloadArtifactFromExtension(artifact, token, filename) {
-    var artifactUrl = artifact && (artifact.apiUrl || artifact.downloadUrl);
-    if (!artifactUrl) return Promise.reject(new Error("Artifact download URL is missing."));
-    return new Promise(function (resolve, reject) {
-      try {
-        chrome.runtime.sendMessage({
-          type: "nativize-download-artifact",
-          artifactUrl: artifactUrl,
-          token: token,
-          filename: filename
-        }, function (res) {
-          var err = chrome.runtime.lastError;
-          if (err) return reject(new Error(err.message || String(err)));
-          if (!res || !res.ok) return reject(new Error(res && res.error || "Chrome could not start the download."));
-          resolve(res);
-        });
-      } catch (e) {
-        reject(e);
-      }
-    });
+  function cleanDownloadFilename(name, fallback) {
+    var out = String(name || fallback || "Nativized App Files").trim()
+      .replace(/[<>:"\\|?*\u0000-\u001f]/g, "-")
+      .replace(/^[/\\]+/, "")
+      .replace(/\.\.+/g, ".");
+    if (!out || out === "." || out === "..") out = fallback || "Nativized App Files";
+    if (!/\.zip$/i.test(out)) out += ".zip";
+    return out.slice(0, 180);
+  }
+
+  function artifactDownloadFilename(artifact, state) {
+    var n = String((artifact && artifact.name) || "").toLowerCase();
+    if (n.indexOf("ios-simulator-preview") >= 0 || n.indexOf("nativized ios preview") >= 0) return "Nativized iOS Preview.zip";
+    if (n.indexOf("ios-xcode-project") >= 0 || n.indexOf("nativized ios") >= 0) return "Nativized iOS.zip";
+    if (n.indexOf("android") >= 0 || n.indexOf("nativized android") >= 0) return "Nativized Android.zip";
+    if (n.indexOf("windows") >= 0 || n.indexOf("desktop-windows") >= 0 || n.indexOf("win") >= 0) return "Nativized Windows.zip";
+    if (n.indexOf("desktop") >= 0 || n.indexOf("mac") >= 0) return "Nativized Desktop.zip";
+    return cleanDownloadFilename((artifact && artifact.name) || (state && state.appName), "Nativized App Files");
+  }
+
+  function sourceDownloadFilename(state) {
+    var slug = Kit && Kit.slugify ? Kit.slugify((state && state.appName) || "") : "";
+    return cleanDownloadFilename("Nativized Source Code" + (slug ? " - " + slug : ""), "Nativized Source Code");
   }
 
   // ---- Mount -------------------------------------------------------------
@@ -247,11 +250,11 @@
         setBilling(Billing ? Billing.freeStatus() : { planId: "free" });
         try { chrome.runtime.sendMessage({ type: "nativize-signout" }, function () {}); } catch (e) {}
       },
-      // Download the full project (src + ios + android + desktop) as a .zip.
       onDownloadProject: function (state) {
         return requirePaidSubscription("download the full project").then(function () {
-          return GitHub.downloadRepoZip(state.githubRepo, state.token).then(function (blob) {
-            triggerDownload(blob, (Kit.slugify(state.appName) || "project") + "-full-project.zip");
+          var filename = sourceDownloadFilename(state);
+          return Billing.downloadProject(supabaseAccess, state.token, state.githubRepo, filename).then(function (blob) {
+            triggerDownload(blob, filename);
           });
         });
       },
@@ -264,8 +267,12 @@
         });
       },
       onDownloadArtifact: function (artifact, state) {
-        var filename = (Kit.slugify((artifact && artifact.name) || state.appName || "nativize-artifact") || "nativize-artifact") + ".zip";
-        return downloadArtifactFromExtension(artifact, state.token, filename);
+        var filename = artifactDownloadFilename(artifact, state);
+        return fetchBillingStrict().then(function () {
+          return Billing.downloadArtifact(supabaseAccess, state.token, artifact, filename);
+        }).then(function (blob) {
+          triggerDownload(blob, filename);
+        });
       },
       onPush: function (state, token, onProgress) {
         return fetchBillingStrict()

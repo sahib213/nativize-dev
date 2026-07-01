@@ -13,7 +13,8 @@ A browser can't compile native apps, so Nativize splits the job:
   no local Xcode / Android Studio required to validate the build.
 - **Delivery is your choice.** Download the kit as a `.zip`, or push it straight
   to your GitHub repo via the GitHub REST API. The generation workflow runs in
-  your browser. Your GitHub token lives only in `chrome.storage.local`.
+  your browser; secure downloads are relayed through Supabase for plan checks.
+  Your GitHub token is stored only in `chrome.storage.local`.
 
 ## Install (Load unpacked)
 

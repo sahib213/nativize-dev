@@ -118,7 +118,7 @@
             "name": "Is my source code or GitHub token sent to Nativize servers?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "No. Native-kit generation runs in your browser. The Chrome extension stores the GitHub token in chrome.storage.local and the web Studio keeps auth tokens in your browser session. Builds run in your own GitHub repository through GitHub Actions."
+              "text": "Native-kit generation runs in your browser and builds run in your own GitHub repository. GitHub tokens are stored locally and are sent to Supabase Edge Functions only when preparing secure downloads or completing billing-gated actions."
             }
           },
           {
@@ -238,10 +238,10 @@
         <section id="q-privacy">
           <h2>Is my source code or GitHub token sent to Nativize servers?</h2>
           <p>
-            No. Native-kit generation runs in your browser. The Chrome extension stores the
-            GitHub token in <code>chrome.storage.local</code> and the web Studio keeps auth
-            tokens in your browser session. Builds run in your own GitHub repository through
-            GitHub Actions.
+            Native-kit generation runs in your browser and builds run in your own GitHub
+            repository through GitHub Actions. GitHub tokens are stored locally and are sent
+            to Supabase Edge Functions only when preparing secure downloads or completing
+            billing-gated actions.
           </p>
         </section>
 

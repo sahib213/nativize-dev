@@ -9,7 +9,13 @@ const corsHeaders = {
 const MAX_BODY_BYTES = 9000;
 const MAX_AUTH_HEADER = 5000;
 const MAX_ARTIFACT_BYTES = 250 * 1024 * 1024;
-const GITHUB_ARTIFACT_RE = /^https:\/\/api\.github\.com\/repos\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/actions\/artifacts\/\d+\/zip$/;
+const GITHUB_ARTIFACT_RE = /^https:\/\/api\.github\.com\/repos\/([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)\/actions\/artifacts\/(\d+)\/zip$/;
+const REPO_RE = /^([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)$/;
+const PAID_PLANS = new Set(["starter", "pro", "max"]);
+
+type GithubArtifactRef = { owner: string; repo: string; id: string };
+type GithubRepoRef = { owner: string; repo: string };
+type GithubArtifactMeta = { name: string; archive_download_url?: string; expired?: boolean };
 
 function env(name: string): string {
   const value = Deno.env.get(name);
@@ -74,12 +80,35 @@ async function readJsonBody(req: Request): Promise<Record<string, unknown>> {
   }
 }
 
-function cleanArtifactUrl(value: unknown): string {
+function parseArtifactUrl(value: unknown): { url: string; ref: GithubArtifactRef } {
   const url = String(value || "").trim();
-  if (!GITHUB_ARTIFACT_RE.test(url)) {
+  const match = url.match(GITHUB_ARTIFACT_RE);
+  if (!match) {
     throw Object.assign(new Error("Artifact download URL is invalid."), { status: 400 });
   }
-  return url;
+  return { url, ref: { owner: match[1], repo: match[2], id: match[3] } };
+}
+
+function cleanRepo(value: unknown): GithubRepoRef {
+  const repo = String(value || "").trim()
+    .replace(/^https?:\/\/github\.com\//i, "")
+    .replace(/[?#].*$/, "")
+    .replace(/\.git\/?$/i, "")
+    .replace(/\/+$/, "");
+  const match = repo.match(REPO_RE);
+  if (!match || repo.length > 140) {
+    throw Object.assign(new Error("GitHub repo must be in owner/repo form."), { status: 400 });
+  }
+  return { owner: match[1], repo: match[2] };
+}
+
+function cleanRef(value: unknown): string {
+  const ref = String(value || "").trim();
+  if (!ref) return "";
+  if (ref.length > 120 || /(^|\/)\.\.?($|\/)/.test(ref) || !/^[A-Za-z0-9._/-]+$/.test(ref)) {
+    throw Object.assign(new Error("Git ref is invalid."), { status: 400 });
+  }
+  return ref;
 }
 
 function cleanToken(value: unknown): string {
@@ -99,6 +128,49 @@ function cleanFilename(value: unknown): string {
   if (!out || out === "." || out === "..") out = "nativize-artifact.zip";
   if (!/\.zip$/i.test(out)) out += ".zip";
   return out.slice(0, 180);
+}
+
+function normalizedArtifactName(name: string): string {
+  return String(name || "").toLowerCase().replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function artifactRequiresPaid(name: string): boolean {
+  const n = normalizedArtifactName(name);
+  if (n.includes("ios simulator preview") || n.includes("nativized ios preview")) return false;
+  return true;
+}
+
+async function userPlanId(supabase: ReturnType<typeof createClient>, userId: string): Promise<string> {
+  const { data, error } = await supabase
+    .from("billing_entitlements")
+    .select("plan_id,status,current_period_end,updated_at")
+    .eq("user_id", userId)
+    .in("status", ["active", "trialing"])
+    .order("updated_at", { ascending: false })
+    .limit(5);
+
+  if (error) {
+    console.warn("Could not read billing entitlement:", error.message || error);
+    return "free";
+  }
+
+  const now = Date.now();
+  const active = (data || []).find((row) => {
+    const end = row.current_period_end ? Date.parse(row.current_period_end) : 0;
+    return !row.current_period_end || (Number.isFinite(end) && end > now);
+  });
+  return String(active?.plan_id || "free").toLowerCase();
+}
+
+async function requirePaidPlan(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  message: string
+) {
+  const planId = await userPlanId(supabase, userId);
+  if (!PAID_PLANS.has(planId)) {
+    throw Object.assign(new Error(message), { status: 402 });
+  }
 }
 
 async function githubError(response: Response): Promise<string> {
@@ -139,14 +211,52 @@ async function fetchGithubArtifact(artifactUrl: string, githubToken: string): Pr
   return first;
 }
 
-async function readArtifactBytes(response: Response): Promise<ArrayBuffer> {
+async function fetchGithubArtifactMetadata(ref: GithubArtifactRef, githubToken: string): Promise<GithubArtifactMeta> {
+  const response = await fetch(
+    `https://api.github.com/repos/${ref.owner}/${ref.repo}/actions/artifacts/${ref.id}`,
+    { headers: githubHeaders(githubToken) }
+  );
+  if (!response.ok) {
+    const detail = await githubError(response);
+    throw Object.assign(new Error(`Could not verify this download (${detail}).`), {
+      status: response.status === 404 ? 404 : 502
+    });
+  }
+  const data = await response.json();
+  return {
+    name: String(data?.name || ""),
+    archive_download_url: data?.archive_download_url,
+    expired: data?.expired === true
+  };
+}
+
+async function fetchGithubProjectZip(repo: GithubRepoRef, githubToken: string, ref = ""): Promise<Response> {
+  const suffix = ref ? `/zipball/${encodeURIComponent(ref).replace(/%2F/g, "/")}` : "/zipball";
+  const first = await fetch(`https://api.github.com/repos/${repo.owner}/${repo.repo}${suffix}`, {
+    headers: githubHeaders(githubToken),
+    redirect: "manual"
+  });
+
+  if ([301, 302, 303, 307, 308].includes(first.status)) {
+    const location = first.headers.get("Location");
+    if (!location) return first;
+    return fetch(location, {
+      headers: { "User-Agent": "Nativize-Artifact-Download" },
+      redirect: "follow"
+    });
+  }
+
+  return first;
+}
+
+async function readDownloadBytes(response: Response): Promise<ArrayBuffer> {
   const length = Number(response.headers.get("Content-Length") || "0");
   if (Number.isFinite(length) && length > MAX_ARTIFACT_BYTES) {
-    throw Object.assign(new Error("Artifact is too large to download here."), { status: 413 });
+    throw Object.assign(new Error("Download is too large to prepare here."), { status: 413 });
   }
   const bytes = await response.arrayBuffer();
   if (bytes.byteLength > MAX_ARTIFACT_BYTES) {
-    throw Object.assign(new Error("Artifact is too large to download here."), { status: 413 });
+    throw Object.assign(new Error("Download is too large to prepare here."), { status: 413 });
   }
   return bytes;
 }
@@ -182,23 +292,56 @@ Deno.serve(async (req) => {
 
     step = "read-body";
     const body = await readJsonBody(req);
-    const artifactUrl = cleanArtifactUrl(body.artifactUrl);
     const githubToken = cleanToken(body.githubToken);
-    const filename = cleanFilename(body.filename);
+    const kind = String(body.kind || "artifact").toLowerCase();
+    let download: Response;
+    let filename = cleanFilename(kind === "project" ? body.filename || "Nativized Source Code.zip" : body.filename);
 
-    step = "fetch-github";
-    const artifact = await fetchGithubArtifact(artifactUrl, githubToken);
+    if (kind === "project") {
+      step = "authorize-project";
+      await requirePaidPlan(
+        supabase,
+        data.user.id,
+        "A paid Nativize plan is required to download Full Source Code."
+      );
 
-    if (!artifact.ok) {
-      const detail = await githubError(artifact);
-      return json({ error: `Could not download this app (${detail}).` }, artifact.status === 404 ? 404 : 502);
+      step = "fetch-project";
+      const repo = cleanRepo(body.repo);
+      const ref = cleanRef(body.ref);
+      download = await fetchGithubProjectZip(repo, githubToken, ref);
+      if (!download.ok) {
+        const detail = await githubError(download);
+        return json({ error: `Could not download Full Source Code (${detail}).` }, download.status === 404 ? 404 : 502);
+      }
+    } else {
+      step = "verify-artifact";
+      const parsed = parseArtifactUrl(body.artifactUrl);
+      const meta = await fetchGithubArtifactMetadata(parsed.ref, githubToken);
+      if (!meta.name) return json({ error: "Could not verify this download." }, 502);
+      if (meta.expired) return json({ error: "This build download has expired. Run the build again." }, 410);
+      if (artifactRequiresPaid(meta.name)) {
+        await requirePaidPlan(
+          supabase,
+          data.user.id,
+          "A paid Nativize plan is required to download this project package."
+        );
+      }
+      filename = cleanFilename(body.filename || `${meta.name}.zip`);
+
+      step = "fetch-github";
+      download = await fetchGithubArtifact(parsed.url, githubToken);
+
+      if (!download.ok) {
+        const detail = await githubError(download);
+        return json({ error: `Could not download this app (${detail}).` }, download.status === 404 ? 404 : 502);
+      }
     }
-    step = "read-artifact";
-    const bytes = await readArtifactBytes(artifact);
+    step = "read-download";
+    const bytes = await readDownloadBytes(download);
 
     step = "respond";
     const headers = new Headers(corsHeaders);
-    headers.set("Content-Type", artifact.headers.get("Content-Type") || "application/zip");
+    headers.set("Content-Type", download.headers.get("Content-Type") || "application/zip");
     headers.set("Content-Disposition", `attachment; filename="${filename.replace(/"/g, "")}"`);
     headers.set("Cache-Control", "no-store");
     headers.set("Content-Length", String(bytes.byteLength));
@@ -207,7 +350,7 @@ Deno.serve(async (req) => {
   } catch (err) {
     console.error(err);
     const status = typeof (err as { status?: unknown }).status === "number" ? (err as { status: number }).status : 500;
-    if (status === 400 || status === 401 || status === 413 || status === 429) {
+    if (status === 400 || status === 401 || status === 402 || status === 404 || status === 410 || status === 413 || status === 429) {
       return json({ error: err instanceof Error ? err.message : "Request failed." }, status);
     }
     return json({ error: `Artifact download failed at ${step}.` }, 500);
