@@ -465,7 +465,12 @@
       Array.prototype.forEach.call(shadow.querySelectorAll("input, textarea, select, button"), function (control) {
         if (!control) return;
         if (control.id === "nz-signinBtn" || control.id === "nz-signout" || control.id === "nz-again") return;
-        if (control.classList && control.classList.contains("nz-close")) return;
+        // Never disable navigation: the launcher must stay clickable to OPEN the
+        // panel, and section headers must expand so the user can look around
+        // before signing in. Only action controls (build/download/inputs) lock.
+        if (control.classList && (control.classList.contains("nz-close") ||
+            control.classList.contains("nz-fab") ||
+            control.classList.contains("nz-section-toggle"))) return;
         control.disabled = !!authLocked;
       });
       Array.prototype.forEach.call(shadow.querySelectorAll(paidControlSelector), function (control) {

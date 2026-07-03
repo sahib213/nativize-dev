@@ -178,17 +178,48 @@ async function downloadArtifact(msg) {
   return { downloadId: id };
 }
 
-// Clicking the toolbar icon opens/closes the Nativize panel on the current page.
-// There is no default_popup, so onClicked fires. The content script runs on every
-// page (content_scripts matches <all_urls>), so it's already there to receive this
-// on any normally-loaded tab — no extra permissions needed.
-chrome.action.onClicked.addListener((tab) => {
-  if (!tab || !tab.id) return;
-  chrome.tabs.sendMessage(tab.id, { type: "nativize-toggle" }, () => {
-    // Swallow "no receiver" on restricted pages (chrome://, Web Store, PDF viewer)
-    // or a tab opened before the extension loaded (reload the tab to get the panel).
-    void chrome.runtime.lastError;
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function sendToggleMessage(tabId) {
+  return new Promise((resolve) => {
+    chrome.tabs.sendMessage(tabId, { type: "nativize-toggle" }, (res) => {
+      const err = chrome.runtime.lastError;
+      resolve({ ok: !!(res && res.ok), pending: !!(res && res.pending), error: err && err.message });
+    });
   });
+}
+
+function openFallbackPage() {
+  return chrome.tabs.create({ url: chrome.runtime.getURL("src/popup.html") });
+}
+
+async function togglePanelForTab(tab) {
+  if (!tab || !tab.id) return;
+
+  let result = await sendToggleMessage(tab.id);
+  if (result.ok) return;
+
+  // The content script registers its message listener before the async storage
+  // restore finishes. A very quick toolbar click can hit that tiny pending gap.
+  if (result.pending) {
+    await delay(150);
+    result = await sendToggleMessage(tab.id);
+    if (result.ok) return;
+  }
+
+  // If the content script isn't loaded (e.g. tabs that were open before the
+  // extension was installed or reloaded), fall back to a visible extension page.
+  await openFallbackPage();
+}
+
+// Clicking the toolbar icon opens/closes the Nativize panel on the current page.
+// There is no default_popup, so onClicked fires. The manifest content script
+// handles normally-loaded tabs. Restricted Chrome pages and tabs from before
+// install get a small visible fallback page instead of silently doing nothing.
+chrome.action.onClicked.addListener((tab) => {
+  togglePanelForTab(tab).catch(() => openFallbackPage());
 });
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {

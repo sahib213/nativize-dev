@@ -44,11 +44,11 @@ Note: publishing an app to a mobile app store requires the usual developer accou
 
 ---
 
-## How to resubmit (you must do this in your dashboard — I can't)
+## How to resubmit
 
-1. Build is ready: **`dist/nativize-extension-1.1.4.zip`** (manifest v1.1.4, cleaned description).
+1. Build is ready: **`artifacts/nativize-extension-v1.1.10.zip`** (manifest v1.1.10).
 2. Go to the **Chrome Web Store Developer Dashboard** → your item.
-3. **Package**: upload `dist/nativize-extension-1.1.4.zip` (new version 1.1.4).
+3. **Package**: upload `artifacts/nativize-extension-v1.1.10.zip` (new version 1.1.10).
 4. **Store listing → Description**: replace the current text with the *Detailed description* above.
    Also check the **Summary/short description** field uses the short version above.
 5. Re-check **screenshots, title, and promo images** for the same issue — no keyword

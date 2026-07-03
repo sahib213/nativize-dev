@@ -4,10 +4,12 @@
   <meta charset="utf-8">
   <style>
     :root { color-scheme: dark; }
+    html { min-height: 100%; background: #11111c; }
     body {
-      width: 300px; margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+      width: min(420px, 100vw); min-height: 100vh; margin: 0 auto; font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
       background: #11111c; color: #e8e8f0;
     }
+    @media (max-width: 420px) { body { width: 100vw; } }
     .hd {
       padding: 16px 18px; background: linear-gradient(135deg, #7c3aed, #2563eb);
     }
@@ -37,6 +39,6 @@
     <div class="step"><span class="num">3</span><span>Confirm the details, then <b>Download .zip</b> or <b>Push to GitHub</b>.</span></div>
     <div class="step"><span class="num">4</span><span>Run <b>Actions → Nativize Build</b> to build in the cloud — free, no Xcode needed.</span></div>
   </div>
-  <div class="ft">Generation runs in your browser. Your GitHub connection is stored locally and used only for secure downloads and repository actions.</div>
+  <div class="ft">If Chrome opened this page from the toolbar icon, the current tab blocks extensions. Open a normal web page or Lovable project, then click Nativize again.</div>
 </body>
 </html>

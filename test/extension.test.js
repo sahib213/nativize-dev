@@ -3,6 +3,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
+const vm = require("node:vm");
 const Billing = require("../src/billing.js");
 
 const root = path.join(__dirname, "..");
@@ -16,9 +17,9 @@ test("Manifest V3 runs on every page, functional toolbar icon, GitHub + Supabase
   assert.ok(manifest.description.includes("build in the cloud"));
   assert.ok(manifest.description.length <= 132); // Chrome Web Store short-description limit
   assert.doesNotMatch(manifest.description, /Capacitor|GitHub|Apple|Google|Microsoft/);
-  // 'identity' for GitHub sign-in. No scripting/activeTab: the content script runs
-  // on every page, so the toolbar icon opens the panel without extra permissions.
-  assert.deepEqual(manifest.permissions, ["storage", "identity", "downloads"]);
+  // 'identity' for GitHub sign-in; activeTab+scripting lets a toolbar click
+  // wake up tabs that were already open before install/reload.
+  assert.deepEqual(manifest.permissions, ["storage", "identity", "downloads", "activeTab", "scripting"]);
   // GitHub API + Supabase Auth/RPC/Edge Functions for billing.
   assert.ok(manifest.host_permissions.includes("https://api.github.com/*"));
   assert.ok(manifest.host_permissions.includes("https://gaaxcbarmiwtojblkkyh.supabase.co/*"));
@@ -40,12 +41,101 @@ test("Manifest V3 runs on every page, functional toolbar icon, GitHub + Supabase
 });
 
 test("toolbar icon opens the panel: background dispatches toggle, content script handles it", () => {
+  const manifest = JSON.parse(read("manifest.json"));
   const background = read("src/background.js");
   const content = read("src/content.js");
   assert.match(background, /chrome\.action\.onClicked\.addListener/);
   assert.match(background, /type: "nativize-toggle"/);
+  assert.match(background, /chrome\.scripting\.executeScript/);
+  assert.match(background, /chrome\.runtime\.getURL\("src\/popup\.html"\)/);
+  manifest.content_scripts[0].js.forEach((file) => {
+    assert.match(background, new RegExp('"' + file.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + '"'));
+  });
   assert.match(content, /msg\.type === "nativize-toggle"/);
   assert.match(content, /panelToggleRef/);
+});
+
+test("toolbar click injects the bundle when the current tab has no receiver, then falls back on blocked tabs", async () => {
+  const source = read("src/background.js");
+  const manifest = JSON.parse(read("manifest.json"));
+
+  function makeChrome(options) {
+    let clicked = null;
+    const state = {
+      createdUrls: [],
+      injectedFiles: [],
+      sendCount: 0
+    };
+    const chrome = {
+      action: { onClicked: { addListener(fn) { clicked = fn; } } },
+      downloads: { download: async () => 1 },
+      identity: { getRedirectURL: () => "https://ext.chromiumapp.org/", launchWebAuthFlow: async () => "" },
+      runtime: {
+        lastError: null,
+        getURL: (file) => "chrome-extension://id/" + file,
+        onMessage: { addListener() {} }
+      },
+      scripting: {
+        executeScript: async (details) => {
+          if (options && options.injectFails) throw new Error("Cannot access contents of the page");
+          state.injectedFiles = details.files.slice();
+        }
+      },
+      storage: {
+        local: {
+          get: async () => ({}),
+          set: async () => {},
+          remove: async () => {}
+        }
+      },
+      tabs: {
+        create: async (opts) => {
+          state.createdUrls.push(opts.url);
+          return { id: 99, url: opts.url };
+        },
+        sendMessage(tabId, msg, cb) {
+          state.sendCount += 1;
+          if (state.injectedFiles.length && !(options && options.injectFails)) {
+            chrome.runtime.lastError = null;
+            cb({ ok: true });
+            return;
+          }
+          chrome.runtime.lastError = { message: "Could not establish connection. Receiving end does not exist." };
+          cb(undefined);
+          chrome.runtime.lastError = null;
+        }
+      },
+      __click(tab) {
+        clicked(tab);
+      },
+      __state: state
+    };
+    return chrome;
+  }
+
+  async function runClick(options) {
+    const chrome = makeChrome(options);
+    vm.runInNewContext(source, {
+      chrome,
+      crypto,
+      TextEncoder,
+      URLSearchParams,
+      btoa: (value) => Buffer.from(value, "binary").toString("base64"),
+      fetch: async () => ({ ok: true, text: async () => "{}" }),
+      setTimeout: (fn) => setTimeout(fn, 0)
+    });
+    chrome.__click({ id: 7, url: "https://example.com/" });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    return chrome.__state;
+  }
+
+  const injected = await runClick();
+  assert.deepEqual(Array.from(injected.injectedFiles), manifest.content_scripts[0].js);
+  assert.equal(injected.createdUrls.length, 0);
+  assert.ok(injected.sendCount >= 2);
+
+  const blocked = await runClick({ injectFails: true });
+  assert.deepEqual(blocked.createdUrls, ["chrome-extension://id/src/popup.html"]);
 });
 
 test("content script stores config per Lovable project and token in local storage", () => {
