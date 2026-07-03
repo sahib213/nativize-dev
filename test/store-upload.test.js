@@ -110,3 +110,24 @@ test("wrong key cannot open the sealed box", () => {
   const sealed = new Uint8Array(Buffer.from(SB.sealBase64("secret", Buffer.from(r.publicKey).toString("base64")), "base64"));
   assert.equal(SB.sealOpen(sealed, bad.publicKey, bad.secretKey), null);
 });
+
+// ---------------------------------------------------------------------------
+// Push notifications: real Firebase config is baked in when provided
+// ---------------------------------------------------------------------------
+test("push bakes in the real google-services.json / GoogleService-Info.plist when given", () => {
+  const f = Kit.generateKit({
+    appName: "Demo", enablePush: true, plan: "pro",
+    firebaseAndroidJson: '{"project_info":"x"}',
+    firebaseIosPlist: "<plist>y</plist>"
+  });
+  assert.equal(f["android/app/google-services.json"], '{"project_info":"x"}');
+  assert.equal(f["ios/App/App/GoogleService-Info.plist"], "<plist>y</plist>");
+});
+
+test("push without config ships no real Firebase files (placeholder path); push off ignores config", () => {
+  const noCfg = Kit.generateKit({ appName: "Demo", enablePush: true, plan: "pro" });
+  assert.ok(!("android/app/google-services.json" in noCfg));
+  assert.ok(!("ios/App/App/GoogleService-Info.plist" in noCfg));
+  const off = Kit.generateKit({ appName: "Demo", enablePush: false, plan: "pro", firebaseAndroidJson: "x" });
+  assert.ok(!("android/app/google-services.json" in off));
+});
