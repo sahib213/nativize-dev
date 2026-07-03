@@ -179,28 +179,16 @@ async function downloadArtifact(msg) {
 }
 
 // Clicking the toolbar icon opens/closes the Nativize panel on the current page.
-// There is no default_popup, so onClicked fires. Normally the content script is
-// already present (it runs on every page); if it isn't (a tab opened before the
-// extension loaded, etc.), inject the bundle on demand, then toggle.
-const CONTENT_FILES = [
-  "src/plans.js", "src/billing.js", "src/kit-generator.js", "src/zip.js",
-  "src/vendor/tweetnacl.js", "src/vendor/blake2b.js", "src/sealedbox.js",
-  "src/github.js", "src/panel.js", "src/content.js"
-];
-
-chrome.action.onClicked.addListener(async (tab) => {
+// There is no default_popup, so onClicked fires. The content script runs on every
+// page (content_scripts matches <all_urls>), so it's already there to receive this
+// on any normally-loaded tab — no extra permissions needed.
+chrome.action.onClicked.addListener((tab) => {
   if (!tab || !tab.id) return;
-  try {
-    await chrome.tabs.sendMessage(tab.id, { type: "nativize-toggle" });
-  } catch (e) {
-    // No receiver yet — inject the content bundle, then toggle.
-    try {
-      await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: CONTENT_FILES });
-      await chrome.tabs.sendMessage(tab.id, { type: "nativize-toggle" });
-    } catch (e2) {
-      // Restricted page (chrome://, Chrome Web Store, PDF viewer, etc.) — can't run here.
-    }
-  }
+  chrome.tabs.sendMessage(tab.id, { type: "nativize-toggle" }, () => {
+    // Swallow "no receiver" on restricted pages (chrome://, Web Store, PDF viewer)
+    // or a tab opened before the extension loaded (reload the tab to get the panel).
+    void chrome.runtime.lastError;
+  });
 });
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {

@@ -16,9 +16,9 @@ test("Manifest V3 runs on every page, functional toolbar icon, GitHub + Supabase
   assert.ok(manifest.description.includes("build in the cloud"));
   assert.ok(manifest.description.length <= 132); // Chrome Web Store short-description limit
   assert.doesNotMatch(manifest.description, /Capacitor|GitHub|Apple|Google|Microsoft/);
-  // 'identity' for GitHub sign-in; 'scripting'+'activeTab' let the toolbar icon
-  // inject + open the panel on any tab (fixes the "icon not working" rejection).
-  assert.deepEqual(manifest.permissions, ["storage", "identity", "downloads", "scripting", "activeTab"]);
+  // 'identity' for GitHub sign-in. No scripting/activeTab: the content script runs
+  // on every page, so the toolbar icon opens the panel without extra permissions.
+  assert.deepEqual(manifest.permissions, ["storage", "identity", "downloads"]);
   // GitHub API + Supabase Auth/RPC/Edge Functions for billing.
   assert.ok(manifest.host_permissions.includes("https://api.github.com/*"));
   assert.ok(manifest.host_permissions.includes("https://gaaxcbarmiwtojblkkyh.supabase.co/*"));
@@ -44,7 +44,6 @@ test("toolbar icon opens the panel: background dispatches toggle, content script
   const content = read("src/content.js");
   assert.match(background, /chrome\.action\.onClicked\.addListener/);
   assert.match(background, /type: "nativize-toggle"/);
-  assert.match(background, /chrome\.scripting\.executeScript/); // inject-on-demand fallback
   assert.match(content, /msg\.type === "nativize-toggle"/);
   assert.match(content, /panelToggleRef/);
 });
