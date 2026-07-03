@@ -195,6 +195,14 @@ function openFallbackPage() {
   return chrome.tabs.create({ url: chrome.runtime.getURL("src/popup.html") });
 }
 
+// The manifest content_scripts list, injected on demand into tabs that were open
+// before the extension loaded. Must mirror manifest.json content_scripts[0].js.
+const CONTENT_FILES = [
+  "src/plans.js", "src/billing.js", "src/kit-generator.js", "src/zip.js",
+  "src/vendor/tweetnacl.js", "src/vendor/blake2b.js", "src/sealedbox.js",
+  "src/github.js", "src/panel.js", "src/content.js"
+];
+
 async function togglePanelForTab(tab) {
   if (!tab || !tab.id) return;
 
@@ -209,9 +217,18 @@ async function togglePanelForTab(tab) {
     if (result.ok) return;
   }
 
-  // If the content script isn't loaded (e.g. tabs that were open before the
-  // extension was installed or reloaded), fall back to a visible extension page.
-  await openFallbackPage();
+  // No receiver — the content script isn't loaded (a tab opened before the
+  // extension was installed/reloaded). Inject the bundle, then toggle. On pages
+  // that block extensions (chrome://, the Web Store, the PDF viewer) injection
+  // throws; show the visible fallback page instead of doing nothing.
+  try {
+    await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: CONTENT_FILES });
+  } catch (e) {
+    await openFallbackPage();
+    return;
+  }
+  result = await sendToggleMessage(tab.id);
+  if (!result.ok) await openFallbackPage();
 }
 
 // Clicking the toolbar icon opens/closes the Nativize panel on the current page.
