@@ -8,37 +8,45 @@ const Billing = require("../src/billing.js");
 const root = path.join(__dirname, "..");
 const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
 
-test("Manifest V3 runs on Lovable/local sites, talks to GitHub + Supabase billing, local storage only", () => {
+test("Manifest V3 runs on every page, functional toolbar icon, GitHub + Supabase billing, local storage only", () => {
   const manifest = JSON.parse(read("manifest.json"));
   assert.equal(manifest.manifest_version, 3);
   assert.equal(manifest.name, "Nativize - Lovable to Native Apps");
-  assert.ok(manifest.description.includes("Lovable web app"));
-  assert.ok(manifest.description.includes("built in the cloud"));
-  assert.ok(manifest.description.length <= 132);
+  assert.ok(manifest.description.includes("native iOS"));
+  assert.ok(manifest.description.includes("build in the cloud"));
+  assert.ok(manifest.description.length <= 132); // Chrome Web Store short-description limit
   assert.doesNotMatch(manifest.description, /Capacitor|GitHub|Apple|Google|Microsoft/);
-  // 'identity' is needed for one-click "Sign in with GitHub" via chrome.identity.
-  assert.deepEqual(manifest.permissions, ["storage", "identity", "downloads"]);
+  // 'identity' for GitHub sign-in; 'scripting'+'activeTab' let the toolbar icon
+  // inject + open the panel on any tab (fixes the "icon not working" rejection).
+  assert.deepEqual(manifest.permissions, ["storage", "identity", "downloads", "scripting", "activeTab"]);
   // GitHub API + Supabase Auth/RPC/Edge Functions for billing.
   assert.ok(manifest.host_permissions.includes("https://api.github.com/*"));
   assert.ok(manifest.host_permissions.includes("https://gaaxcbarmiwtojblkkyh.supabase.co/*"));
   const legacyHost = "https://api." + "lemonsqueezy.com/*";
   assert.ok(!manifest.host_permissions.includes(legacyHost));
-  assert.deepEqual(manifest.content_scripts[0].matches, [
-    "https://lovable.dev/*",
-    "https://*.lovable.dev/*",
-    "https://lovable.app/*",
-    "https://*.lovable.app/*",
-    "http://localhost/*",
-    "http://127.0.0.1/*"
-  ]);
+  // Runs on every page — not just Lovable.
+  assert.deepEqual(manifest.content_scripts[0].matches, ["<all_urls>"]);
   // plans + billing load before the generator so gating + unlocking are available.
   const js = manifest.content_scripts[0].js;
   assert.ok(js.indexOf("src/plans.js") < js.indexOf("src/kit-generator.js"));
   assert.ok(js.includes("src/billing.js"));
   assert.ok(!js.includes("src/" + "license.js"));
   assert.equal(manifest.background.service_worker, "src/background.js");
-  assert.equal(manifest.action.default_popup, "src/popup.html");
+  // No popup: the icon click is handled by the background worker so it actually
+  // opens the tool (a static popup was what the review flagged as non-functional).
+  assert.equal(manifest.action.default_popup, undefined);
+  assert.ok(manifest.action.default_title && manifest.action.default_title.length > 0);
   assert.deepEqual(Object.keys(manifest.icons).sort(), ["128", "16", "48"]);
+});
+
+test("toolbar icon opens the panel: background dispatches toggle, content script handles it", () => {
+  const background = read("src/background.js");
+  const content = read("src/content.js");
+  assert.match(background, /chrome\.action\.onClicked\.addListener/);
+  assert.match(background, /type: "nativize-toggle"/);
+  assert.match(background, /chrome\.scripting\.executeScript/); // inject-on-demand fallback
+  assert.match(content, /msg\.type === "nativize-toggle"/);
+  assert.match(content, /panelToggleRef/);
 });
 
 test("content script stores config per Lovable project and token in local storage", () => {
