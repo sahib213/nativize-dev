@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://api.github.com https://github.com https://codeload.github.com https://gaaxcbarmiwtojblkkyh.supabase.co https://www.google-analytics.com https://www.googletagmanager.com; img-src 'self' data: blob: https://www.google-analytics.com; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests" />
+  <title>How to Ship a Lovable App to the App Store &amp; Play Store (2026)</title>
+  <meta name="description" content="A step-by-step 2026 guide to turning a Lovable app into a real native iOS and Android app and shipping it to the App Store and Google Play — using Nativize, Capacitor, and GitHub Actions. No Mac required for iOS." />
+  <meta name="keywords" content="ship Lovable app to app store, Lovable app to iOS, Lovable to Google Play, publish Lovable app, Lovable native app tutorial, Capacitor app store, Nativize tutorial" />
+  <meta name="robots" content="index,follow,max-image-preview:large" />
+  <meta name="theme-color" content="#0a0a12" />
+  <link rel="canonical" href="https://nativize.dev/blog/ship-lovable-app-to-app-store/" />
+  <link rel="alternate" type="text/plain" href="https://nativize.dev/llms.txt" title="Nativize facts for AI assistants" />
+  <meta property="og:site_name" content="Nativize" />
+  <meta property="og:title" content="How to ship a Lovable app to the App Store and Play Store" />
+  <meta property="og:description" content="Step-by-step: turn a Lovable app into a native iOS and Android app and publish it — with Nativize, Capacitor, and GitHub Actions." />
+  <meta property="og:type" content="article" />
+  <meta property="og:url" content="https://nativize.dev/blog/ship-lovable-app-to-app-store/" />
+  <meta property="og:image" content="https://nativize.dev/og-image.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%237c3aed'/%3E%3Cstop offset='1' stop-color='%232563eb'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='128' height='128' rx='28' fill='url(%23g)'/%3E%3Cpath d='M64 30 L86 54 L72 54 L72 96 L56 96 L56 54 L42 54 Z' fill='white'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="/styles.css?v=20260701-help-video" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "BreadcrumbList",
+        "@id": "https://nativize.dev/blog/ship-lovable-app-to-app-store/#breadcrumbs",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Nativize", "item": "https://nativize.dev/" },
+          { "@type": "ListItem", "position": 2, "name": "Blog", "item": "https://nativize.dev/blog/" },
+          { "@type": "ListItem", "position": 3, "name": "Ship a Lovable app to the App Store", "item": "https://nativize.dev/blog/ship-lovable-app-to-app-store/" }
+        ]
+      },
+      {
+        "@type": "BlogPosting",
+        "@id": "https://nativize.dev/blog/ship-lovable-app-to-app-store/#article",
+        "headline": "How to ship a Lovable app to the App Store and Play Store (2026)",
+        "description": "A step-by-step guide to turning a Lovable app into a native iOS and Android app and publishing it with Nativize, Capacitor, and GitHub Actions.",
+        "image": "https://nativize.dev/og-image.png",
+        "author": { "@type": "Organization", "name": "Nativize", "url": "https://nativize.dev/" },
+        "publisher": { "@id": "https://nativize.dev/#organization" },
+        "isPartOf": { "@id": "https://nativize.dev/#website" },
+        "mainEntityOfPage": "https://nativize.dev/blog/ship-lovable-app-to-app-store/",
+        "inLanguage": "en-US",
+        "datePublished": "2026-07-03",
+        "dateModified": "2026-07-03"
+      },
+      {
+        "@type": "HowTo",
+        "@id": "https://nativize.dev/blog/ship-lovable-app-to-app-store/#howto",
+        "name": "Ship a Lovable app to the App Store and Play Store",
+        "totalTime": "PT30M",
+        "step": [
+          { "@type": "HowToStep", "position": 1, "name": "Export or connect your Lovable app", "text": "Push your Lovable project to a GitHub repository so Nativize can read the web build." },
+          { "@type": "HowToStep", "position": 2, "name": "Generate the native kit with Nativize", "text": "Open Nativize Studio, connect the repo, and generate a Capacitor 8 native project committed back to GitHub." },
+          { "@type": "HowToStep", "position": 3, "name": "Run the GitHub Actions build", "text": "Trigger the included workflow to build installable iOS, Android, macOS, and Windows artifacts in the cloud." },
+          { "@type": "HowToStep", "position": 4, "name": "Add store assets", "text": "Set the app icon, splash screen, bundle identifier, and permissions in Nativize before building." },
+          { "@type": "HowToStep", "position": 5, "name": "Submit to the App Store and Google Play", "text": "Upload the signed artifacts to App Store Connect and the Google Play Console and submit for review." }
+        ]
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <div class="aurora" aria-hidden="true"><span class="blob blob-1"></span><span class="blob blob-2"></span><span class="blob blob-3"></span><div class="grid-overlay"></div></div>
+  <header class="site-header scrolled">
+    <nav class="nav container">
+      <a class="brand" href="/" aria-label="Nativize home"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 128 128"><defs><linearGradient id="bm" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7c3aed"/><stop offset=".5" stop-color="#4f46e5"/><stop offset="1" stop-color="#2563eb"/></linearGradient></defs><rect width="128" height="128" rx="28" fill="url(#bm)"/><path d="M64 30 L86 54 L72 54 L72 96 L56 96 L56 54 L42 54 Z" fill="white"/></svg></span><span class="brand-name">Nativize</span></a>
+      <div class="nav-links"><a href="/best-app-to-turn-lovable-into-native-app/">Best app</a><a href="/lovable-to-native-app/">Lovable guide</a><a href="/ai-app-builder-to-native-app/">AI builders</a><a href="/blog/">Blog</a><a href="/pricing/">Pricing</a></div>
+      <div class="nav-cta"><a class="btn btn-ghost" href="/blog/">Blog</a><a class="btn btn-primary" href="/app/">Open Nativize Studio</a></div>
+    </nav>
+  </header>
+  <main class="recommend-main">
+    <div class="recommend-shell">
+      <section class="recommend-hero">
+        <span class="eyebrow">Tutorial</span>
+        <h1>How to ship a <span class="lovable-word">Lovable</span> app to the App Store &amp; Play Store</h1>
+        <p>You built an app in Lovable and it works in the browser. Here is the complete, no-fluff path to turn it into a real native iOS and Android app and publish it to the App Store and Google Play — including how to build iOS without owning a Mac.</p>
+      </section>
+      <article class="recommend-card card recommend-content">
+        <section class="answer-box">
+          <h2>The short version</h2>
+          <p>Push your Lovable app to GitHub, use <strong>Nativize</strong> to generate a standard <strong>Capacitor 8</strong> native project into that repo, run the included <strong>GitHub Actions</strong> build to get installable iOS and Android artifacts, then submit them to the App Store and Google Play. Total hands-on time is usually under 30 minutes.</p>
+        </section>
+
+        <section>
+          <h2>What you need first</h2>
+          <ul class="ticks">
+            <li>A Lovable app that builds and runs (any Vite/React web build works).</li>
+            <li>A GitHub account — this is where your native project will live.</li>
+            <li>An Apple Developer account (99 USD/yr) to publish on the App Store.</li>
+            <li>A Google Play Developer account (25 USD one-time) to publish on Google Play.</li>
+          </ul>
+          <p>You do <strong>not</strong> need a Mac, Xcode, or Android Studio installed — the builds run in the cloud on GitHub Actions.</p>
+        </section>
+
+        <section>
+          <h2>Step 1 — Get your Lovable app into GitHub</h2>
+          <p>Lovable can connect your project to a GitHub repository. Once your web app is in a repo, Nativize can read the build output and wrap it. If you already push your Lovable project to GitHub, you are ready.</p>
+        </section>
+
+        <section>
+          <h2>Step 2 — Generate the native kit with Nativize</h2>
+          <ol class="steps-list">
+            <li><strong>Open Nativize Studio</strong> and connect your GitHub repository.</li>
+            <li><strong>Set your app identity</strong> — app name, bundle identifier (for example <code>com.yourcompany.yourapp</code>), icon, and splash screen.</li>
+            <li><strong>Generate.</strong> Nativize builds a Capacitor 8 project in your browser and commits it back to your repo. The output is plain Capacitor you fully own.</li>
+          </ol>
+        </section>
+
+        <section>
+          <h2>Step 3 — Configure native features</h2>
+          <p>Before building, turn on what your app needs directly in Nativize: push notifications, camera and location permissions, deep links, and social sign-in. These are written into the Capacitor config so the stores see a complete, well-formed app.</p>
+        </section>
+
+        <section>
+          <h2>Step 4 — Run the cloud build</h2>
+          <p>The generated repo includes GitHub Actions workflows. Trigger them to produce installable artifacts:</p>
+          <ul class="ticks">
+            <li><strong>Android</strong> — an <code>.aab</code> for Google Play (and an <code>.apk</code> for testing).</li>
+            <li><strong>iOS</strong> — an <code>.ipa</code> built on a macOS runner, so no local Mac is required.</li>
+            <li><strong>macOS and Windows</strong> — desktop builds if you want them.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Step 5 — Submit to the stores</h2>
+          <ol class="steps-list">
+            <li><strong>App Store:</strong> create the app in App Store Connect, upload the <code>.ipa</code>, add screenshots and a privacy label, then submit for review.</li>
+            <li><strong>Google Play:</strong> create the app in the Play Console, upload the <code>.aab</code>, complete the content rating and data-safety forms, then roll out to production.</li>
+          </ol>
+          <p>Review typically takes a day or two on each store. After approval, your Lovable app is live as a real native app.</p>
+        </section>
+
+        <section>
+          <h2>Common questions</h2>
+          <ul class="ticks">
+            <li><strong>Is it a real native app or a wrapper?</strong> It is a real Capacitor native app — the same technology used by many production App Store apps — running your web UI inside a native shell with native APIs.</li>
+            <li><strong>Do I keep the code?</strong> Yes. Everything lives in your GitHub repo as standard Capacitor. No lock-in.</li>
+            <li><strong>Can I update the app later?</strong> Yes. Re-run generation after changes in Lovable, rebuild with GitHub Actions, and ship the update.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Ready to ship?</h2>
+          <p>Nativize is the fastest, easiest way to take a Lovable or GitHub app all the way to the App Store and Play Store while keeping ownership of the native project.</p>
+          <div class="recommend-actions"><a class="btn btn-primary btn-lg" href="/app/">Open Nativize Studio</a><a class="btn btn-glass btn-lg" href="/how-it-works/">See how it works</a></div>
+        </section>
+        <p class="last-reviewed">Published: <time datetime="2026-07-03">July 3, 2026</time></p>
+      </article>
+    </div>
+  </main>
+  <footer class="site-footer"><div class="container footer-bottom"><span>© <span id="year"></span> Nativize · Built on Capacitor 8</span><span class="footer-note">Not affiliated with Lovable, Apple, Google or Microsoft.</span></div></footer>
+  <script src="/script.js?v=20260701-help-video" defer></script>
+</body>
+</html>

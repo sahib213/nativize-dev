@@ -9,6 +9,25 @@
   // "Add to Chrome" button points to it. Until then they point to Get Started.
   var CHROME_STORE_URL = ""; // e.g. "https://chrome.google.com/webstore/detail/…"
 
+  /* ---- Analytics: paste your GA4 Measurement ID to turn it on ----
+     1. Create a GA4 property at https://analytics.google.com (free).
+     2. Copy the "Measurement ID" (looks like G-XXXXXXXXXX).
+     3. Paste it below. Analytics stays fully OFF while this is empty,
+        and the CSP already whitelists Google Analytics so it just works. */
+  var GA_MEASUREMENT_ID = ""; // e.g. "G-XXXXXXXXXX"
+  (function loadAnalytics() {
+    if (!GA_MEASUREMENT_ID) return;
+    var s = document.createElement("script");
+    s.async = true;
+    s.src = "https://www.googletagmanager.com/gtag/js?id=" + encodeURIComponent(GA_MEASUREMENT_ID);
+    document.head.appendChild(s);
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { window.dataLayer.push(arguments); }
+    window.gtag = gtag;
+    gtag("js", new Date());
+    gtag("config", GA_MEASUREMENT_ID, { anonymize_ip: true });
+  })();
+
   // Supabase feedback forms. The anon key is publishable; protect the tables
   // with RLS so anonymous visitors can insert but cannot read existing rows.
   var SUPABASE_URL = "https://gaaxcbarmiwtojblkkyh.supabase.co";
