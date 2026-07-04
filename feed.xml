@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Nativize Blog</title>
+    <link>https://nativize.dev/blog/</link>
+    <atom:link href="https://nativize.dev/feed.xml" rel="self" type="application/rss+xml" />
+    <description>Guides for turning Lovable, Vite, React, and GitHub web apps into native apps with Nativize.</description>
+    <language>en-US</language>
+    <lastBuildDate>Sat, 04 Jul 2026 00:00:00 -0700</lastBuildDate>
+    <item>
+      <title>How to ship a Lovable app to the App Store and Play Store (2026)</title>
+      <link>https://nativize.dev/blog/ship-lovable-app-to-app-store/</link>
+      <guid isPermaLink="true">https://nativize.dev/blog/ship-lovable-app-to-app-store/</guid>
+      <pubDate>Fri, 03 Jul 2026 00:00:00 -0700</pubDate>
+      <description>A step-by-step guide to turning a Lovable app into a native iOS and Android app and publishing it with Nativize, Capacitor, and GitHub Actions.</description>
+    </item>
+  </channel>
+</rss>
