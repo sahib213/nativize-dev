@@ -7,6 +7,8 @@ const path = require("path");
 const ROOT = process.cwd();
 const SITE = path.join(ROOT, "website");
 const ORIGIN = "https://nativize.dev";
+const CHROME_STORE_URL = "https://chromewebstore.google.com/detail/mofjfbhfeanhffcfighdmhdboimiienb?utm_source=item-share-cb";
+const SCRIPT_CACHE_KEY = "20260708-chrome-store";
 const errors = [];
 
 function walk(dir) {
@@ -77,6 +79,8 @@ for (const file of publicHtmlFiles()) {
     && /<link rel="apple-touch-icon" sizes="180x180" href="\/apple-touch-icon\.png" \/>/.test(content)
     && /<link rel="manifest" href="\/site\.webmanifest" \/>/.test(content);
   const h1 = /<h1[\s>]/.test(content);
+  const scriptRefs = [...content.matchAll(/<script src="\/script\.js\?v=([^"]+)" defer><\/script>/g)].map((m) => m[1]);
+  const ctaHrefs = [...content.matchAll(/<a\b[^>]*data-cta="[^"]+"[^>]*href="([^"]+)"/g)].map((m) => m[1]);
 
   if (!title) fail(file, "missing title");
   if (!description) fail(file, "missing meta description");
@@ -86,6 +90,16 @@ for (const file of publicHtmlFiles()) {
   if (!twitterTitle || !twitterDescription || !twitterImage) fail(file, "missing complete Twitter metadata");
   if (!staticIcons) fail(file, "missing static favicon/apple-touch/manifest links");
   if (!h1) fail(file, "missing crawlable h1");
+  for (const scriptRef of scriptRefs) {
+    if (scriptRef !== SCRIPT_CACHE_KEY) {
+      fail(file, `stale script.js cache key: ${scriptRef}`);
+    }
+  }
+  for (const href of ctaHrefs) {
+    if (href !== CHROME_STORE_URL) {
+      fail(file, `data-cta link should point to Chrome Web Store, got ${href}`);
+    }
+  }
 
   const jsonLdBlocks = [...content.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)];
   if (!jsonLdBlocks.length) {
