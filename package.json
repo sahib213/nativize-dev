@@ -7,7 +7,8 @@
     "test": "node --test test/*.test.js",
     "seo:audit": "node tools/seo-audit.js",
     "icons": "node icons/generate-icons.js",
-    "smoke:native": "node tools/smoke-generated-kit.js"
+    "smoke:native": "node tools/smoke-generated-kit.js",
+    "dashboard": "node tools/dashboard.js"
   },
   "license": "MIT"
 }

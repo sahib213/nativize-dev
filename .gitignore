@@ -5,3 +5,6 @@ dist/
 .nativize-tmp/
 artifacts/
 supabase/.temp/
+.env
+.env.*
+!.env.example
