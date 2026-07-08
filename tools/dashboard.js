@@ -20,6 +20,7 @@
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
 
 const SUPABASE_URL = process.env.SUPABASE_URL || "https://gaaxcbarmiwtojblkkyh.supabase.co";
 const PORT = Number(process.env.DASHBOARD_PORT || 8787);
@@ -39,10 +40,36 @@ const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN || "";
 const GITHUB_REPO = process.env.GITHUB_REPO || "sahib213/nativize-dev";
 
+// Network + auth. Default HOST is 127.0.0.1 (this Mac only — safest).
+// Set DASHBOARD_HOST=0.0.0.0 in .env.local to reach it from your phone on the
+// same WiFi — but then a password is REQUIRED so nobody else on the network can open it.
+const HOST = process.env.DASHBOARD_HOST || "127.0.0.1";
+const PASSWORD = process.env.DASHBOARD_PASSWORD || "";
+const USER = process.env.DASHBOARD_USER || "admin";
+const IS_LOCAL_ONLY = HOST === "127.0.0.1" || HOST === "localhost" || HOST === "::1";
+
 if (!SERVICE_KEY) {
   console.error("\n  Missing SUPABASE_SERVICE_ROLE_KEY.");
   console.error("  Create ~/nativize/.env.local with your service_role key (see top of tools/dashboard.js).\n");
   process.exit(1);
+}
+
+// Refuse to expose the dashboard to the network without a password.
+if (!IS_LOCAL_ONLY && !PASSWORD) {
+  console.error("\n  Refusing to start: DASHBOARD_HOST is set to a network address (" + HOST + ")");
+  console.error("  but DASHBOARD_PASSWORD is empty. Add a password to .env.local first,");
+  console.error("  or remove DASHBOARD_HOST to keep the dashboard on this Mac only.\n");
+  process.exit(1);
+}
+
+/* ---- Password check (HTTP Basic Auth, constant-time compare) ---- */
+function authOK(req) {
+  if (!PASSWORD) return true; // no password set → only reachable on 127.0.0.1 anyway
+  const header = req.headers["authorization"] || "";
+  const expected = "Basic " + Buffer.from(USER + ":" + PASSWORD).toString("base64");
+  const a = Buffer.from(header);
+  const b = Buffer.from(expected);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
 /* ---- Supabase REST helper (service role bypasses RLS; local only) ---- */
@@ -178,9 +205,16 @@ ${errNote(d.totals && d.totals.__error ? d.totals : null)}
 </body></html>`;
 }
 
-/* ---- Server (127.0.0.1 only) ---- */
+/* ---- Server (read-only; localhost by default, password if networked) ---- */
 const server = http.createServer(async (req, res) => {
   if (req.url === "/favicon.ico") { res.writeHead(204).end(); return; }
+  if (!authOK(req)) {
+    res.writeHead(401, { "WWW-Authenticate": 'Basic realm="Nativize Dashboard", charset="UTF-8"' });
+    res.end("Password required.");
+    return;
+  }
+  // Read-only: reject anything that isn't a plain GET.
+  if (req.method !== "GET") { res.writeHead(405).end("Read-only."); return; }
   try {
     const [totals, daily, support, feature, plans, activations, topPages, topRef, issues] = await Promise.all([
       safe(sb("admin_pageviews_totals"), [{}]),
@@ -201,6 +235,10 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, "127.0.0.1", () => {
-  console.log(`\n  Nativize dashboard → http://127.0.0.1:${PORT}\n  (local only — Ctrl+C to stop)\n`);
+server.listen(PORT, HOST, () => {
+  const where = IS_LOCAL_ONLY
+    ? `http://127.0.0.1:${PORT}  (this Mac only)`
+    : `http://${HOST === "0.0.0.0" ? "<your-Mac-IP>" : HOST}:${PORT}  (this WiFi, password required)`;
+  console.log(`\n  Nativize dashboard → ${where}`);
+  console.log(`  Auth: ${PASSWORD ? "password ON" : "no password (safe — local only)"}\n`);
 });
