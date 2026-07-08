@@ -62,9 +62,17 @@ if (!IS_LOCAL_ONLY && !PASSWORD) {
   process.exit(1);
 }
 
-/* ---- Password check (HTTP Basic Auth, constant-time compare) ---- */
+/* ---- Password check (HTTP Basic Auth, constant-time compare) ----
+   Connections from THIS Mac (loopback) are trusted and skip the password —
+   you're already physically on the machine. The password is enforced for every
+   other device (i.e. anything coming over WiFi). */
+function isLoopback(req) {
+  const ra = req.socket.remoteAddress || "";
+  return ra === "127.0.0.1" || ra === "::1" || ra === "::ffff:127.0.0.1";
+}
 function authOK(req) {
-  if (!PASSWORD) return true; // no password set → only reachable on 127.0.0.1 anyway
+  if (isLoopback(req)) return true;      // your own Mac — trusted
+  if (!PASSWORD) return false;           // over the network without a password → deny
   const header = req.headers["authorization"] || "";
   const expected = "Basic " + Buffer.from(USER + ":" + PASSWORD).toString("base64");
   const a = Buffer.from(header);
