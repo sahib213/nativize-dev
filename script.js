@@ -7,7 +7,7 @@
   /* ---- Config: fill this in when the listing goes live ---- */
   // When the Chrome Web Store listing exists, set CHROME_STORE_URL and every
   // "Add to Chrome" button points to it. Until then they point to Get Started.
-  var CHROME_STORE_URL = ""; // e.g. "https://chrome.google.com/webstore/detail/…"
+  var CHROME_STORE_URL = "https://chromewebstore.google.com/detail/mofjfbhfeanhffcfighdmhdboimiienb?utm_source=item-share-cb";
 
   /* ---- Analytics: paste your GA4 Measurement ID to turn it on ----
      1. Create a GA4 property at https://analytics.google.com (free).
@@ -94,7 +94,7 @@
         '</div>' +
         '<div class="nav-cta">' +
           '<a class="btn btn-github-login" href="' + GITHUB_LOGIN_URL + '">' + GITHUB_ICON + '<span>Log in with GitHub</span></a>' +
-          '<a class="btn btn-primary" href="' + ROUTES.getStarted + '" data-cta="header">Add to Chrome</a>' +
+          '<a class="btn btn-primary" href="' + (CHROME_STORE_URL || ROUTES.getStarted) + '" data-cta="header">Add to Chrome</a>' +
         '</div>' +
         '<button class="nav-toggle" id="navToggle" aria-label="Menu"><span></span><span></span><span></span></button>' +
       '</nav>';
