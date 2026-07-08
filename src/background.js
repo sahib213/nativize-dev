@@ -178,6 +178,67 @@ async function downloadArtifact(msg) {
   return { downloadId: id };
 }
 
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function sendToggleMessage(tabId) {
+  return new Promise((resolve) => {
+    chrome.tabs.sendMessage(tabId, { type: "nativize-toggle" }, (res) => {
+      const err = chrome.runtime.lastError;
+      resolve({ ok: !!(res && res.ok), pending: !!(res && res.pending), error: err && err.message });
+    });
+  });
+}
+
+function openFallbackPage() {
+  return chrome.tabs.create({ url: chrome.runtime.getURL("src/popup.html") });
+}
+
+// The manifest content_scripts list, injected on demand into tabs that were open
+// before the extension loaded. Must mirror manifest.json content_scripts[0].js.
+const CONTENT_FILES = [
+  "src/plans.js", "src/billing.js", "src/kit-generator.js", "src/zip.js",
+  "src/vendor/tweetnacl.js", "src/vendor/blake2b.js", "src/sealedbox.js",
+  "src/github.js", "src/panel.js", "src/content.js"
+];
+
+async function togglePanelForTab(tab) {
+  if (!tab || !tab.id) return;
+
+  let result = await sendToggleMessage(tab.id);
+  if (result.ok) return;
+
+  // The content script registers its message listener before the async storage
+  // restore finishes. A very quick toolbar click can hit that tiny pending gap.
+  if (result.pending) {
+    await delay(150);
+    result = await sendToggleMessage(tab.id);
+    if (result.ok) return;
+  }
+
+  // No receiver — the content script isn't loaded (a tab opened before the
+  // extension was installed/reloaded). Inject the bundle, then toggle. On pages
+  // that block extensions (chrome://, the Web Store, the PDF viewer) injection
+  // throws; show the visible fallback page instead of doing nothing.
+  try {
+    await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: CONTENT_FILES });
+  } catch (e) {
+    await openFallbackPage();
+    return;
+  }
+  result = await sendToggleMessage(tab.id);
+  if (!result.ok) await openFallbackPage();
+}
+
+// Clicking the toolbar icon opens/closes the Nativize panel on the current page.
+// There is no default_popup, so onClicked fires. The manifest content script
+// handles normally-loaded tabs. Restricted Chrome pages and tabs from before
+// install get a small visible fallback page instead of silently doing nothing.
+chrome.action.onClicked.addListener((tab) => {
+  togglePanelForTab(tab).catch(() => openFallbackPage());
+});
+
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (!msg) return;
   if (msg.type === "nativize-signin") {

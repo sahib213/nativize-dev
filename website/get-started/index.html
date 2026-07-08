@@ -3,13 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://api.github.com https://github.com https://codeload.github.com https://gaaxcbarmiwtojblkkyh.supabase.co; img-src 'self' data: blob:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://api.github.com https://github.com https://codeload.github.com https://gaaxcbarmiwtojblkkyh.supabase.co https://www.google-analytics.com https://www.googletagmanager.com; img-src 'self' data: blob: https://www.google-analytics.com; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests" />
   <title>Get Started With Nativize | Add to Chrome or Open Studio</title>
   <meta name="description" content="Get started with Nativize by adding the Chrome extension, opening your Lovable app, or using Nativize Studio to generate native app projects." />
   <meta name="robots" content="index,follow,max-image-preview:large" />
   <meta name="theme-color" content="#0a0a12" />
   <link rel="canonical" href="https://nativize.dev/get-started/" />
   <link rel="alternate" type="text/plain" href="https://nativize.dev/llms.txt" title="Nativize facts for AI assistants" />
+  <link rel="alternate" type="application/rss+xml" href="https://nativize.dev/feed.xml" title="Nativize Blog" />
   <link rel="alternate" type="application/json" href="https://nativize.dev/nativize-facts.json" title="Nativize structured facts" />
   <meta property="og:site_name" content="Nativize" />
   <meta property="og:locale" content="en_US" />
@@ -21,11 +22,17 @@
   <meta property="og:image:type" content="image/png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Nativize turns Lovable and GitHub web apps into native iOS, Android, Mac, and Windows apps." />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Ship your Lovable app this weekend." />
   <meta name="twitter:description" content="Get started with Nativize by adding the Chrome extension, opening your Lovable app, or using Nativize Studio to generate native app projects." />
   <meta name="twitter:image" content="https://nativize.dev/og-image.png" />
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%237c3aed'/%3E%3Cstop offset='1' stop-color='%232563eb'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='128' height='128' rx='28' fill='url(%23g)'/%3E%3Cpath d='M64 30 L86 54 L72 54 L72 96 L56 96 L56 54 L42 54 Z' fill='white'/%3E%3C/svg%3E" />
+  <!-- Static favicons and app icons -->
+  <link rel="icon" href="/favicon.ico" sizes="any" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+  <link rel="manifest" href="/site.webmanifest" />
   <link rel="stylesheet" href="/styles.css?v=20260630-centered-capsule" />
   <script type="application/ld+json">{
   "@context": "https://schema.org",
@@ -62,7 +69,7 @@
         "@id": "https://nativize.dev/#software"
       },
       "datePublished": "2026-06-29",
-      "dateModified": "2026-06-29"
+      "dateModified": "2026-07-04"
     }
   ]
 }</script>
@@ -82,10 +89,10 @@
         <h1>Ship your Lovable app <span class="grad-text">this weekend.</span></h1>
         <p>Add Nativize to Chrome, open your Lovable project, and generate native app projects in minutes. You can also use the web Studio directly.</p>
       </section>
-      <div class="cta-final card reveal"><h2>Choose your starting point.</h2><p>Use the Chrome extension on Lovable for the fastest path, or open Studio if you want to generate from the web app.</p><div class="hero-actions center"><a class="btn btn-primary btn-lg" href="/get-started/" data-cta="start-page">Add to Chrome</a><a class="btn btn-glass btn-lg" href="/app/">Open Nativize Studio</a></div><div class="install-steps"><span class="install-label">Chrome Web Store listing pending?</span><ol><li>Open <b>Nativize Studio</b> from the browser</li><li>Connect your own GitHub repo for the app you are building</li><li>Generate and download native build files from your Nativize plan</li></ol></div></div>
+      <div class="cta-final card reveal"><h2>Choose your starting point.</h2><p>Use the Chrome extension on Lovable for the fastest path, or open Studio if you want to generate from the web app.</p><div class="hero-actions center"><a class="btn btn-primary btn-lg" href="https://chromewebstore.google.com/detail/mofjfbhfeanhffcfighdmhdboimiienb?utm_source=item-share-cb" target="_blank" rel="noopener" data-cta="start-page">Add to Chrome</a><a class="btn btn-glass btn-lg" href="/app/">Open Nativize Studio</a></div><div class="install-steps"><span class="install-label">Prefer the web app?</span><ol><li>Open <b>Nativize Studio</b> from the browser</li><li>Connect your own GitHub repo for the app you are building</li><li>Generate and download native build files from your Nativize plan</li></ol></div></div>
     </div>
   </main>
   <footer class="site-footer"></footer>
-  <script src="/script.js?v=20260630-centered-capsule" defer></script>
+  <script src="/script.js?v=20260708-chrome-store" defer></script>
 </body>
 </html>

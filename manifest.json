@@ -1,23 +1,28 @@
 {
   "manifest_version": 3,
   "name": "Nativize - Lovable to Native Apps",
-  "version": "1.1.7",
-  "description": "Turn your Lovable web app into native iOS and Android apps. Generated in your browser and built in the cloud.",
+  "version": "1.2.1",
+  "description": "Turn any web app into native iOS & Android apps — click the toolbar icon on any page to open Nativize, then build in the cloud.",
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
   "action": {
-    "default_title": "Nativize",
-    "default_popup": "src/popup.html",
+    "default_title": "Open Nativize on this page",
     "default_icon": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png",
       "128": "icons/icon128.png"
     }
   },
-  "permissions": ["storage", "identity", "downloads"],
+  "permissions": [
+    "storage",
+    "identity",
+    "downloads",
+    "activeTab",
+    "scripting"
+  ],
   "host_permissions": [
     "https://api.github.com/*",
     "https://gaaxcbarmiwtojblkkyh.supabase.co/*"
@@ -28,12 +33,7 @@
   "content_scripts": [
     {
       "matches": [
-        "https://lovable.dev/*",
-        "https://*.lovable.dev/*",
-        "https://lovable.app/*",
-        "https://*.lovable.app/*",
-        "http://localhost/*",
-        "http://127.0.0.1/*"
+        "<all_urls>"
       ],
       "js": [
         "src/plans.js",

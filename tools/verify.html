@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Some Random Web App</title>
+  <style>
+    body { margin: 0; min-height: 100vh; font-family: system-ui, sans-serif;
+      background: #0c0c14; color: #cfd2e0; }
+    .mock { max-width: 640px; margin: 0 auto; padding: 60px 24px; }
+    .mock h1 { color: #f3f4ff; }
+    a { color: #7c93ff; }
+  </style>
+</head>
+<body>
+  <!-- A non-Lovable page, to prove Nativize now works on ANY site. -->
+  <div class="mock">
+    <span>example.com (not lovable.dev)</span>
+    <h1>Some Random Web App</h1>
+    <p>Verifying the shipped Nativize bundle loads here and the toolbar icon opens the panel.
+       Repo link for detection: <a href="https://github.com/octocat/hello-world">github.com/octocat/hello-world</a>.</p>
+  </div>
+
+  <script>
+    // ---- Minimal chrome.* mock so the REAL content.js runs unchanged ----
+    window.__nzMsgListeners = [];
+    window.chrome = {
+      runtime: {
+        lastError: null,
+        onMessage: { addListener: function (fn) { window.__nzMsgListeners.push(fn); } },
+        // Sign-in relay is stubbed (no OAuth in this harness).
+        sendMessage: function (msg, cb) { if (typeof cb === "function") cb({ ok: false, error: "stub" }); }
+      },
+      storage: {
+        local: {
+          _d: {},
+          get: function (keys, cb) { cb && cb({}); },
+          set: function (obj, cb) { cb && cb(); },
+          remove: function (keys, cb) { cb && cb(); }
+        }
+      }
+    };
+    // Simulate the background worker dispatching the toolbar-icon toggle.
+    window.__nzToggle = function () {
+      window.__nzMsgListeners.forEach(function (fn) { try { fn({ type: "nativize-toggle" }, {}, function () {}); } catch (e) { console.error("listener error", e); } });
+      return window.__nzMsgListeners.length;
+    };
+  </script>
+
+  <!-- EXACTLY the manifest content_scripts js list, in order -->
+  <script src="../src/plans.js"></script>
+  <script src="../src/billing.js"></script>
+  <script src="../src/kit-generator.js"></script>
+  <script src="../src/zip.js"></script>
+  <script src="../src/vendor/tweetnacl.js"></script>
+  <script src="../src/vendor/blake2b.js"></script>
+  <script src="../src/sealedbox.js"></script>
+  <script src="../src/github.js"></script>
+  <script src="../src/panel.js"></script>
+  <script src="../src/content.js"></script>
+
+  <script>
+    // Report what loaded (checked via the preview tools).
+    window.__nzStatus = function () {
+      var host = document.querySelector('[data-nativize="host"]');
+      var sr = host && host.shadowRoot;
+      return {
+        globals: {
+          NativizePlans: typeof window.NativizePlans, NativizeBilling: typeof window.NativizeBilling,
+          NativizeKit: typeof window.NativizeKit, NativizeZip: typeof window.NativizeZip,
+          nacl: typeof window.nacl, NativizeBlake2b: typeof window.NativizeBlake2b,
+          NativizeSealedBox: typeof window.NativizeSealedBox, NativizeGitHub: typeof window.NativizeGitHub,
+          NativizePanel: typeof window.NativizePanel
+        },
+        contentScriptRan: !!window.__nativizeMounted,
+        toggleListeners: window.__nzMsgListeners.length,
+        hostPresent: !!host,
+        fabPresent: !!(sr && sr.querySelector('.nz-fab')),
+        panelOpen: !!(sr && sr.querySelector('.nz-panel') && sr.querySelector('.nz-panel').classList.contains('nz-show'))
+      };
+    };
+  </script>
+</body>
+</html>

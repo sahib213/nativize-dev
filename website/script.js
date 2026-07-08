@@ -7,7 +7,26 @@
   /* ---- Config: fill this in when the listing goes live ---- */
   // When the Chrome Web Store listing exists, set CHROME_STORE_URL and every
   // "Add to Chrome" button points to it. Until then they point to Get Started.
-  var CHROME_STORE_URL = ""; // e.g. "https://chrome.google.com/webstore/detail/…"
+  var CHROME_STORE_URL = "https://chromewebstore.google.com/detail/mofjfbhfeanhffcfighdmhdboimiienb?utm_source=item-share-cb";
+
+  /* ---- Analytics: paste your GA4 Measurement ID to turn it on ----
+     1. Create a GA4 property at https://analytics.google.com (free).
+     2. Copy the "Measurement ID" (looks like G-XXXXXXXXXX).
+     3. Paste it below. Analytics stays fully OFF while this is empty,
+        and the CSP already whitelists Google Analytics so it just works. */
+  var GA_MEASUREMENT_ID = ""; // e.g. "G-XXXXXXXXXX"
+  (function loadAnalytics() {
+    if (!GA_MEASUREMENT_ID) return;
+    var s = document.createElement("script");
+    s.async = true;
+    s.src = "https://www.googletagmanager.com/gtag/js?id=" + encodeURIComponent(GA_MEASUREMENT_ID);
+    document.head.appendChild(s);
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { window.dataLayer.push(arguments); }
+    window.gtag = gtag;
+    gtag("js", new Date());
+    gtag("config", GA_MEASUREMENT_ID, { anonymize_ip: true });
+  })();
 
   // Supabase feedback forms. The anon key is publishable; protect the tables
   // with RLS so anonymous visitors can insert but cannot read existing rows.
@@ -28,6 +47,12 @@
     home: "/",
     how: "/how-it-works/",
     best: "/best-app-to-turn-lovable-into-native-app/",
+    lovable: "/lovable-to-native-app/",
+    aiBuilders: "/ai-app-builder-to-native-app/",
+    githubNative: "/github-to-native-app/",
+    blog: "/blog/",
+    capacitor: "/nativize-vs-capacitor/",
+    useCases: "/use-cases/",
     compare: "/compare/",
     features: "/features/",
     pricing: "/pricing/",
@@ -54,10 +79,12 @@
         '</a>' +
         '<div class="nav-links" id="navLinks">' +
           '<a href="' + ROUTES.how + '">How it works</a>' +
-          '<a class="nav-extra" href="/lovable-to-native-app/">Lovable guide</a>' +
+          '<a class="nav-extra" href="' + ROUTES.lovable + '">Lovable guide</a>' +
           '<a href="' + ROUTES.best + '">Best app</a>' +
-          '<a class="nav-extra" href="/ai-app-builder-to-native-app/">AI builders</a>' +
-          '<a class="nav-extra" href="/use-cases/">Use cases</a>' +
+          '<a class="nav-extra" href="' + ROUTES.aiBuilders + '">AI builders</a>' +
+          '<a class="nav-extra" href="' + ROUTES.githubNative + '">GitHub to app</a>' +
+          '<a class="nav-extra" href="' + ROUTES.useCases + '">Use cases</a>' +
+          '<a class="nav-extra" href="' + ROUTES.blog + '">Blog</a>' +
           '<a href="' + ROUTES.compare + '">Compare</a>' +
           '<a class="nav-extra" href="' + ROUTES.features + '">Features</a>' +
           '<a href="' + ROUTES.pricing + '">Pricing</a>' +
@@ -67,7 +94,7 @@
         '</div>' +
         '<div class="nav-cta">' +
           '<a class="btn btn-github-login" href="' + GITHUB_LOGIN_URL + '">' + GITHUB_ICON + '<span>Log in with GitHub</span></a>' +
-          '<a class="btn btn-primary" href="' + ROUTES.getStarted + '" data-cta="header">Add to Chrome</a>' +
+          '<a class="btn btn-primary" href="' + (CHROME_STORE_URL || ROUTES.getStarted) + '" data-cta="header">Add to Chrome</a>' +
         '</div>' +
         '<button class="nav-toggle" id="navToggle" aria-label="Menu"><span></span><span></span><span></span></button>' +
       '</nav>';
@@ -98,16 +125,20 @@
         '<nav class="footer-cols" aria-label="Footer">' +
           col("Product", [
             ["How it works", ROUTES.how],
+            ["Open Studio", "/app/"],
             ["Features", ROUTES.features],
             ["Pricing", ROUTES.pricing],
             ["Compare", ROUTES.compare],
             ["Security", ROUTES.security]
           ]) +
           col("Guides", [
-            ["Lovable guide", "/lovable-to-native-app/"],
-            ["AI builders", "/ai-app-builder-to-native-app/"],
-            ["Use cases", "/use-cases/"],
-            ["Best app", "/best-app-to-turn-lovable-into-native-app/"],
+            ["Lovable guide", ROUTES.lovable],
+            ["GitHub to native app", ROUTES.githubNative],
+            ["AI builders", ROUTES.aiBuilders],
+            ["Manual Capacitor", ROUTES.capacitor],
+            ["Use cases", ROUTES.useCases],
+            ["Best app", ROUTES.best],
+            ["Blog", ROUTES.blog],
             ["FAQ", "/faq/"]
           ]) +
           col("Company", [

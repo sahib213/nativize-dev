@@ -23,6 +23,22 @@
   var Panel = window.NativizePanel;
   var Billing = window.NativizeBilling;
 
+  // Clicking the toolbar icon (relayed by the background worker) opens/toggles
+  // the Nativize panel on the current page — this is what makes the icon work
+  // everywhere, not just on lovable.dev.
+  var panelToggleRef = null;
+  try {
+    chrome.runtime.onMessage.addListener(function (msg, sender, sendResponse) {
+      if (msg && msg.type === "nativize-toggle") {
+        var api = panelToggleRef;
+        var fn = api && (api.toggle || api.open);
+        if (fn) { fn.call(api); if (sendResponse) sendResponse({ ok: true }); }
+        else if (sendResponse) { sendResponse({ ok: false, pending: true }); }
+      }
+      return false;
+    });
+  } catch (e) {}
+
   // ---- Detection ---------------------------------------------------------
   function detectAppName() {
     var t = (document.title || "").trim();
@@ -435,6 +451,7 @@
           });
       }
     });
+    panelToggleRef = panelApi; // enable the toolbar-icon toggle now that the panel exists
     startRepoAutodetect(panelApi);
     refreshBilling();
   });
