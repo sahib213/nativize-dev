@@ -8,3 +8,4 @@ supabase/.temp/
 .env
 .env.*
 !.env.example
+.dashboard-auth.json
