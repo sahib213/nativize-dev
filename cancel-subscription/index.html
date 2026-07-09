@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://gaaxcbarmiwtojblkkyh.supabase.co; img-src 'self' data: blob:; script-src 'self'; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests" />
+  <title>Cancel Nativize Subscription | Schedule Cancellation</title>
+  <meta name="description" content="Schedule cancellation for an active Nativize subscription without cancelling it immediately." />
+  <meta name="robots" content="index,follow,max-image-preview:large" />
+  <meta name="theme-color" content="#0a0a12" />
+  <link rel="canonical" href="https://nativize.dev/cancel-subscription/" />
+  <meta property="og:site_name" content="Nativize" />
+  <meta property="og:locale" content="en_US" />
+  <meta property="og:title" content="Cancel Nativize Subscription" />
+  <meta property="og:description" content="Schedule cancellation for an active Nativize subscription without cancelling it immediately." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://nativize.dev/cancel-subscription/" />
+  <meta property="og:image" content="https://nativize.dev/og-image.png" />
+  <meta property="og:image:secure_url" content="https://nativize.dev/og-image.png" />
+  <meta property="og:image:type" content="image/png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Nativize subscription cancellation page." />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Cancel Nativize Subscription" />
+  <meta name="twitter:description" content="Schedule cancellation for an active Nativize subscription without cancelling it immediately." />
+  <meta name="twitter:image" content="https://nativize.dev/og-image.png" />
+  <link rel="icon" href="/favicon.ico" sizes="any" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+  <link rel="manifest" href="/site.webmanifest" />
+  <link rel="stylesheet" href="/styles.css?v=20260709-subscription-cancel" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "BreadcrumbList",
+        "@id": "https://nativize.dev/cancel-subscription/#breadcrumbs",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Nativize", "item": "https://nativize.dev/" },
+          { "@type": "ListItem", "position": 2, "name": "Cancel subscription", "item": "https://nativize.dev/cancel-subscription/" }
+        ]
+      },
+      {
+        "@type": "WebPage",
+        "@id": "https://nativize.dev/cancel-subscription/#webpage",
+        "url": "https://nativize.dev/cancel-subscription/",
+        "name": "Cancel Nativize Subscription",
+        "description": "Schedule cancellation for an active Nativize subscription without cancelling it immediately.",
+        "isPartOf": { "@id": "https://nativize.dev/#website" },
+        "inLanguage": "en-US",
+        "dateModified": "2026-07-09"
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <div class="aurora" aria-hidden="true">
+    <span class="blob blob-1"></span><span class="blob blob-2"></span><span class="blob blob-3"></span>
+    <div class="grid-overlay"></div>
+  </div>
+
+  <header class="site-header scrolled">
+    <nav class="nav container">
+      <a class="brand" href="/">
+        <span class="brand-mark"><svg viewBox="0 0 128 128"><defs><linearGradient id="bm" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7c3aed"/><stop offset=".5" stop-color="#4f46e5"/><stop offset="1" stop-color="#2563eb"/></linearGradient></defs><rect width="128" height="128" rx="28" fill="url(#bm)"/><path d="M64 30 L86 54 L72 54 L72 96 L56 96 L56 54 L42 54 Z" fill="white"/></svg></span>
+        <span class="brand-name">Nativize</span>
+      </a>
+      <div class="nav-links">
+        <a href="/app/">Studio</a>
+        <a href="/pricing/">Pricing</a>
+        <a href="/support/">Support</a>
+      </div>
+      <div class="nav-cta">
+        <a class="btn btn-ghost" href="/app/">Back to Studio</a>
+      </div>
+    </nav>
+  </header>
+
+  <main class="billing-main container">
+    <section class="billing-hero">
+      <span class="eyebrow">Subscription</span>
+      <h1>Cancel subscription</h1>
+      <p>Your subscription will be scheduled to cancel before the next automatic payment. It will not be cancelled immediately.</p>
+    </section>
+
+    <section class="billing-card card">
+      <div class="billing-card-head">
+        <div>
+          <h2>Current billing</h2>
+          <p id="billingLead">Sign in to load your subscription.</p>
+        </div>
+        <span class="plan-badge" id="billingBadge">Not signed in</span>
+      </div>
+
+      <dl class="billing-details">
+        <div><dt>Plan</dt><dd id="billingPlan">-</dd></div>
+        <div><dt>Status</dt><dd id="billingStatus">-</dd></div>
+        <div><dt>Next payment</dt><dd id="billingRenewal">-</dd></div>
+        <div><dt>Scheduled cancellation</dt><dd id="billingCancelAt">-</dd></div>
+      </dl>
+
+      <div class="billing-actions">
+        <button class="btn btn-glass" id="signInBtn" type="button">Sign in with GitHub</button>
+        <button class="btn btn-danger" id="scheduleCancelBtn" type="button" disabled>Schedule cancellation</button>
+      </div>
+
+      <p class="billing-status" id="pageStatus"></p>
+    </section>
+  </main>
+
+  <script src="/lib/plans.js?v=20260629-paid-perms"></script>
+  <script src="/lib/billing.js?v=20260709-subscription-cancel"></script>
+  <script src="/cancel-subscription.js?v=20260709-subscription-cancel"></script>
+</body>
+</html>
