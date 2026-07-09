@@ -50,11 +50,17 @@ function log(worker, msg, ok) {
   console.log(`[${worker}] ${msg}`);
 }
 
-/* ---- data ---- */
+/* ---- data (2.5s micro-cache so 1-second live refresh doesn't hammer Supabase) ---- */
+const sbCache = new Map();
 async function sb(q) {
+  const hit = sbCache.get(q);
+  if (hit && Date.now() - hit.t < 2500) return hit.v;
   const res = await fetch(SUPABASE_URL + "/rest/v1/" + q, { headers: { apikey: SERVICE_KEY, Authorization: "Bearer " + SERVICE_KEY, Accept: "application/json" } });
   if (!res.ok) throw new Error(q.split("?")[0] + " → " + res.status + " " + (await res.text()).slice(0, 140));
-  return res.json();
+  const v = await res.json();
+  if (sbCache.size > 300) sbCache.clear();
+  sbCache.set(q, { t: Date.now(), v });
+  return v;
 }
 async function safe(p, fb) { try { return await p; } catch (e) { return { __error: e.message, fallback: fb }; } }
 async function githubIssues() {
@@ -88,6 +94,7 @@ async function sbWrite(q, method, body, prefer) {
     headers: { apikey: SERVICE_KEY, Authorization: "Bearer " + SERVICE_KEY, "Content-Type": "application/json", Prefer: prefer || "return=minimal" },
     body: body == null ? undefined : JSON.stringify(body)
   });
+  sbCache.clear(); // any write invalidates the read micro-cache so the live refresh shows it immediately
   if (!res.ok) throw new Error(q.split("?")[0] + " " + method + " → " + res.status + " " + (await res.text()).slice(0, 200));
   const txt = await res.text();
   return txt ? JSON.parse(txt) : null;
@@ -116,7 +123,17 @@ async function runSupportWorker(trigger) {
   workerBusy = true;
   const out = { replied: 0, skipped: 0, errors: 0 };
   try {
-    const open = arr(await safe(sb("support_requests?select=*&status=eq.open&order=created_at.asc&limit=5"), []));
+    const openRes = await safe(sb("support_requests?select=*&status=eq.open&order=created_at.asc&limit=5"), []);
+    if (openRes && openRes.__error) {
+      if (!state.migrationWarned) {
+        log("support-worker", "waiting for DB migration 202607090001 — run it in the Supabase SQL editor to unlock AI auto-replies", false);
+        state.migrationWarned = true; saveState();
+      }
+      workerBusy = false;
+      return { skipped: "migration pending" };
+    }
+    state.migrationWarned = false;
+    const open = arr(openRes);
     for (const r of open) {
       try {
         if (!r.email) { out.skipped++; log("support-worker", `#${String(r.id).slice(0, 8)} has no email — left open for manual handling`, true); continue; }
@@ -256,6 +273,8 @@ a{color:inherit;text-decoration:none}
 .top{display:flex;align-items:flex-end;justify-content:space-between;padding:22px 32px 18px;flex-wrap:wrap;gap:12px}
 .top h1{font-size:23px;margin:0;letter-spacing:-.025em}.top .sub{color:var(--muted);font-size:13.5px;margin-top:3px}
 .btn{border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:8px 14px;border-radius:10px;font-weight:600;cursor:pointer;font-size:13.5px;display:inline-flex;align-items:center;gap:7px}.btn:hover{background:var(--chip)}.btn.pri{background:var(--accent);color:#fff;border:0;box-shadow:0 6px 16px rgba(124,58,237,.28)}.btn[disabled]{opacity:.5;cursor:default}
+.live{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;color:var(--muted)}
+.live i{width:9px;height:9px;border-radius:50%;background:var(--green);display:inline-block;opacity:.4;transition:opacity .2s;box-shadow:0 0 6px rgba(15,157,88,.6)}
 .wrap{padding:2px 32px 34px;max-width:1180px;width:100%}
 /* KPI cards */
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
@@ -309,11 +328,36 @@ details.reply{margin-top:8px}details.reply summary{cursor:pointer;color:var(--br
 <nav class="side"><div class="brand"><span class="mk"></span> Nativize</div>${groups}
   <div class="user"><span class="av">${esc(OWNER.slice(0, 1).toUpperCase())}</span><div><div class="nm">${esc(OWNER)}</div><div class="rl">Admin · Nativize</div></div></div>
 </nav>
-<div class="main"><div class="top"><div><h1>${esc(title)}</h1>${opts.sub ? `<div class="sub">${esc(opts.sub)}</div>` : ""}</div><div><a class="btn" href="${active}">↻ Refresh</a></div></div>${opts.flash || ""}<div class="wrap">${body}</div></div>
+<div class="main"><div class="top"><div><h1>${esc(title)}</h1>${opts.sub ? `<div class="sub">${esc(opts.sub)}</div>` : ""}</div><div style="display:flex;align-items:center;gap:12px"><span class="live" title="Live — updates every second"><i id="livedot"></i>Live</span><a class="btn" href="${active}">↻ Refresh</a></div></div>${opts.flash || ""}<div class="wrap">${body}</div></div>
 <script>
 async function aiDraft(btn){var f=btn.closest('form');var box=f.querySelector('textarea');btn.disabled=true;var t=btn.textContent;btn.textContent='✨ Drafting…';try{var r=await fetch('/api/ai-draft',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:f.querySelector('[name=srcmsg]').value,email:f.querySelector('[name=to]').value})});var j=await r.json();if(j.draft){box.value=j.draft;box.focus();}else{alert(j.error||'AI error');}}catch(e){alert('AI error: '+e.message);}btn.disabled=false;btn.textContent=t;}
 function askChip(t){document.getElementById('askq').value=t;askSend();}
 async function askSend(){var q=document.getElementById('askq').value.trim();if(!q)return;var a=document.getElementById('answer');a.className='answer show load';a.textContent='✨ Thinking…';try{var r=await fetch('/api/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:q})});var j=await r.json();a.className='answer show';a.textContent=j.answer||j.error||'No answer.';}catch(e){a.className='answer show';a.textContent='AI error: '+e.message;}}
+/* Live refresh: refetches this page every second and repaints only when the data
+   changed. Pauses while you're typing, have a reply open, or the Ask box is busy. */
+(function(){
+  var busy=false;
+  setInterval(async function(){
+    if(busy||document.hidden)return;
+    if(document.querySelector('details[open]'))return;
+    var ae=document.activeElement;
+    if(ae&&(ae.tagName==='INPUT'||ae.tagName==='TEXTAREA'))return;
+    var ans=document.getElementById('answer');
+    if(ans&&ans.className.indexOf('show')>-1)return; /* keep AI answer on screen */
+    busy=true;
+    try{
+      var r=await fetch(location.pathname+location.search,{cache:'no-store'});
+      if(r.ok){
+        var d=new DOMParser().parseFromString(await r.text(),'text/html');
+        var nw=d.querySelector('.wrap'),cur=document.querySelector('.wrap');
+        if(nw&&cur&&nw.innerHTML!==cur.innerHTML)cur.innerHTML=nw.innerHTML;
+        var dot=document.getElementById('livedot');
+        if(dot){dot.style.opacity='1';setTimeout(function(){dot.style.opacity='.4'},250);}
+      }
+    }catch(e){/* offline blip — try again next second */}
+    busy=false;
+  },1000);
+})();
 </script>
 </body></html>`;
 }
@@ -423,6 +467,9 @@ async function pageOverview() {
 async function pageSupport(qs) {
   const filter = (qs && qs.get("f")) || "all";
   const rows = arr(await safe(sb("support_requests?select=*&order=created_at.desc&limit=100"), []));
+  const probe = await safe(sb("support_replies?select=id&limit=1"), []);
+  const migrated = !(probe && probe.__error);
+  const migBanner = migrated ? "" : `<div class="err" style="margin:0 0 14px;padding:12px 16px;border:1px solid var(--red);border-radius:12px">⚠ <b>One step pending:</b> run migration <code>202607090001</code> in the Supabase SQL editor to unlock AI auto-replies, ticket statuses, and reply threads. Until then you can read messages and reply manually via “Reply in Mail”.</div>`;
   // Fetch reply threads for the listed tickets.
   let replyMap = new Map();
   if (rows.length && rows[0].id !== undefined) {
@@ -454,7 +501,7 @@ async function pageSupport(qs) {
     return `<tr><td style="white-space:nowrap">${when(r.created_at)}<div style="margin-top:6px"><span class="pill ${pillCls[st] || "free"}">${esc(st)}</span></div></td><td>${esc(to || "—")}<div class="muted" style="font-size:12px">${esc(r.topic || "")}</div></td><td><span class="msg">${esc(body)}</span>${thread}<div class="row" style="display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap">${reply}${statusBtns}</div></td></tr>`;
   });
   const inner = shown.length ? `<table><thead><tr><th>When / status</th><th>From</th><th>Conversation</th></tr></thead><tbody>${items.join("")}</tbody></table>` : `<div class="empty">${filter === "all" ? "No support messages yet." : "No " + filter + " tickets."}</div>`;
-  return { title: "Support", sub: (state.autoReply ? "AI auto-reply ON · " : "AI auto-reply OFF · ") + (emailReady ? "sending from " + SUPPORT_FROM_EMAIL : "email sending off"), body: banner + filters + card(shown.length + " of " + rows.length + " tickets", inner) };
+  return { title: "Support", sub: (state.autoReply ? "AI auto-reply ON · " : "AI auto-reply OFF · ") + (emailReady ? "sending from " + SUPPORT_FROM_EMAIL : "email sending off"), body: migBanner + banner + filters + card(shown.length + " of " + rows.length + " tickets", inner) };
 }
 
 /* ---- AI Workers page ---- */
