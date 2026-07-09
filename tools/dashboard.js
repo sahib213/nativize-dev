@@ -38,6 +38,18 @@ const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "llama3.2:3b";
 const OWNER = process.env.DASHBOARD_OWNER || "Sahib";
 if (!SERVICE_KEY) { console.error("\n  Missing SUPABASE_SERVICE_ROLE_KEY in ~/nativize/.env.local.\n"); process.exit(1); }
 
+/* ---- Persistent settings + worker logs (~/nativize/.dashboard-state.json, gitignored) ---- */
+const STATE_FILE = process.env.DASHBOARD_STATE_FILE || path.join(ROOT, ".dashboard-state.json");
+let state = { autoReply: true, logs: [], lastRun: {} };
+try { state = Object.assign(state, JSON.parse(fs.readFileSync(STATE_FILE, "utf8"))) } catch (e) { /* first run */ }
+function saveState() { try { fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2)); fs.chmodSync(STATE_FILE, 0o600); } catch (e) { console.error("state save:", e.message); } }
+function log(worker, msg, ok) {
+  state.logs.unshift({ t: new Date().toISOString(), worker, msg: String(msg).slice(0, 400), ok: ok !== false });
+  state.logs = state.logs.slice(0, 80);
+  saveState();
+  console.log(`[${worker}] ${msg}`);
+}
+
 /* ---- data ---- */
 async function sb(q) {
   const res = await fetch(SUPABASE_URL + "/rest/v1/" + q, { headers: { apikey: SERVICE_KEY, Authorization: "Bearer " + SERVICE_KEY, Accept: "application/json" } });
@@ -68,6 +80,99 @@ async function ollama(prompt, sys) {
   return ((await res.json()).response || "").trim();
 }
 const aiDraft = (m, e) => ollama(`Customer email: ${e || "unknown"}\nCustomer message:\n"""${(m || "").slice(0, 4000)}"""\n\nReply:`, AI_SYSTEM);
+
+/* ---- Supabase writes (service role, local only) ---- */
+async function sbWrite(q, method, body, prefer) {
+  const res = await fetch(SUPABASE_URL + "/rest/v1/" + q, {
+    method,
+    headers: { apikey: SERVICE_KEY, Authorization: "Bearer " + SERVICE_KEY, "Content-Type": "application/json", Prefer: prefer || "return=minimal" },
+    body: body == null ? undefined : JSON.stringify(body)
+  });
+  if (!res.ok) throw new Error(q.split("?")[0] + " " + method + " → " + res.status + " " + (await res.text()).slice(0, 200));
+  const txt = await res.text();
+  return txt ? JSON.parse(txt) : null;
+}
+
+/* ============================================================
+   AI Support Worker — auto-replies to new support requests.
+   Guardrails: never promises refunds/timelines, never invents
+   features, honest sign-off, one reply per ticket, and Sahib
+   always gets the thread (reply_to routes back to him).
+   ============================================================ */
+const AI_AUTO_SYSTEM = `You are the automated first-response support assistant for Nativize (nativize.dev). Nativize turns Lovable, Vite, React, and GitHub web apps into real native iOS/Android/Mac/Windows apps: it generates a standard Capacitor 8 project into the user's own GitHub repo and builds installable apps with GitHub Actions (iOS builds run in the cloud, no Mac needed). Facts you may use: generation runs in the browser; the user owns the generated code; App Store needs an Apple Developer account (US$99/yr) and Google Play a one-time US$25 account; build artifacts download from GitHub Actions.
+STRICT RULES:
+- NEVER promise refunds, discounts, cancellations, fixes, or timelines.
+- NEVER invent features or capabilities. If you are not sure, say Sahib (the founder) will follow up personally.
+- Never ask for passwords, API keys, or payment details.
+- Be warm, concise (under 170 words), plain text, no markdown.
+- End EXACTLY with:
+— Nativize Support
+(This is an automated first reply — Sahib will follow up personally if needed. Just reply to this email.)`;
+
+let workerBusy = false;
+async function runSupportWorker(trigger) {
+  if (workerBusy) return { skipped: "already running" };
+  if (!state.autoReply && trigger !== "manual") return { skipped: "auto-reply disabled" };
+  workerBusy = true;
+  const out = { replied: 0, skipped: 0, errors: 0 };
+  try {
+    const open = arr(await safe(sb("support_requests?select=*&status=eq.open&order=created_at.asc&limit=5"), []));
+    for (const r of open) {
+      try {
+        if (!r.email) { out.skipped++; log("support-worker", `#${String(r.id).slice(0, 8)} has no email — left open for manual handling`, true); continue; }
+        const draft = await ollama(`Customer name: ${r.name || "unknown"}\nCustomer email: ${r.email}\nTopic: ${r.topic || "other"}\nMessage:\n"""${(r.message || "").slice(0, 4000)}"""\n\nWrite the reply now:`, AI_AUTO_SYSTEM);
+        if (!draft || draft.length < 30) throw new Error("AI draft too short — not sending");
+        const sent = await sendReply(r.email, "Re: your message to Nativize", draft);
+        await sbWrite("support_replies", "POST", { request_id: r.id, author: "ai", body: draft, email_sent: !!sent.ok, email_error: sent.ok ? null : String(sent.error).slice(0, 400) });
+        await sbWrite(`support_requests?id=eq.${r.id}`, "PATCH", { status: "replied", replied_at: new Date().toISOString(), updated_at: new Date().toISOString() });
+        out.replied++;
+        log("support-worker", `AI replied to ${r.email}${sent.ok ? " (email sent)" : " (email FAILED: " + sent.error + " — reply saved in-app)"}`, sent.ok);
+      } catch (e) { out.errors++; log("support-worker", `error on ticket: ${e.message}`, false); }
+    }
+    if (!open.length && trigger === "manual") log("support-worker", "no open tickets — inbox clear", true);
+  } finally {
+    workerBusy = false;
+    state.lastRun.support = new Date().toISOString();
+    saveState();
+  }
+  return out;
+}
+
+/* ---- Daily Brief Worker ---- */
+async function runDailyBrief() {
+  const [t, plansEnts, sup, replies, acts, feats] = await Promise.all([
+    safe(sb("admin_pageviews_totals"), [{}]),
+    safe(sb("billing_entitlements?select=plan_id,billing"), []),
+    safe(sb("support_requests?select=id,email,message,status,created_at&order=created_at.desc&limit=30"), []),
+    safe(sb("support_replies?select=author,email_sent,created_at&order=created_at.desc&limit=50"), []),
+    safe(sb("app_activations?select=created_at,plan_id&order=created_at.desc&limit=50"), []),
+    safe(sb("feature_requests?select=created_at,message&order=created_at.desc&limit=20"), [])
+  ]);
+  const day = 864e5, now = Date.now();
+  const T = arr(t)[0] || {};
+  const supArr = arr(sup);
+  const data = {
+    views_today: T.views_today || 0, views_7d: T.views_7d || 0, unique_visitors: T.total_new_visitors || 0,
+    support_open: supArr.filter((r) => r.status === "open").length,
+    support_new_24h: supArr.filter((r) => now - new Date(r.created_at) < day).length,
+    ai_replies_24h: arr(replies).filter((r) => r.author === "ai" && now - new Date(r.created_at) < day).length,
+    email_failures: arr(replies).filter((r) => !r.email_sent).length,
+    paid: arr(plansEnts).filter((e) => e.plan_id !== "free").length,
+    mrr_cad: arr(plansEnts).filter((e) => e.plan_id === "pro").length * 29 + arr(plansEnts).filter((e) => e.plan_id === "max").length * 79,
+    builds_24h: arr(acts).filter((a) => now - new Date(a.created_at) < day).length,
+    feature_requests_7d: arr(feats).filter((f) => now - new Date(f.created_at) < 7 * day).length,
+    newest_support: supArr.slice(0, 5).map((r) => ({ status: r.status, msg: (r.message || "").slice(0, 120) }))
+  };
+  const brief = await ollama(
+    `DATA:\n${JSON.stringify(data, null, 1)}\n\nWrite the daily brief now:`,
+    `You write a short daily business brief for Sahib, founder of Nativize. Use ONLY the DATA. Structure it as plain text: 1) one-line health summary, 2) "Needs attention:" bullet list (unanswered support, email failures, anything at 0 that shouldn't be), 3) "Numbers:" one compact line, 4) "Do next:" exactly 3 concrete recommended actions. No markdown symbols besides the dashes, under 200 words, no invented facts.`
+  );
+  await sbWrite("daily_briefs", "POST", { brief, data });
+  state.lastRun.brief = new Date().toISOString();
+  saveState();
+  log("brief-worker", "daily brief generated (" + brief.length + " chars)", true);
+  return brief;
+}
 
 /* ---- helpers ---- */
 const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -116,11 +221,14 @@ const NAV = [
   ["Analytics", [["/visitors", "Visitors", "chart"], ["/features", "Feature requests", "star"]]],
   ["Engagement", [["/support", "Support", "chat"]]],
   ["Customers", [["/paid", "Paid customers", "card"], ["/testers", "Testers", "beaker"]]],
+  ["AI", [["/workers", "AI Workers", "bolt"], ["/brief", "Daily Brief", "doc"]]],
   ["Dev", [["/issues", "GitHub issues", "bug"]]],
   ["", [["/settings", "Settings", "gear"]]]
 ];
 const ICO = {
   grid: "M3 3h8v8H3zM13 3h8v8h-8zM3 13h8v8H3zM13 13h8v8h-8z",
+  bolt: "M13 2L3 14h7l-1 8 10-12h-7l1-8z",
+  doc: "M6 2h9l5 5v15H6zM14 2v6h6M9 13h8M9 17h6",
   chart: "M3 3v18h18M7 14l3-4 3 3 4-6", star: "M12 3l2.5 6H21l-5 4 2 7-6-4.3L6 20l2-7-5-4h6.5z",
   chat: "M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z", card: "M3 5h18v14H3zM3 10h18",
   beaker: "M9 3h6M10 3v6l-5 9a2 2 0 002 3h10a2 2 0 002-3l-5-9V3", bug: "M12 2a10 10 0 100 20 10 10 0 000-20zM12 8v5M12 16h.01",
@@ -312,18 +420,76 @@ async function pageOverview() {
   return { title: "Dashboard Overview", sub: "Welcome back, " + OWNER + " — here's what's happening.", body: kpis + ask + qa + revRow + grid + recent + activityCard };
 }
 
-async function pageSupport() {
+async function pageSupport(qs) {
+  const filter = (qs && qs.get("f")) || "all";
   const rows = arr(await safe(sb("support_requests?select=*&order=created_at.desc&limit=100"), []));
+  // Fetch reply threads for the listed tickets.
+  let replyMap = new Map();
+  if (rows.length && rows[0].id !== undefined) {
+    const ids = rows.map((r) => r.id).filter(Boolean).slice(0, 100);
+    const reps = arr(await safe(sb(`support_replies?select=*&order=created_at.asc&request_id=in.(${ids.join(",")})`), []));
+    for (const rep of reps) { const l = replyMap.get(rep.request_id) || []; l.push(rep); replyMap.set(rep.request_id, l); }
+  }
+  const counts = { all: rows.length, open: 0, replied: 0, closed: 0 };
+  rows.forEach((r) => { const s = r.status || "open"; if (counts[s] != null) counts[s]++; });
+  const shown = filter === "all" ? rows : rows.filter((r) => (r.status || "open") === filter);
   const emailReady = !!(RESEND_API_KEY && SUPPORT_FROM_EMAIL);
   const banner = emailReady ? "" : `<div class="err">In-portal “Send email” needs RESEND_API_KEY + SUPPORT_FROM_EMAIL in .env.local. “Reply in Mail” + AI drafting work now.</div>`;
-  const items = rows.map((r) => {
+  const filters = `<div class="chips" style="margin:0 0 16px">${["all", "open", "replied", "closed"].map((f) =>
+    `<a class="chip" style="${f === filter ? "border-color:var(--brand);color:var(--ink)" : ""}" href="/support${f === "all" ? "" : "?f=" + f}">${f[0].toUpperCase() + f.slice(1)} (${counts[f]})</a>`).join("")}
+    <span class="chip" style="margin-left:auto;border-style:dashed">AI auto-reply: <b style="color:${state.autoReply ? "var(--green)" : "var(--red)"};margin-left:4px">${state.autoReply ? "ON" : "OFF"}</b>&nbsp;· manage in AI Workers</span></div>`;
+  const pillCls = { open: "warn", replied: "info", closed: "ok" };
+  const items = shown.map((r) => {
     const to = r.email || "", subj = "Re: your message to Nativize", body = (r.message || r.body || "");
+    const st = r.status || "open";
     const mailto = to ? `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subj)}` : "";
-    const reply = to ? `<details class="reply"><summary>Reply</summary><form method="POST" action="/api/reply"><input type="hidden" name="to" value="${esc(to)}"/><input type="hidden" name="srcmsg" value="${esc(body)}"/><input type="text" name="subject" value="${esc(subj)}"/><textarea name="text" placeholder="Write a reply… or click Draft with AI"></textarea><div class="row"><button class="btn" type="button" onclick="aiDraft(this)">✨ Draft with AI</button>${emailReady ? `<button class="btn pri" type="submit">Send email</button>` : `<button class="btn" type="submit" disabled>Send email (set up Resend)</button>`}<a class="btn" href="${mailto}">Reply in Mail</a></div></form></details>` : `<span class="muted">No email on file</span>`;
-    return `<tr><td>${when(r.created_at)}</td><td>${esc(to || "—")}</td><td><span class="msg">${esc(body)}</span>${reply}</td></tr>`;
+    const thread = (replyMap.get(r.id) || []).map((rep) =>
+      `<div style="margin-top:10px;padding:11px 13px;border-left:3px solid ${rep.author === "ai" ? "var(--purple)" : "var(--blue)"};background:var(--soft);border-radius:0 10px 10px 0">
+        <div style="font-size:11.5px;color:var(--muted);margin-bottom:5px">${rep.author === "ai" ? "🤖 AI reply" : "👤 " + esc(OWNER)} · ${when(rep.created_at)} · ${rep.email_sent ? `<span class="pill ok">emailed</span>` : `<span class="pill warn" title="${esc(rep.email_error || "")}">email not sent</span>`}</div>
+        <div class="msg" style="max-width:none">${esc(rep.body)}</div></div>`).join("");
+    const statusBtns = st === "closed"
+      ? `<form method="POST" action="/api/status" style="display:inline"><input type="hidden" name="id" value="${esc(r.id)}"/><input type="hidden" name="status" value="open"/><button class="btn" type="submit">Reopen</button></form>`
+      : `<form method="POST" action="/api/status" style="display:inline"><input type="hidden" name="id" value="${esc(r.id)}"/><input type="hidden" name="status" value="closed"/><button class="btn" type="submit">Mark resolved</button></form>`;
+    const reply = to ? `<details class="reply"><summary>Reply</summary><form method="POST" action="/api/reply"><input type="hidden" name="to" value="${esc(to)}"/><input type="hidden" name="request_id" value="${esc(r.id)}"/><input type="hidden" name="srcmsg" value="${esc(body)}"/><input type="text" name="subject" value="${esc(subj)}"/><textarea name="text" placeholder="Write a reply… or click Draft with AI"></textarea><div class="row"><button class="btn" type="button" onclick="aiDraft(this)">✨ Draft with AI</button>${emailReady ? `<button class="btn pri" type="submit">Send email</button>` : `<button class="btn" type="submit" disabled>Send email (set up Resend)</button>`}<a class="btn" href="${mailto}">Reply in Mail</a></div></form></details>` : `<span class="muted">No email on file — cannot reply</span>`;
+    return `<tr><td style="white-space:nowrap">${when(r.created_at)}<div style="margin-top:6px"><span class="pill ${pillCls[st] || "free"}">${esc(st)}</span></div></td><td>${esc(to || "—")}<div class="muted" style="font-size:12px">${esc(r.topic || "")}</div></td><td><span class="msg">${esc(body)}</span>${thread}<div class="row" style="display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap">${reply}${statusBtns}</div></td></tr>`;
   });
-  const inner = rows.length ? `<table><thead><tr><th>When</th><th>From</th><th>Message &amp; reply</th></tr></thead><tbody>${items.join("")}</tbody></table>` : `<div class="empty">No support messages yet.</div>`;
-  return { title: "Support", sub: "Free local AI drafts replies · " + (emailReady ? "sending from " + SUPPORT_FROM_EMAIL : "email sending off"), body: banner + card(rows.length + " messages", inner) };
+  const inner = shown.length ? `<table><thead><tr><th>When / status</th><th>From</th><th>Conversation</th></tr></thead><tbody>${items.join("")}</tbody></table>` : `<div class="empty">${filter === "all" ? "No support messages yet." : "No " + filter + " tickets."}</div>`;
+  return { title: "Support", sub: (state.autoReply ? "AI auto-reply ON · " : "AI auto-reply OFF · ") + (emailReady ? "sending from " + SUPPORT_FROM_EMAIL : "email sending off"), body: banner + filters + card(shown.length + " of " + rows.length + " tickets", inner) };
+}
+
+/* ---- AI Workers page ---- */
+function pageWorkers() {
+  const logRows = state.logs.slice(0, 30).map((l) => [when(l.t), `<span class="pill ${l.ok ? "info" : "warn"}">${esc(l.worker)}</span>`, `<span class="msg" style="max-width:none">${esc(l.msg)}</span>`]);
+  const workerCard = (name, desc, enabled, lastRun, actions) => `<div class="card" style="margin-top:18px"><div class="hd"><h2>${esc(name)}</h2>${enabled}</div>
+    <div style="padding:4px 18px 16px"><div class="muted">${esc(desc)}</div>
+    <div class="muted" style="font-size:12.5px;margin-top:8px">Last run: ${lastRun ? when(lastRun) : "never"}</div>
+    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">${actions}</div></div></div>`;
+  const supportToggle = `<form method="POST" action="/workers/toggle" style="display:inline"><button class="btn" type="submit">${state.autoReply ? "✅ Enabled — click to disable" : "⛔ Disabled — click to enable"}</button></form>`;
+  const body =
+    workerCard("🤖 Support Worker", "Watches for new support tickets, writes a guard-railed reply with the free local AI, emails the customer, and records the reply on the ticket. Never promises refunds or timelines; flags anything uncertain for you.", supportToggle, state.lastRun.support,
+      `<form method="POST" action="/workers/run"><input type="hidden" name="w" value="support"/><button class="btn pri" type="submit">▶ Run now</button></form><a class="btn" href="/support">Open support inbox</a>`) +
+    workerCard("📋 Daily Brief Worker", "Summarizes the last 24h — support, replies, revenue, builds, traffic — and recommends 3 next actions. Stored in the database with full history.", `<span class="pill info">manual + on-demand</span>`, state.lastRun.brief,
+      `<form method="POST" action="/workers/run"><input type="hidden" name="w" value="brief"/><button class="btn pri" type="submit">▶ Generate brief</button></form><a class="btn" href="/brief">View briefs</a>`) +
+    card("Worker activity log", logRows.length ? tableEl(["When", "Worker", "Event"], logRows, "") : `<div class="empty">No worker runs yet — click “Run now” above.</div>`) +
+    card("Integrations (honest status)", `<div style="padding:8px 18px 16px" class="muted">
+      <div>✅ Local AI (Ollama · ${esc(OLLAMA_MODEL)}) — connected, free, private</div>
+      <div>✅ Email (Resend) — ${RESEND_API_KEY && SUPPORT_FROM_EMAIL ? "connected, sending from " + esc(SUPPORT_FROM_EMAIL) : "<b style='color:var(--red)'>not configured</b>"}</div>
+      <div>✅ Supabase — connected (server-side key, never in the browser)</div>
+      <div>${GITHUB_TOKEN ? "✅" : "⚪"} GitHub issues — ${GITHUB_TOKEN ? "connected" : "add GITHUB_TOKEN to enable"}</div>
+      <div>⚪ Stripe actions (cancel/refund) — not wired; billing changes stay manual in Stripe dashboard by design</div>
+      <div>⚪ YouTube / desktop automation — not possible from this dashboard alone; needs OAuth or a helper app (ask me when you want it)</div></div>`);
+  return { title: "AI Workers", sub: "Your automated team — every action is logged below.", body };
+}
+
+/* ---- Daily Brief page ---- */
+async function pageBrief() {
+  const briefs = arr(await safe(sb("daily_briefs?select=*&order=created_at.desc&limit=15"), []));
+  const latest = briefs[0];
+  const gen = `<form method="POST" action="/brief/run" style="margin-bottom:18px"><button class="btn pri" type="submit">✨ Generate today's brief</button>${latest ? `<span class="muted" style="margin-left:12px;font-size:13px">Last generated: ${when(latest.created_at)}</span>` : ""}</form>`;
+  const latestCard = latest ? card("Latest brief · " + when(latest.created_at), `<div style="padding:6px 18px 18px;white-space:pre-wrap;line-height:1.65">${esc(latest.brief)}</div>`) : card("No briefs yet", `<div class="empty">Click “Generate today's brief” — the AI reads your live data and writes a summary with recommended actions.</div>`);
+  const history = briefs.slice(1).map((b) => `<details style="border-top:1px solid var(--line);padding:12px 18px"><summary style="cursor:pointer;color:var(--muted)">${when(b.created_at)}</summary><div style="white-space:pre-wrap;margin-top:10px;line-height:1.6">${esc(b.brief)}</div></details>`).join("");
+  const historyCard = briefs.length > 1 ? card("History", history) : "";
+  return { title: "Daily Brief", sub: "AI summary of your business — stored with full history.", body: gen + latestCard + historyCard };
 }
 async function pageFeatures() {
   const rows = arr(await safe(sb("feature_requests?select=*&order=created_at.desc&limit=200"), []));
@@ -384,29 +550,75 @@ ${arr(support).map((s, i) => `  ${i + 1}. [${new Date(s.created_at).toLocaleDate
 }
 
 /* ============================ Router ============================ */
-const PAGES = { "/": pageOverview, "/support": pageSupport, "/features": pageFeatures, "/paid": pagePaid, "/testers": pageTesters, "/visitors": pageVisitors, "/issues": pageIssues, "/settings": async () => pageSettings() };
+const PAGES = { "/": pageOverview, "/support": pageSupport, "/features": pageFeatures, "/paid": pagePaid, "/testers": pageTesters, "/visitors": pageVisitors, "/issues": pageIssues, "/workers": async () => pageWorkers(), "/brief": pageBrief, "/settings": async () => pageSettings() };
 function send(res, code, html) { res.writeHead(code, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", "X-Frame-Options": "DENY" }); res.end(html); }
 function json(res, obj) { res.writeHead(200, { "Content-Type": "application/json" }); res.end(JSON.stringify(obj)); }
+function redirect(res, to) { res.writeHead(302, { Location: to }); res.end(); }
 
 const server = http.createServer(async (req, res) => {
-  const p = new URL(req.url, "http://x").pathname;
+  const u = new URL(req.url, "http://x");
+  const p = u.pathname;
   if (p === "/favicon.ico") { res.writeHead(204).end(); return; }
   if (p === "/api/ai-draft" && req.method === "POST") { try { const b = JSON.parse(await readBody(req) || "{}"); json(res, { draft: await aiDraft(b.message || "", b.email || "") }); } catch (e) { json(res, { error: e.message }); } return; }
   if (p === "/api/ask" && req.method === "POST") { try { const b = JSON.parse(await readBody(req) || "{}"); json(res, { answer: await askAI((b.question || "").slice(0, 500)) }); } catch (e) { json(res, { error: e.message }); } return; }
+
   if (p === "/api/reply" && req.method === "POST") {
     const f = parseForm(await readBody(req));
     const to = (f.to || "").trim(), text = (f.text || "").trim(), subject = (f.subject || "Re: your message to Nativize").trim();
     let flash;
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)) flash = `<div class="flash no">Invalid recipient email.</div>`;
     else if (!text) flash = `<div class="flash no">Reply was empty.</div>`;
-    else { const r = await sendReply(to, subject, text); flash = r.ok ? `<div class="flash ok">✓ Reply sent to ${esc(to)}.</div>` : `<div class="flash no">Could not send: ${esc(r.error)}</div>`; }
-    const pg = await pageSupport(); return send(res, 200, layout("/support", pg.title, pg.body, { sub: pg.sub, flash }));
+    else {
+      const r = await sendReply(to, subject, text);
+      flash = r.ok ? `<div class="flash ok">✓ Reply sent to ${esc(to)}.</div>` : `<div class="flash no">Could not send: ${esc(r.error)}</div>`;
+      // Record the manual reply on the ticket thread (best-effort — email already went out).
+      if (f.request_id) {
+        try {
+          await sbWrite("support_replies", "POST", { request_id: f.request_id, author: "admin", body: text, email_sent: !!r.ok, email_error: r.ok ? null : String(r.error).slice(0, 400) });
+          await sbWrite(`support_requests?id=eq.${f.request_id}`, "PATCH", { status: "replied", replied_at: new Date().toISOString(), updated_at: new Date().toISOString() });
+          log("admin", `manual reply to ${to}${r.ok ? " (emailed)" : " (email failed)"}`, r.ok);
+        } catch (e) { flash += `<div class="flash no">Reply sent but not recorded on the ticket: ${esc(e.message)} — run the new DB migration.</div>`; }
+      }
+    }
+    const pg = await pageSupport(u.searchParams); return send(res, 200, layout("/support", pg.title, pg.body, { sub: pg.sub, flash }));
   }
+
+  if (p === "/api/status" && req.method === "POST") {
+    const f = parseForm(await readBody(req));
+    const status = (f.status || "").trim();
+    if (f.id && ["open", "replied", "closed"].includes(status)) {
+      try {
+        await sbWrite(`support_requests?id=eq.${encodeURIComponent(f.id)}`, "PATCH", { status, updated_at: new Date().toISOString() });
+        log("admin", `ticket ${String(f.id).slice(0, 8)} → ${status}`, true);
+      } catch (e) { log("admin", `status change failed: ${e.message}`, false); }
+    }
+    return redirect(res, "/support");
+  }
+
+  if (p === "/workers/toggle" && req.method === "POST") {
+    state.autoReply = !state.autoReply; saveState();
+    log("support-worker", "auto-reply turned " + (state.autoReply ? "ON" : "OFF") + " by " + OWNER, true);
+    return redirect(res, "/workers");
+  }
+  if ((p === "/workers/run" || p === "/brief/run") && req.method === "POST") {
+    const f = parseForm(await readBody(req));
+    const which = p === "/brief/run" ? "brief" : (f.w || "support");
+    try {
+      if (which === "brief") await runDailyBrief();
+      else { const r = await runSupportWorker("manual"); log("support-worker", `manual run: ${r.replied || 0} replied, ${r.skipped || 0} skipped, ${r.errors || 0} errors`, !r.errors); }
+    } catch (e) { log(which === "brief" ? "brief-worker" : "support-worker", "run failed: " + e.message, false); }
+    return redirect(res, which === "brief" ? "/brief" : "/workers");
+  }
+
   const handler = PAGES[p];
   if (!handler) return send(res, 404, layout("/", "Not found", card("", `<div class="empty">Page not found. <a href="/">Overview</a></div>`)));
-  try { const pg = await handler(); return send(res, 200, layout(p, pg.title, pg.body, { sub: pg.sub })); }
+  try { const pg = await handler(u.searchParams); return send(res, 200, layout(p, pg.title, pg.body, { sub: pg.sub })); }
   catch (e) { return send(res, 500, layout(p, "Error", card("", `<div class="err">⚠ ${esc(e.message)}</div>`))); }
 });
+
+/* ---- Background loop: check for new support tickets every 2 minutes ---- */
+setTimeout(() => runSupportWorker("interval").catch((e) => log("support-worker", "startup run failed: " + e.message, false)), 15000);
+setInterval(() => runSupportWorker("interval").catch((e) => log("support-worker", "interval run failed: " + e.message, false)), 120000);
 server.listen(PORT, HOST, () => {
   const ips = []; const ni = os.networkInterfaces();
   for (const k of Object.keys(ni)) for (const a of ni[k]) if (a.family === "IPv4" && !a.internal) ips.push(a.address);
