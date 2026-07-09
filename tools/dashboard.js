@@ -228,10 +228,12 @@ async function activationMap() {
 
 /* ============================ Pages ============================ */
 async function pageOverview() {
-  const [t, daily, support, ents, actMap] = await Promise.all([
+  const [t, daily, support, ents, actMap, feats, recentActs] = await Promise.all([
     safe(sb("admin_pageviews_totals"), [{}]), safe(sb("admin_pageviews_daily?limit=120"), []),
     safe(sb("support_requests?select=*&order=created_at.desc&limit=6"), []),
-    safe(sb("billing_entitlements?select=user_id,plan_id&limit=1000"), []), activationMap()
+    safe(sb("billing_entitlements?select=user_id,plan_id,billing&limit=1000"), []), activationMap(),
+    safe(sb("feature_requests?select=created_at&limit=1000"), []),
+    safe(sb("app_activations?select=created_at,plan_id,repo&order=created_at.desc&limit=8"), [])
   ]);
   const T = arr(t)[0] || {};
   const dayMap = {}; arr(daily).forEach((d) => (dayMap[d.day] = d.views));
@@ -250,12 +252,20 @@ async function pageOverview() {
   const free = testerIds.size;
   const sup = arr(support);
   const supWeek = sup.filter((r) => Date.now() - new Date(r.created_at).getTime() < 7 * 864e5).length;
+  // Revenue (CAD): pro $29/mo, max $79/mo, starter $12 one-time.
+  const tier = { starter: 0, pro: 0, max: 0 };
+  for (const e of arr(ents)) if (tier[e.plan_id] != null) tier[e.plan_id]++;
+  const mrr = tier.pro * 29 + tier.max * 79;
+  const oneTime = tier.starter * 12;
+  const featCount = arr(feats).length;
+  const views30 = T.views_30d || 0;
 
   const kpis = `<div class="kpis">
     ${kpi("green", "chart", "Views today", num(T.views_today), { cls: trendCls, text: trendTxt }, sparkline(series, "#0f9d58"))}
     ${kpi("red", "chat", "Support inbox", num(sup.length), { cls: supWeek ? "down" : "flat", text: supWeek ? supWeek + " new this week" : "all caught up" }, "")}
     ${kpi("blue", "beaker", "Testers", num(free), { cls: "flat", text: "free-plan builders" }, "")}
-    ${kpi("purple", "card", "Paid customers", num(paid), { cls: "up", text: "revenue" }, "")}
+    ${kpi("purple", "card", "Paid customers", num(paid), { cls: "up", text: "$" + num(mrr) + " CAD/mo" }, "")}
+    ${kpi("green", "star", "Feature requests", num(featCount), { text: "ideas from users" }, "")}
   </div>`;
 
   const ask = `<div class="ask"><h3>✨ Ask Nativize</h3>
@@ -274,6 +284,21 @@ async function pageOverview() {
     <a href="/paid"><span class="ic">${icon("card")}</span>Paid customers</a>
   </div>`;
 
+  // Revenue + conversion funnel row
+  const revCard = card("Revenue", `<div style="padding:18px">
+    <div style="font-size:32px;font-weight:770;letter-spacing:-.02em">$${num(mrr)} <span style="font-size:14px;color:var(--muted);font-weight:500">CAD / month</span></div>
+    <div style="color:var(--muted);margin-top:5px">recurring (Pro + Max) &nbsp;·&nbsp; + $${num(oneTime)} one-time</div>
+    <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
+      <span class="pill info">Pro × ${tier.pro}</span><span class="pill" style="background:var(--purpleb);color:var(--purple)">Max × ${tier.max}</span><span class="pill free">Starter × ${tier.starter}</span></div></div>`);
+  const fnSteps = [["Visitors (30d)", views30, "#2f6bff"], ["Testers", free, "#7c3aed"], ["Paid customers", paid, "#0f9d58"]];
+  const fnMax = Math.max(1, ...fnSteps.map((s) => s[1]));
+  const fnRows = fnSteps.map(([l, v, c]) => `<div style="display:flex;align-items:center;gap:12px;margin:10px 0"><div style="width:112px;color:var(--muted);font-size:13px">${esc(l)}</div><div style="flex:1;height:22px;background:var(--chip);border-radius:7px;overflow:hidden"><div style="height:100%;width:${Math.max(4, v / fnMax * 100).toFixed(0)}%;background:${c};border-radius:7px"></div></div><div style="width:46px;text-align:right;font-weight:650">${num(v)}</div></div>`).join("");
+  const conv = views30 ? (paid / views30 * 100).toFixed(1) : "0";
+  const funnelCard = card("Conversion funnel", `<div style="padding:14px 18px 18px">${fnRows}<div style="color:var(--muted);font-size:12.5px;margin-top:6px">${conv}% of visitors became paying customers</div></div>`);
+  const revRow = `<div class="grid2">${funnelCard}${revCard}</div>`;
+
+  const activityCard = card("Recent activity", tableEl(["When", "Event", "Repo"], arr(recentActs).map((a) => [when(a.created_at), `<span class="pill ${a.plan_id === "free" ? "free" : "ok"}">${esc(a.plan_id)} build</span>`, esc(a.repo)]), "No app builds yet."));
+
   const left = card("Visitor activity", heatmap(dayMap) + errline(daily));
   const right = card("Plan distribution", donut(paid, free));
   const grid = `<div class="grid2">${left}${right}</div>`;
@@ -284,7 +309,7 @@ async function pageOverview() {
       return [when(r.created_at), esc(r.email || "—"), `<span class="msg">${esc((r.message || r.body || "").slice(0, 90))}</span>`, `<span class="pill ${fresh ? "warn" : "info"}">${fresh ? "New" : "Seen"}</span>`];
     }), "No support messages yet."), ["Open support →", "/support"]);
 
-  return { title: "Dashboard Overview", sub: "Welcome back, " + OWNER + " — here's what's happening.", body: kpis + ask + qa + grid + recent };
+  return { title: "Dashboard Overview", sub: "Welcome back, " + OWNER + " — here's what's happening.", body: kpis + ask + qa + revRow + grid + recent + activityCard };
 }
 
 async function pageSupport() {
