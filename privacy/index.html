@@ -102,7 +102,7 @@
             <li>Limited website content used for prefill, such as the current page title and GitHub repository links found on the current page.</li>
             <li>The current page origin and path may be used locally as a key for per-project settings. Nativize does not create or transmit a general browsing-history list.</li>
             <li>Support requests and feature requests submitted through the Nativize website, including the email address and message text the user chooses to provide.</li>
-            <li>For Migration Hub, redacted project metadata such as file paths, counts, public project references, detected environment-variable names, provider choices, generated checklists, and test status. Project ZIP contents and raw secret values are not stored.</li>
+            <li>For app migration, redacted project metadata such as file paths, counts, public project references, detected environment-variable names, provider choices, generated checklists, and test status. Project ZIP contents and raw secret values are not stored.</li>
           </ul>
         </section>
 
@@ -116,7 +116,7 @@
             <li>Check paid-plan entitlement and app activations with Supabase, and start Stripe Checkout for paid plans.</li>
             <li>Prefill editable fields in the extension UI.</li>
             <li>Respond to support requests and consider submitted feature requests.</li>
-            <li>Create and manage a user-requested Migration Hub project, including its redacted scan summary, generated files, entitlement, and one-time migration credit.</li>
+            <li>Create and manage a user-requested app migration, including its redacted scan summary, generated files, entitlement, and one-time migration credit.</li>
           </ul>
         </section>
 
@@ -125,7 +125,7 @@
           <p>Nativize stores extension settings, selected project configuration, GitHub connection state, billing status, Supabase session state, and GitHub tokens locally on the user's device. The Chrome extension uses <code>chrome.storage.local</code>; the web Studio keeps auth tokens in <code>sessionStorage</code> so they clear when the browser session ends. GitHub tokens are sent to Supabase Edge Functions only when preparing secure downloads or completing billing-gated actions. Optional store-upload credentials are not saved as normal extension settings; when the user enables store upload, they are sent to GitHub to be stored as encrypted GitHub Actions secrets.</p>
           <p>Users can remove locally stored data by signing out in the extension, clearing extension data in Chrome, or uninstalling the extension.</p>
           <p>Support requests and feature requests submitted through the website are stored in the Nativize Supabase project.</p>
-          <p>Migration Hub scans ZIP files in the browser. Paid migration projects store only redacted metadata and generated markdown; raw project files and secret values are not uploaded or stored.</p>
+          <p>App migration scans ZIP files in the browser. Paid migration projects store only redacted metadata and generated markdown; raw project files and secret values are not uploaded or stored.</p>
         </section>
 
         <section>
@@ -134,7 +134,7 @@
           <ul>
             <li>GitHub, to authenticate, read repository metadata, push generated files, create encrypted Actions secrets, trigger workflows, and fetch build artifacts.</li>
             <li>Supabase Auth, to complete the GitHub OAuth sign-in flow and return a GitHub provider token to the extension.</li>
-            <li>Supabase, to store billing entitlements, app activations, support requests, feature requests, and redacted Migration Hub project metadata, and to relay secure app downloads after plan checks.</li>
+            <li>Supabase, to store billing entitlements, app activations, support requests, feature requests, and redacted app-migration metadata, and to relay secure app downloads after plan checks.</li>
             <li>Stripe, to process checkout, subscriptions, one-time purchases, tax, receipts, and payment status.</li>
           </ul>
           <p>Nativize does not sell user data. Nativize does not use or transfer user data for advertising, creditworthiness, lending, or purposes unrelated to generating and building native app projects.</p>
