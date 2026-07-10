@@ -1,0 +1,4 @@
+/migration/:id/secrets   /migration/project/index.html   200
+/migration/:id/commands  /migration/project/index.html   200
+/migration/:id/testing   /migration/project/index.html   200
+/migration/:id           /migration/project/index.html   200

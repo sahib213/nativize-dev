@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    { "source": "/migration/:id([0-9a-fA-F-]{36})/secrets", "destination": "/migration/project/index.html" },
+    { "source": "/migration/:id([0-9a-fA-F-]{36})/commands", "destination": "/migration/project/index.html" },
+    { "source": "/migration/:id([0-9a-fA-F-]{36})/testing", "destination": "/migration/project/index.html" },
+    { "source": "/migration/:id([0-9a-fA-F-]{36})", "destination": "/migration/project/index.html" }
+  ]
+}

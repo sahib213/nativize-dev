@@ -98,6 +98,7 @@
     compare: "/compare/",
     features: "/features/",
     pricing: "/pricing/",
+    migration: "/migration/",
     security: "/security/",
     getStarted: "/get-started/",
     support: "/support/",
@@ -129,6 +130,7 @@
           '<a class="nav-extra" href="' + ROUTES.blog + '">Blog</a>' +
           '<a href="' + ROUTES.compare + '">Compare</a>' +
           '<a class="nav-extra" href="' + ROUTES.features + '">Features</a>' +
+          '<a href="' + ROUTES.migration + '">Migration Hub</a>' +
           '<a href="' + ROUTES.pricing + '">Pricing</a>' +
           '<a class="nav-extra" href="' + ROUTES.security + '">Security</a>' +
           '<a class="nav-extra" href="' + ROUTES.support + '">Support</a>' +
@@ -169,6 +171,7 @@
             ["How it works", ROUTES.how],
             ["Open Studio", "/app/"],
             ["Features", ROUTES.features],
+            ["Migration Hub", ROUTES.migration],
             ["Pricing", ROUTES.pricing],
             ["Compare", ROUTES.compare],
             ["Security", ROUTES.security]
