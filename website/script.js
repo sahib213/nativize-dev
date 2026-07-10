@@ -99,6 +99,7 @@
     features: "/features/",
     pricing: "/pricing/",
     migration: "/migration/",
+    lovableSupabase: "/lovable-to-supabase/",
     security: "/security/",
     getStarted: "/get-started/",
     support: "/support/",
@@ -178,6 +179,7 @@
           ]) +
           col("Guides", [
             ["Lovable guide", ROUTES.lovable],
+            ["Lovable to Supabase", ROUTES.lovableSupabase],
             ["GitHub to native app", ROUTES.githubNative],
             ["AI builders", ROUTES.aiBuilders],
             ["Manual Capacitor", ROUTES.capacitor],

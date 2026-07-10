@@ -8,6 +8,9 @@
   <meta name="robots" content="index,follow,max-image-preview:large" />
   <meta name="theme-color" content="#0a0a12" />
   <link rel="canonical" href="https://nativize.dev/migration/" />
+  <link rel="alternate" type="text/plain" href="https://nativize.dev/llms.txt" title="Nativize facts for AI assistants" />
+  <link rel="alternate" type="application/rss+xml" href="https://nativize.dev/feed.xml" title="Nativize Blog" />
+  <link rel="alternate" type="application/json" href="https://nativize.dev/nativize-facts.json" title="Nativize structured facts" />
   <meta property="og:site_name" content="Nativize" />
   <meta property="og:title" content="Move your Lovable app to your own Supabase" />
   <meta property="og:description" content="Database, users (passwords intact), and storage — migrated in minutes. Connect Lovable and Supabase, click go, stay in control." />
@@ -26,11 +29,48 @@
   <link rel="stylesheet" href="/migration.css?v=20260710-migration-connect" />
   <script type="application/ld+json">{
     "@context": "https://schema.org",
-    "@type": "FAQPage",
-    "mainEntity": [
-      { "@type": "Question", "name": "Do you store my keys?", "acceptedAnswer": { "@type": "Answer", "text": "No. Your connection string and secret key stay in your browser and are sent directly to your own projects for the transfer. Nativize never stores them." } },
-      { "@type": "Question", "name": "Does it move my users?", "acceptedAnswer": { "@type": "Answer", "text": "Yes — user accounts move with their password hashes intact, so your users do not have to reset passwords." } },
-      { "@type": "Question", "name": "Is it included with Max?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Migration is included with Nativize Max, or you can buy a single one-time migration." } }
+    "@graph": [
+      {
+        "@type": "BreadcrumbList",
+        "@id": "https://nativize.dev/migration/#breadcrumbs",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Nativize", "item": "https://nativize.dev/" },
+          { "@type": "ListItem", "position": 2, "name": "App Migration", "item": "https://nativize.dev/migration/" }
+        ]
+      },
+      {
+        "@type": "SoftwareApplication",
+        "@id": "https://nativize.dev/migration/#app",
+        "name": "Nativize App Migration",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "Web browser",
+        "url": "https://nativize.dev/migration/",
+        "description": "Migrate a Lovable Cloud app to your own Supabase project — database, auth users with password hashes, and storage — in five guided steps.",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "CAD", "description": "Included with Nativize Max, or a one-time single migration.", "url": "https://nativize.dev/pricing/" },
+        "publisher": { "@type": "Organization", "name": "Nativize", "url": "https://nativize.dev/" }
+      },
+      {
+        "@type": "HowTo",
+        "@id": "https://nativize.dev/migration/#howto",
+        "name": "How to migrate a Lovable Cloud app to Supabase",
+        "totalTime": "PT15M",
+        "step": [
+          { "@type": "HowToStep", "position": 1, "name": "Connect Lovable", "text": "Deploy a temporary, read-only migrate-helper edge function that Nativize generates, then test the connection." },
+          { "@type": "HowToStep", "position": 2, "name": "Connect Supabase", "text": "Point Nativize at a fresh, empty Supabase project. Your credentials stay in your browser." },
+          { "@type": "HowToStep", "position": 3, "name": "Review", "text": "Confirm the tables, users, and storage files that will move." },
+          { "@type": "HowToStep", "position": 4, "name": "Migrate", "text": "Nativize copies your database, auth users with password hashes, and storage with a live progress bar." },
+          { "@type": "HowToStep", "position": 5, "name": "Test and switch", "text": "Follow the checklist and switch your backend when ready." }
+        ]
+      },
+      {
+        "@type": "FAQPage",
+        "@id": "https://nativize.dev/migration/#faq",
+        "mainEntity": [
+          { "@type": "Question", "name": "Do you store my keys?", "acceptedAnswer": { "@type": "Answer", "text": "No. Your connection string and secret key stay in your browser and are sent directly to your own projects for the transfer. Nativize never stores them." } },
+          { "@type": "Question", "name": "Does it move my users without password resets?", "acceptedAnswer": { "@type": "Answer", "text": "Yes — user accounts move with their password hashes intact, so your users do not have to reset passwords." } },
+          { "@type": "Question", "name": "Is it included with Max?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Migration is included with Nativize Max, or you can buy a single one-time migration." } }
+        ]
+      }
     ]
   }</script>
 </head>
