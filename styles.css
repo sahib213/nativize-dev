@@ -183,6 +183,8 @@ code {
 .nav-links { display: flex; gap: 6px; margin-left: 10px; }
 .nav-links a { color: rgba(236,237,245,.72); font-size: 14px; font-weight: 650; padding: 9px 12px; border-radius: 999px; white-space: nowrap; transition: color .2s, background .2s, transform .2s; }
 .nav-links a:hover { color: var(--text); background: rgba(255,255,255,.075); transform: translateY(-1px); }
+.nav-links a.nav-feature { color: #fff; background: linear-gradient(135deg, rgba(124,58,237,.9), rgba(37,99,235,.9)); box-shadow: 0 4px 14px rgba(124,58,237,.32); }
+.nav-links a.nav-feature:hover { background: linear-gradient(135deg, #7c3aed, #2563eb); transform: translateY(-1px); }
 .nav-cta { display: flex; gap: 8px; margin-left: auto; align-items: center; }
 .site-header .btn { min-height: 40px; }
 .site-header .btn-github-login {

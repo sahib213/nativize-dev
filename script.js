@@ -98,7 +98,8 @@
     compare: "/compare/",
     features: "/features/",
     pricing: "/pricing/",
-    migration: "/features/#migration",
+    migration: "/migration/",
+    lovableSupabase: "/lovable-to-supabase/",
     security: "/security/",
     getStarted: "/get-started/",
     support: "/support/",
@@ -121,6 +122,7 @@
           '<span class="brand-name">Nativize</span>' +
         '</a>' +
         '<div class="nav-links" id="navLinks">' +
+          '<a class="nav-feature" href="' + ROUTES.migration + '">Migrate</a>' +
           '<a href="' + ROUTES.how + '">How it works</a>' +
           '<a class="nav-extra" href="' + ROUTES.lovable + '">Lovable guide</a>' +
           '<a href="' + ROUTES.best + '">Best app</a>' +
@@ -130,7 +132,6 @@
           '<a class="nav-extra" href="' + ROUTES.blog + '">Blog</a>' +
           '<a href="' + ROUTES.compare + '">Compare</a>' +
           '<a class="nav-extra" href="' + ROUTES.features + '">Features</a>' +
-          '<a href="' + ROUTES.migration + '">Migration</a>' +
           '<a href="' + ROUTES.pricing + '">Pricing</a>' +
           '<a class="nav-extra" href="' + ROUTES.security + '">Security</a>' +
           '<a class="nav-extra" href="' + ROUTES.support + '">Support</a>' +
@@ -178,6 +179,7 @@
           ]) +
           col("Guides", [
             ["Lovable guide", ROUTES.lovable],
+            ["Lovable to Supabase", ROUTES.lovableSupabase],
             ["GitHub to native app", ROUTES.githubNative],
             ["AI builders", ROUTES.aiBuilders],
             ["Manual Capacitor", ROUTES.capacitor],
