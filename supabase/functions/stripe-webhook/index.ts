@@ -185,12 +185,51 @@ async function syncSubscription(subscription: Stripe.Subscription, explicit?: { 
   });
 }
 
+/* One-time Migration Hub purchase → grant exactly one migration credit.
+   Idempotent on the checkout session id (unique constraint), so Stripe
+   retries can never grant a second credit. */
+async function handleMigrationPurchase(session: Stripe.Checkout.Session, userId: string) {
+  const sessionId = assertStripeId(session.id, "cs_", "checkout session");
+  if (!sessionId) return;
+  const expanded = await stripe.checkout.sessions.retrieve(sessionId, {
+    expand: ["line_items.data.price"]
+  });
+  const priceId = expanded.line_items?.data[0]?.price?.id || null;
+  const expectedPrice = envOptional("STRIPE_PRICE_MIGRATION");
+  if (expectedPrice && priceId !== expectedPrice) return;
+
+  const { error: purchaseErr } = await supabase.from("migration_purchases").upsert({
+    user_id: userId,
+    stripe_checkout_session_id: sessionId,
+    stripe_price_id: priceId
+  }, { onConflict: "stripe_checkout_session_id", ignoreDuplicates: true });
+  if (purchaseErr) throw new Error("migration purchase insert failed: " + purchaseErr.message);
+
+  // Upsert independently from the purchase record. If a previous delivery
+  // stopped between these writes, the retry repairs the missing credit.
+  const { error: creditErr } = await supabase.from("migration_credits").upsert({
+    user_id: userId,
+    status: "unused",
+    source: "purchase",
+    stripe_checkout_session_id: sessionId
+  }, { onConflict: "stripe_checkout_session_id", ignoreDuplicates: true });
+  if (creditErr) throw new Error("migration credit insert failed: " + creditErr.message);
+}
+
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   const userId = session.metadata?.user_id || null;
   const planId = session.metadata?.plan_id || null;
   const stripeCustomerId = customerIdOf(session.customer);
   if (!userId || !planId || !stripeCustomerId) return;
-  if (!UUID_RE.test(userId) || !planMeta[planId as keyof typeof planMeta]) return;
+  if (!UUID_RE.test(userId)) return;
+
+  if (planId === "migration" && session.mode === "payment") {
+    if (session.payment_status !== "paid") return;
+    await upsertCustomer(userId, stripeCustomerId, session.customer_details?.email || null);
+    await handleMigrationPurchase(session, userId);
+    return;
+  }
+  if (!planMeta[planId as keyof typeof planMeta]) return;
 
   await upsertCustomer(userId, stripeCustomerId, session.customer_details?.email || null);
 

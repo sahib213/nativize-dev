@@ -5,6 +5,7 @@ This folder replaces the old license-key flow with GitHub sign-in, Supabase bill
 ## 1. Database
 
 Run `supabase/migrations/202606270001_billing.sql` in the Supabase SQL editor.
+For Migration Hub, also run `supabase/migrations/202607100001_migration_hub.sql`.
 
 It creates:
 
@@ -24,6 +25,7 @@ supabase secrets set STRIPE_WEBHOOK_SECRET=whsec_...
 supabase secrets set STRIPE_PRICE_STARTER=price_...
 supabase secrets set STRIPE_PRICE_PRO=price_...
 supabase secrets set STRIPE_PRICE_MAX=price_...
+supabase secrets set STRIPE_PRICE_MIGRATION=price_... # one-time Single Migration product
 supabase secrets set SITE_URL=https://nativize.dev
 supabase secrets set STRIPE_BRANDING_LOGO_FILE=file_... # optional
 supabase secrets set STRIPE_BRANDING_ICON_FILE=file_... # optional
@@ -58,6 +60,7 @@ the new live price IDs:
 - Starter: `STRIPE_PRICE_STARTER`
 - Pro: `STRIPE_PRICE_PRO`
 - Max: `STRIPE_PRICE_MAX`
+- Single Migration: `STRIPE_PRICE_MIGRATION` (one-time price; choose the amount in Stripe)
 
 Live webhook destination:
 

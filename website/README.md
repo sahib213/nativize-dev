@@ -13,6 +13,7 @@ website/
   /security/
   /get-started/
   /app/       # "Studio" — the full tool, in the browser (generate/push/update)
+  /migration/ # Migration Hub landing, five-step wizard, and private project UI
   /privacy/   # public privacy policy URL for store listings
   /terms/     # public terms page
   /support/   # public support URL for store listings
@@ -78,6 +79,10 @@ per-plan app cap in `activate_app(repo)`.
 
 Fully static — deploy the whole `website/` folder (it includes `lib/`):
 Vercel/Netlify (publish dir = `website`), GitHub Pages, Cloudflare Pages, S3, any CDN.
+
+Migration project URLs use `/migration/:id` plus `/secrets`, `/commands`, and
+`/testing`. `vercel.json` and `_redirects` rewrite those routes to the private
+project shell; `404.html` provides the equivalent fallback for GitHub Pages.
 
 ## Notes
 

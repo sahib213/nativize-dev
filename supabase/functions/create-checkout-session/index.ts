@@ -10,7 +10,10 @@ const corsHeaders = {
 const plans = {
   starter: { priceEnv: "STRIPE_PRICE_STARTER", mode: "payment" as const },
   pro: { priceEnv: "STRIPE_PRICE_PRO", mode: "subscription" as const },
-  max: { priceEnv: "STRIPE_PRICE_MAX", mode: "subscription" as const }
+  max: { priceEnv: "STRIPE_PRICE_MAX", mode: "subscription" as const },
+  // One-time Migration Hub credit — grants a migration_credits row via the
+  // Stripe webhook instead of a plan entitlement.
+  migration: { priceEnv: "STRIPE_PRICE_MIGRATION", mode: "payment" as const }
 };
 const MAX_BODY_BYTES = 4096;
 const MAX_AUTH_HEADER = 5000;

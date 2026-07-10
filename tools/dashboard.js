@@ -297,8 +297,28 @@ a{color:inherit;text-decoration:none}
 .chips{display:flex;gap:9px;flex-wrap:wrap;margin-top:12px}.chip{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:8px 14px;font-size:13px;font-weight:500;cursor:pointer;color:var(--muted)}.chip:hover{color:var(--ink);border-color:var(--brand)}
 .answer{margin-top:14px;background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:15px 16px;white-space:pre-wrap;font-size:14px;display:none}
 .answer.show{display:block}.answer.load{color:var(--muted)}
+/* Jarvis control center */
+.jvwrap{display:grid;grid-template-columns:minmax(0,1fr) 350px;gap:20px;align-items:start}
+@media(max-width:1080px){.jvwrap{grid-template-columns:1fr}.jvside{order:2}}
+.jvside{display:flex;flex-direction:column;gap:16px;position:sticky;top:16px;max-height:calc(100vh - 32px);overflow-y:auto}
+@media(max-width:1080px){.jvside{position:static;max-height:none}}
+.jvside .card{margin-top:0}
+.jvside .bd{padding:6px 18px 16px}
+.jvside .brief-txt{white-space:pre-wrap;font-size:13px;line-height:1.6;max-height:220px;overflow-y:auto;color:var(--ink)}
+.jvside .mini{font-size:12.5px;color:var(--muted)}
+.jvside .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center}
+.jvside .tick{display:flex;gap:9px;padding:8px 0;border-top:1px solid var(--line);font-size:13px;align-items:baseline}
+.jvside .tick:first-of-type{border-top:0}
+.jvside .tick .who{font-weight:600;white-space:nowrap;max-width:130px;overflow:hidden;text-overflow:ellipsis}
+.jvside .tick .what{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.jvside .logline{display:flex;gap:8px;padding:6px 0;border-top:1px solid var(--line);font-size:12.5px;align-items:baseline}
+.jvside .logline:first-of-type{border-top:0}
+.jvside .logline .t{color:var(--faint);white-space:nowrap}
+.jvside .logline .m{color:var(--muted);overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 /* Jarvis chat */
 .jv{display:flex;flex-direction:column;height:calc(100vh - 150px);max-width:860px}
+.jvwrap .jv{max-width:none;min-width:0}
+@media(max-width:1080px){.jvwrap .jv{height:auto;min-height:480px;max-height:calc(100vh - 150px)}}
 .jv-log{flex:1;overflow-y:auto;padding:6px 2px 16px;display:flex;flex-direction:column;gap:14px}
 .bubble{max-width:82%;padding:13px 16px;border-radius:16px;font-size:14.5px;line-height:1.55;white-space:pre-wrap;word-wrap:break-word}
 .bubble.me{align-self:flex-end;background:var(--accent);color:#fff;border-bottom-right-radius:5px}
@@ -368,19 +388,26 @@ function jvKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();jvSendMsg(
   var busy=false;
   setInterval(async function(){
     if(busy||document.hidden)return;
-    if(document.querySelector('.jv'))return; /* never repaint the Jarvis chat */
     if(document.querySelector('details[open]'))return;
     var ae=document.activeElement;
     if(ae&&(ae.tagName==='INPUT'||ae.tagName==='TEXTAREA'))return;
     var ans=document.getElementById('answer');
     if(ans&&ans.className.indexOf('show')>-1)return; /* keep AI answer on screen */
+    /* On Jarvis, only the side cards refresh — the chat itself is never repainted. */
+    var jvSide=document.querySelector('.jv')?document.getElementById('jvside'):null;
+    if(document.querySelector('.jv')&&!jvSide)return;
     busy=true;
     try{
       var r=await fetch(location.pathname+location.search,{cache:'no-store'});
       if(r.ok){
         var d=new DOMParser().parseFromString(await r.text(),'text/html');
-        var nw=d.querySelector('.wrap'),cur=document.querySelector('.wrap');
-        if(nw&&cur&&nw.innerHTML!==cur.innerHTML)cur.innerHTML=nw.innerHTML;
+        if(jvSide){
+          var ns=d.getElementById('jvside');
+          if(ns&&ns.innerHTML!==jvSide.innerHTML)jvSide.innerHTML=ns.innerHTML;
+        }else{
+          var nw=d.querySelector('.wrap'),cur=document.querySelector('.wrap');
+          if(nw&&cur&&nw.innerHTML!==cur.innerHTML)cur.innerHTML=nw.innerHTML;
+        }
         var dot=document.getElementById('livedot');
         if(dot){dot.style.opacity='1';setTimeout(function(){dot.style.opacity='.4'},250);}
       }
@@ -526,7 +553,7 @@ async function pageSupport(qs) {
         <div class="msg" style="max-width:none">${esc(rep.body)}</div></div>`).join("");
     const statusBtns = st === "closed"
       ? `<form method="POST" action="/api/status" style="display:inline"><input type="hidden" name="id" value="${esc(r.id)}"/><input type="hidden" name="status" value="open"/><button class="btn" type="submit">Reopen</button></form>`
-      : `<form method="POST" action="/api/status" style="display:inline"><input type="hidden" name="id" value="${esc(r.id)}"/><input type="hidden" name="status" value="closed"/><button class="btn" type="submit">Mark resolved</button></form>`;
+      : `<form method="POST" action="/api/status" style="display:inline" onsubmit="return confirm('Mark this support ticket resolved?')"><input type="hidden" name="id" value="${esc(r.id)}"/><input type="hidden" name="status" value="closed"/><button class="btn" type="submit">Mark resolved</button></form>`;
     const reply = to ? `<details class="reply"><summary>Reply</summary><form method="POST" action="/api/reply"><input type="hidden" name="to" value="${esc(to)}"/><input type="hidden" name="request_id" value="${esc(r.id)}"/><input type="hidden" name="srcmsg" value="${esc(body)}"/><input type="text" name="subject" value="${esc(subj)}"/><textarea name="text" placeholder="Write a reply… or click Draft with AI"></textarea><div class="row"><button class="btn" type="button" onclick="aiDraft(this)">✨ Draft with AI</button>${emailReady ? `<button class="btn pri" type="submit">Send email</button>` : `<button class="btn" type="submit" disabled>Send email (set up Resend)</button>`}<a class="btn" href="${mailto}">Reply in Mail</a></div></form></details>` : `<span class="muted">No email on file — cannot reply</span>`;
     return `<tr><td style="white-space:nowrap">${when(r.created_at)}<div style="margin-top:6px"><span class="pill ${pillCls[st] || "free"}">${esc(st)}</span></div></td><td>${esc(to || "—")}<div class="muted" style="font-size:12px">${esc(r.topic || "")}</div></td><td><span class="msg">${esc(body)}</span>${thread}<div class="row" style="display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap">${reply}${statusBtns}</div></td></tr>`;
   });
@@ -541,10 +568,10 @@ function pageWorkers() {
     <div style="padding:4px 18px 16px"><div class="muted">${esc(desc)}</div>
     <div class="muted" style="font-size:12.5px;margin-top:8px">Last run: ${lastRun ? when(lastRun) : "never"}</div>
     <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">${actions}</div></div></div>`;
-  const supportToggle = `<form method="POST" action="/workers/toggle" style="display:inline"><button class="btn" type="submit">${state.autoReply ? "✅ Enabled — click to disable" : "⛔ Disabled — click to enable"}</button></form>`;
+  const supportToggle = `<form method="POST" action="/workers/toggle" style="display:inline" onsubmit="return confirm('${state.autoReply ? "Disable the support auto-reply worker?" : "Enable auto-reply? It can email real customers every 2 minutes while this portal runs."}')"><button class="btn" type="submit">${state.autoReply ? "✅ Enabled — click to disable" : "⛔ Disabled — click to enable"}</button></form>`;
   const body =
     workerCard("🤖 Support Worker", "Watches for new support tickets, writes a guard-railed reply with the free local AI, emails the customer, and records the reply on the ticket. Never promises refunds or timelines; flags anything uncertain for you.", supportToggle, state.lastRun.support,
-      `<form method="POST" action="/workers/run"><input type="hidden" name="w" value="support"/><button class="btn pri" type="submit">▶ Run now</button></form><a class="btn" href="/support">Open support inbox</a>`) +
+      `<form method="POST" action="/workers/run" onsubmit="return confirm('Run now? This can email AI-written replies to real customers with open tickets.')"><input type="hidden" name="w" value="support"/><button class="btn pri" type="submit">▶ Run now</button></form><a class="btn" href="/support">Open support inbox</a>`) +
     workerCard("📋 Daily Brief Worker", "Summarizes the last 24h — support, replies, revenue, builds, traffic — and recommends 3 next actions. Stored in the database with full history.", `<span class="pill info">manual + on-demand</span>`, state.lastRun.brief,
       `<form method="POST" action="/workers/run"><input type="hidden" name="w" value="brief"/><button class="btn pri" type="submit">▶ Generate brief</button></form><a class="btn" href="/brief">View briefs</a>`) +
     card("Worker activity log", logRows.length ? tableEl(["When", "Worker", "Event"], logRows, "") : `<div class="empty">No worker runs yet — click “Run now” above.</div>`) +
@@ -628,19 +655,21 @@ ${arr(support).map((s, i) => `  ${i + 1}. [${new Date(s.created_at).toLocaleDate
 
 /* ============================ Jarvis ============================ */
 async function jarvisContext() {
-  const [t, ents, openTickets, recentSup, feats, acts] = await Promise.all([
+  const [t, ents, openTickets, recentSup, feats, acts, briefs] = await Promise.all([
     safe(sb("admin_pageviews_totals"), [{}]),
     safe(sb("billing_entitlements?select=plan_id,billing,status"), []),
     safe(sb("support_requests?select=id,email,message,status,created_at&order=created_at.desc&limit=25"), []),
     safe(sb("support_requests?select=email,message,status,created_at&order=created_at.desc&limit=6"), []),
     safe(sb("feature_requests?select=message,created_at&order=created_at.desc&limit=8"), []),
-    safe(sb("app_activations?select=plan_id,created_at&order=created_at.desc&limit=60"), [])
+    safe(sb("app_activations?select=plan_id,created_at&order=created_at.desc&limit=60"), []),
+    safe(sb("daily_briefs?select=brief,created_at&order=created_at.desc&limit=1"), [])
   ]);
   const T = arr(t)[0] || {}; const E = arr(ents);
   const paid = E.filter((e) => e.plan_id !== "free").length;
   const mrr = E.filter((e) => e.plan_id === "pro").length * 29 + E.filter((e) => e.plan_id === "max").length * 79;
   const open = arr(openTickets).filter((r) => (r.status || "open") === "open");
   const day = 864e5, now = Date.now();
+  const latestBrief = arr(briefs)[0];
   return {
     open, openCount: open.length,
     text: `LIVE DATA (Nativize admin, ${new Date().toLocaleString()}):
@@ -649,10 +678,11 @@ async function jarvisContext() {
 - Support: ${open.length} OPEN tickets, ${arr(openTickets).length} total recent.
 - Newest support (newest first):
 ${arr(recentSup).map((s, i) => `  ${i + 1}. [${s.status || "open"}] ${s.email || "?"}: ${(s.message || "").slice(0, 160)}`).join("\n") || "  none"}
-- Recent feature requests: ${arr(feats).map((f) => (f.message || "").slice(0, 60)).filter(Boolean).join(" | ") || "none"}`
+- Recent feature requests: ${arr(feats).map((f) => (f.message || "").slice(0, 60)).filter(Boolean).join(" | ") || "none"}
+- Latest daily brief${latestBrief ? ` (${new Date(latestBrief.created_at).toLocaleString()}):\n${(latestBrief.brief || "").slice(0, 900)}` : ": none generated yet — offer to generate one."}`
   };
 }
-const JARVIS_SYS = `You are Jarvis, the AI operations assistant inside Sahib's Nativize admin dashboard (nativize.dev — a tool that turns Lovable/Vite/React/GitHub web apps into native iOS/Android/Mac/Windows apps via Capacitor + GitHub Actions). You help Sahib run the business. Use ONLY the LIVE DATA provided — never invent numbers, users, refunds, or capabilities. Be concise, direct, and practical (usually under 160 words), plain text, no markdown symbols. When asked to draft something (reply, push notification, marketing, checklist), write it cleanly. If asked to do something you cannot verify or that would message/charge users, say it needs Sahib's explicit approval and explain the safe way to do it. If you don't have the data, say so.`;
+const JARVIS_SYS = `You are Jarvis, the AI operations assistant inside Sahib's Nativize admin dashboard (nativize.dev — a tool that turns Lovable/Vite/React/GitHub web apps into native iOS/Android/Mac/Windows apps via Capacitor + GitHub Actions). You help Sahib run the business. Use ONLY the LIVE DATA provided — never invent numbers, users, refunds, or capabilities. Be concise, direct, and practical (usually under 160 words), plain text, no markdown symbols. When asked to draft something (reply, push notification, marketing, checklist), write it cleanly, label it as a draft, and never promise refunds, delivery timelines, or guarantees without a stated business policy. If asked to do something you cannot verify or that would message/charge users, say it needs Sahib's explicit approval and explain the safe way to do it. If you don't have the data, say so.`;
 
 async function jarvisRespond(message, history) {
   const m = (message || "").toLowerCase();
@@ -661,6 +691,16 @@ async function jarvisRespond(message, history) {
   if (/\b(daily brief|today'?s brief|generate.*brief|make.*brief|run.*brief)\b/.test(m)) {
     const b = await runDailyBrief();
     return { answer: "Done — I generated today's brief and saved it:\n\n" + b };
+  }
+  // Drafting is read-only. It must never fall through to the send-replies action.
+  if (/\bdraft\b.*\b(reply|response|email)\b|\b(reply|response|email)\b.*\bdraft\b/.test(m)) {
+    const ticket = ctx.open[0];
+    if (!ticket) return { answer: "Your support inbox is clear — there is no open ticket to draft a reply for." };
+    const answer = await ollama(
+      ctx.text + `\n\nWrite a concise support reply DRAFT for this ticket only:\nCustomer: ${ticket.email || "unknown"}\nIssue: ${(ticket.message || "").slice(0, 1200)}\n\nDo not send it. Label it DRAFT. Do not promise a refund, timeline, or guarantee.`,
+      JARVIS_SYS
+    );
+    return { answer };
   }
   // Sensitive intent: send AI replies to open tickets (emails customers) → require a confirm button.
   if (/\b(reply|answer|respond|auto.?reply|clear).*(ticket|support|inbox)\b|\brun.*support\b|\breply to (them|everyone|all)\b/.test(m)) {
@@ -676,22 +716,72 @@ async function jarvisRespond(message, history) {
   return { answer };
 }
 
-function pageJarvis() {
+async function pageJarvis() {
+  const [briefsRes, supRes] = await Promise.all([
+    safe(sb("daily_briefs?select=brief,created_at&order=created_at.desc&limit=5"), []),
+    safe(sb("support_requests?select=id,email,message,status,created_at&order=created_at.desc&limit=20"), [])
+  ]);
+  const briefs = arr(briefsRes);
+  const latest = briefs[0];
+  const sup = arr(supRes);
+  const open = sup.filter((r) => (r.status || "open") === "open");
+
   const chips = [
-    "What needs my attention today?",
-    "Summarize my open support tickets",
-    "Generate today's brief",
-    "Draft a push notification about a new feature",
-    "Give me a 3-item plan for today"
+    "What changed today?",
+    "What should I focus on?",
+    "Summarize support issues",
+    "What should I fix next?",
+    "Draft a reply to my newest ticket"
   ];
-  const body = `<div class="jv">
+  const chat = `<div class="jv">
     <div class="jv-chips">${chips.map((c) => `<span class="chip" onclick="jvChip('${c.replace(/'/g, "\\'")}')">${esc(c)}</span>`).join("")}</div>
     <div class="jv-log" id="jvlog">
-      <div class="jv-hint" id="jvhint">👋 Hi ${esc(OWNER)}, I'm <b>Jarvis</b>.<br>Ask me about your support, customers, traffic, or revenue — or tell me to draft replies, notifications, and plans.<br><span style="font-size:12px">Free &amp; private · runs on your Mac with Ollama · I ask before anything that emails or charges people.</span></div>
+      <div class="jv-hint" id="jvhint">👋 Hi ${esc(OWNER)}, I'm <b>Jarvis</b> — your AI control center.<br>Ask about support, customers, traffic, revenue, or the daily brief — or tell me to draft replies, notifications, and plans.<br><span style="font-size:12px">Free &amp; private · runs on your Mac with Ollama · I ask before anything that emails or charges people.</span></div>
     </div>
     <div class="jv-bar"><textarea id="jvq" rows="1" placeholder="Message Jarvis…  (Enter to send, Shift+Enter for newline)" onkeydown="jvKey(event)"></textarea><button class="send" id="jvsend" onclick="jvSendMsg()">➤</button></div>
   </div>`;
-  return { title: "Jarvis", sub: "Your private AI ops assistant — free, local, and it asks before sensitive actions.", body };
+
+  /* --- Today's Brief card --- */
+  const briefBody = latest
+    ? `<div class="mini" style="margin-bottom:8px">Latest: ${when(latest.created_at)}</div><div class="brief-txt">${esc(latest.brief)}</div>`
+    : `<div class="mini">No brief yet today — generate one and Jarvis can answer “what changed today?”.</div>`;
+  const briefHistory = briefs.length > 1
+    ? `<div class="mini" style="margin-top:10px">History: ${briefs.slice(1, 4).map((b) => `<a href="/brief" style="color:var(--brand);font-weight:600">${when(b.created_at)}</a>`).join(" · ")}</div>` : "";
+  const briefCard = `<div class="card"><div class="hd"><h2>📋 Today's Brief</h2><a href="/brief">All briefs →</a></div><div class="bd">
+    ${briefBody}${briefHistory}
+    <div class="row"><form method="POST" action="/brief/run"><input type="hidden" name="back" value="/jarvis"/><button class="btn pri" type="submit">✨ Generate today's brief</button></form>
+    <span class="chip" onclick="jvChip('What should I focus on based on the latest brief?')">Ask Jarvis about it</span></div></div></div>`;
+
+  /* --- AI Workers card (one real worker — no fakes) --- */
+  const lastWorkerLog = state.logs.find((l) => l.worker === "support-worker");
+  const workerErr = lastWorkerLog && lastWorkerLog.ok === false;
+  const wStatus = workerBusy ? ["running…", "info"] : workerErr ? ["error", "warn"] : state.autoReply ? ["enabled", "ok"] : ["disabled", "free"];
+  const workerLogs = state.logs.filter((l) => l.worker === "support-worker").slice(0, 3);
+  const workersCard = `<div class="card"><div class="hd"><h2>🤖 AI Workers</h2><a href="/workers">Details →</a></div><div class="bd">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px"><b style="font-size:13.5px">Support Auto-Reply</b><span class="pill ${wStatus[1]}">${wStatus[0]}</span></div>
+    <div class="mini" style="margin-top:6px">Emails a guard-railed AI first reply to new support tickets. Auto-checks every 2 minutes while the portal runs.</div>
+    <div class="mini" style="margin-top:6px">Last run: ${state.lastRun.support ? when(state.lastRun.support) : "never"}${state.autoReply ? " · next: within 2 min" : ""}</div>
+    ${workerLogs.length ? `<div style="margin-top:8px">${workerLogs.map((l) => `<div class="logline"><span class="t">${when(l.t)}</span><span class="m">${l.ok ? "" : "⚠ "}${esc(l.msg)}</span></div>`).join("")}</div>` : ""}
+    <div class="row">
+      <form method="POST" action="/workers/run" onsubmit="return confirm('Run the support worker now? It emails real customers with AI replies to every open ticket.')"><input type="hidden" name="w" value="support"/><input type="hidden" name="back" value="/jarvis"/><button class="btn" type="submit">▶ Run now</button></form>
+      <form method="POST" action="/workers/toggle" onsubmit="return confirm('${state.autoReply ? "Disable the support auto-reply worker?" : "Enable auto-reply? It can email real customers every 2 minutes while this portal runs."}')"><input type="hidden" name="back" value="/jarvis"/><button class="btn" type="submit">${state.autoReply ? "Disable" : "Enable"}</button></form>
+    </div>
+    <div class="mini" style="margin-top:10px;color:var(--faint)">More workers (marketing, churn-watch) — coming soon, not active.</div></div></div>`;
+
+  /* --- Support Queue card --- */
+  const queueRows = open.slice(0, 3).map((r) => `<div class="tick"><span class="who">${esc(r.email || "no email")}</span><span class="what">${esc((r.message || "").slice(0, 70))}</span></div>`).join("");
+  const supportCard = `<div class="card"><div class="hd"><h2>💬 Support Queue</h2><a href="/support">Inbox →</a></div><div class="bd">
+    <div style="font-size:26px;font-weight:770;letter-spacing:-.02em">${num(open.length)} <span style="font-size:13px;color:var(--muted);font-weight:500">open ticket${open.length === 1 ? "" : "s"}</span></div>
+    ${queueRows || `<div class="mini" style="margin-top:6px">Inbox clear — nothing waiting. 🎉</div>`}
+    <div class="row"><span class="chip" onclick="jvChip('Summarize my open support tickets and what each customer needs')">Summarize</span><span class="chip" onclick="jvChip('Draft a reply to my newest open ticket')">Draft reply</span></div></div></div>`;
+
+  /* --- Recent Actions card --- */
+  const recent = state.logs.slice(0, 6);
+  const actionsCard = `<div class="card"><div class="hd"><h2>🕒 Recent Actions</h2><a href="/workers">Full log →</a></div><div class="bd">
+    ${recent.length ? recent.map((l) => `<div class="logline"><span class="t">${when(l.t)}</span><span class="m">${l.ok ? "" : "⚠ "}<b>${esc(l.worker)}</b> — ${esc(l.msg)}</span></div>`).join("") : `<div class="mini">No actions yet — everything Jarvis and the workers do shows up here.</div>`}</div></div>`;
+
+  const body = `<div class="jvwrap">${chat}<aside class="jvside" id="jvside">${briefCard}${workersCard}${supportCard}${actionsCard}</aside></div>`;
+  return { title: "Jarvis", sub: "Your AI control center — chat, daily brief, workers, and support in one place. Sensitive actions always ask first.", body };
 }
 
 /* ============================ Router ============================ */
@@ -741,10 +831,12 @@ const server = http.createServer(async (req, res) => {
     return redirect(res, "/support");
   }
 
+  const safeBack = (f, fb) => (["/jarvis", "/workers", "/brief", "/support", "/"].includes(f.back) ? f.back : fb);
   if (p === "/workers/toggle" && req.method === "POST") {
+    const f = parseForm(await readBody(req));
     state.autoReply = !state.autoReply; saveState();
     log("support-worker", "auto-reply turned " + (state.autoReply ? "ON" : "OFF") + " by " + OWNER, true);
-    return redirect(res, "/workers");
+    return redirect(res, safeBack(f, "/workers"));
   }
   if ((p === "/workers/run" || p === "/brief/run") && req.method === "POST") {
     const f = parseForm(await readBody(req));
@@ -753,7 +845,7 @@ const server = http.createServer(async (req, res) => {
       if (which === "brief") await runDailyBrief();
       else { const r = await runSupportWorker("manual"); log("support-worker", `manual run: ${r.replied || 0} replied, ${r.skipped || 0} skipped, ${r.errors || 0} errors`, !r.errors); }
     } catch (e) { log(which === "brief" ? "brief-worker" : "support-worker", "run failed: " + e.message, false); }
-    return redirect(res, which === "brief" ? "/brief" : "/workers");
+    return redirect(res, safeBack(f, which === "brief" ? "/brief" : "/workers"));
   }
 
   const handler = PAGES[p];

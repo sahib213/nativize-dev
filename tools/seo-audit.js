@@ -38,6 +38,12 @@ function publicHtmlFiles() {
   return walk(SITE).filter((file) => file.endsWith(".html"));
 }
 
+const PRIVATE_OR_ROUTER_SHELLS = new Set([
+  "website/404.html",
+  "website/migration/new/index.html",
+  "website/migration/project/index.html"
+]);
+
 function pathForUrl(url) {
   if (!url.startsWith(`${ORIGIN}/`)) return null;
   const pathname = new URL(url).pathname;
@@ -60,6 +66,13 @@ for (const file of publicHtmlFiles()) {
     }
     if (!/<link rel="canonical" href="https:\/\/nativize\.dev\//.test(content)) {
       fail(file, "redirect shim needs an absolute canonical URL");
+    }
+    continue;
+  }
+
+  if (PRIVATE_OR_ROUTER_SHELLS.has(rel(file))) {
+    if (!/<meta name="robots" content="[^"]*noindex/i.test(content)) {
+      fail(file, "private/router shell must be noindex");
     }
     continue;
   }
