@@ -52,10 +52,9 @@
   /* ---------- shared chrome ---------- */
   var STEPS = ["Connect", "Supabase", "Review", "Migrate", "Done"];
   function head(sub) {
-    return '<div class="mig-top">' +
-      '<div class="kicker">App Migration</div>' +
+    return '<div class="mig-top"><a class="mig-back" href="/migration/">App migration</a><div class="mig-title">' +
       '<h1>Lovable → your own Supabase</h1>' +
-      '<p>' + (sub || "Copy your database, users, and storage in a few guided steps. You stay in control the whole way.") + '</p></div>';
+      '<p>' + (sub || "A secure, guided transfer you control.") + '</p></div></div>';
   }
   function progress(active) {
     return '<div class="mig-stepper">' + STEPS.map(function (s, i) {
@@ -81,7 +80,7 @@
       ["03", "Keys never stored", "Your Supabase connection details stay in this browser tab and go straight to your own project. Nativize never saves or logs them."],
       ["04", "You remove it after", "When the migration is done, you delete the helper — the access closes with it."]
     ].concat(extra || []);
-    return '<details class="mig-safe"><summary><span class="shield" aria-hidden="true"></span> Is this safe? Here\'s exactly what happens <span class="chev">›</span></summary><div class="safe-body">' +
+    return '<details class="mig-safe"><summary><span class="shield" aria-hidden="true"></span> Security and privacy <span class="chev">›</span></summary><div class="safe-body">' +
       rows.map(function (r) { return '<div class="safe-row"><div class="ic">' + r[0] + '</div><div><b>' + r[1] + '</b><p>' + r[2] + '</p></div></div>'; }).join("") + "</div></details>";
   }
 
@@ -92,36 +91,35 @@
     var pinged = draft.source && (draft.source.tables || draft.source.users || draft.source.buckets);
     // Step 2 content: generate the unique key on the spot, then reveal the code.
     var codeStep = hasKey
-      ? 'Open <b>Cloud → Edge Functions → migrate-helper → View code</b>, replace everything with your code below, and Save.' +
-        '<details class="mig-reveal" open><summary>Your helper code <span style="color:var(--muted);font-weight:400">· key ' + esc(draft.accessKey.slice(0, 12)) + '…</span> <span class="chev">›</span></summary><div class="mig-code"><button class="btn btn-glass copy" data-copy-code>Copy</button><pre>' + esc(code) + '</pre></div></details>' +
-        '<button class="btn btn-ghost" id="mhRegen" style="margin-top:8px;font-size:12.5px;padding:6px 10px">Generate a new key</button>'
-      : 'First, generate your own private helper — a unique access key is created right here in your browser, so this code is yours alone.' +
-        '<button class="btn btn-primary" id="mhGen" style="margin-top:10px">Generate my helper code</button>';
+      ? '<p>Open <b>Cloud → Edge Functions → migrate-helper → View code</b>, replace everything, and save.</p>' +
+        '<div class="mig-code-actions"><button class="btn btn-glass" data-copy-code>Copy helper code</button><button class="btn btn-ghost" id="mhRegen">New key</button></div>' +
+        '<details class="mig-reveal"><summary>Preview helper code <span class="code-key">key ' + esc(draft.accessKey.slice(0, 12)) + '…</span><span class="chev">›</span></summary><div class="mig-code"><pre>' + esc(code) + '</pre></div></details>'
+      : '<div class="mig-generate"><span>A private key is created in this browser only.</span><button class="btn btn-primary" id="mhGen">Generate helper code</button></div>';
+    var nextAction = pinged
+      ? '<button class="btn btn-primary" id="mhNext">Continue to Supabase</button>'
+      : '<button class="btn btn-primary" id="mhTest"' + (hasKey ? "" : " disabled") + '>Test helper</button>';
     var body = '<div class="mig-sheet">' +
       '<div class="eyebrow-sm">Step 1 of 5</div><h2>Connect your Lovable project</h2>' +
-      '<p class="lead">Lovable Cloud can’t be connected directly, so you add a tiny, temporary, read-only helper. It takes about a minute — and you remove it when you’re done.</p>' +
+      '<p class="lead">Add one temporary, read-only helper to your Lovable project. You’ll remove it after the transfer.</p>' +
       connCard("lovable", "Lovable Cloud", pinged ? num(draft.source.tables) + " tables · " + num(draft.source.users) + " users · " + num(draft.source.objects) + " files" : "Generate the helper below, then test", pinged) +
       (err ? note("err", esc(err)) : "") +
       '<div class="mig-steps">' +
-        step("1", "Create the helper in Lovable", 'Tell Lovable: <code class="inline">Create an empty edge function called migrate-helper</code>, then refresh so it appears.') +
-        step("2", "Generate & paste your helper code", codeStep) +
-        step("3", "Deploy it", 'Tell Lovable: <code class="inline">Deploy the migrate-helper edge function with verify_jwt = false in supabase/config.toml.</code>') +
-        step("4", "Paste the function URL", 'From <b>Cloud → Edge Functions → migrate-helper → Copy URL</b>.' +
+        step("1", "Create the helper", 'Tell Lovable: <code class="inline">Create an empty edge function called migrate-helper</code>.') +
+        step("2", "Add your helper code", codeStep) +
+        step("3", "Deploy and connect", '<p>Tell Lovable: <code class="inline">Deploy migrate-helper with verify_jwt = false</code> Then copy its function URL.</p>' +
           '<div class="mig-field" style="margin-bottom:0"><input type="url" id="mhUrl" placeholder="https://YOUR-REF.functions.supabase.co/migrate-helper" value="' + esc(draft.helperUrl) + '"' + (hasKey ? "" : " disabled") + '></div>') +
       '</div>' +
       safePanel() +
-      '<div class="mig-actions"><a class="btn btn-ghost" href="/migration/">Cancel</a><span class="spacer"></span>' +
-        '<button class="btn btn-glass" id="mhTest"' + (hasKey ? "" : " disabled") + '>Test connection</button>' +
-        '<button class="btn btn-primary" id="mhNext" ' + (pinged ? "" : "disabled") + '>Continue</button></div></div>';
+      '<div class="mig-actions"><a class="btn btn-ghost" href="/migration/">Cancel</a><span class="spacer"></span>' + nextAction + '</div></div>';
     root.innerHTML = head() + progress(0) + body;
     var gen = document.getElementById("mhGen"); if (gen) gen.onclick = function () { draft.accessKey = Helper.randomKey(); save(); render(); toast("Your unique helper code is ready"); };
     var regen = document.getElementById("mhRegen"); if (regen) regen.onclick = function () { if (!confirm("Generate a new key? You'll need to paste and redeploy the helper code again.")) return; draft.accessKey = Helper.randomKey(); draft.source = { tables: 0, users: 0, buckets: 0, objects: 0 }; save(); render(); };
     var cp = document.querySelector("[data-copy-code]"); if (cp) cp.onclick = function () { navigator.clipboard.writeText(code).then(function () { toast("Helper code copied"); }); };
     var urlEl = document.getElementById("mhUrl"); if (urlEl) urlEl.oninput = function () { draft.helperUrl = this.value.trim(); save(); };
     var testEl = document.getElementById("mhTest"); if (testEl) testEl.onclick = testLovable;
-    document.getElementById("mhNext").onclick = function () { if (pinged) { draft.step = 1; save(); render(); } };
+    var nextEl = document.getElementById("mhNext"); if (nextEl) nextEl.onclick = function () { draft.step = 1; save(); render(); };
   }
-  function step(n, title, body) { return '<div class="mig-step"><div class="n">' + n + '</div><div class="body"><h4>' + esc(title) + "</h4><p>" + body + "</p></div></div>"; }
+  function step(n, title, body) { return '<div class="mig-step"><div class="n">' + n + '</div><div class="body"><h4>' + esc(title) + '</h4><div class="body-copy">' + body + "</div></div></div>"; }
 
   // Ping the helper directly from the browser (it is CORS-enabled + key-gated).
   function testLovable() {
