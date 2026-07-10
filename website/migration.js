@@ -50,45 +50,62 @@
 
   /* ---------- shared chrome ---------- */
   var STEPS = ["Connect", "Supabase", "Review", "Migrate", "Done"];
-  function head() {
-    return '<div class="mig-head">' +
-      '<span class="eyebrow">App migration · included with Max</span>' +
-      '<h1>Move your app to <span class="grad-text">your own Supabase</span></h1>' +
-      '<p>Connect your Lovable project and a fresh Supabase project. Nativize copies your database, users (passwords intact), and storage — no CSV exports, no manual table-by-table work.</p>' +
-      '<div class="mig-trust"><span>🔒 No raw secrets stored</span><span>🧭 You stay in control</span><span>↩︎ Non-destructive to your source</span><span>🗝️ Passwords kept intact</span></div></div>';
+  function head(sub) {
+    return '<div class="mig-top">' +
+      '<div class="kicker">App Migration</div>' +
+      '<h1>Lovable → your own Supabase</h1>' +
+      '<p>' + (sub || "Copy your database, users, and storage in a few guided steps. You stay in control the whole way.") + '</p></div>';
   }
   function progress(active) {
-    return '<div class="mig-progress">' + STEPS.map(function (s, i) {
-      var cls = i < active ? "done" : i === active ? "active" : "";
-      return '<div class="step ' + cls + '"><div class="dot">' + (i < active ? "✓" : (i + 1)) + '</div><b>' + esc(s) + '</b></div>';
+    return '<div class="mig-stepper">' + STEPS.map(function (s, i) {
+      var cls = i < active ? "done" : i === active ? "active" : "wait";
+      return '<div class="seg ' + cls + '"><div class="dot">' + (i < active ? "✓" : (i + 1)) + '</div><div class="lbl">' + esc(s) + '</div></div>';
     }).join("") + "</div>";
   }
   function note(cls, html) { return '<div class="mig-note ' + cls + '">' + html + "</div>"; }
+  function connCard(kind, name, sub, connected) {
+    return '<div class="mig-conn' + (connected ? " connected" : "") + '"><div class="tile ' + kind + '">' + (kind === "lovable" ? "💜" : "🟩") + '</div>' +
+      '<div class="meta"><b>' + esc(name) + '</b><span>' + esc(sub) + '</span></div>' +
+      '<div class="pill">' + (connected ? "✓ Connected" : "Not connected") + '</div></div>';
+  }
+  // Reassurance panel — makes the (already real) safety properties visible.
+  function safePanel(extra) {
+    var rows = [
+      ["🔑", "Your own private key", "This helper only answers requests carrying the random key baked into your copy of the code. Nobody else — not even Nativize — can call it."],
+      ["👁️", "Read-only &amp; open", "The helper only reads. You can see every line before you deploy it, and it never writes to or deletes from your Lovable project."],
+      ["🔒", "Keys never stored", "Your Supabase connection details stay in this browser tab and go straight to your own project. Nativize never saves or logs them."],
+      ["🧹", "You remove it after", "When the migration is done, you delete the helper — the access closes with it."]
+    ].concat(extra || []);
+    return '<details class="mig-safe"><summary><span class="shield">🛡️</span> Is this safe? Here\'s exactly what happens <span class="chev">›</span></summary><div class="safe-body">' +
+      rows.map(function (r) { return '<div class="safe-row"><div class="ic">' + r[0] + '</div><div><b>' + r[1] + '</b><p>' + r[2] + '</p></div></div>'; }).join("") + "</div></details>";
+  }
 
   /* ---------- Step 0: Connect Lovable ---------- */
   function renderConnect(err) {
     var code = Helper.helperCode(draft.accessKey);
     var pinged = draft.source && (draft.source.tables || draft.source.users || draft.source.buckets);
-    var body = '<div class="mig-panel card"><h2>1 · Connect your Lovable project</h2>' +
-      '<p class="sub">Lovable Cloud can\'t be connected directly, so you\'ll add a tiny, temporary, <b>read-only</b> helper. You remove it when you\'re done.</p>' +
+    var body = '<div class="mig-sheet">' +
+      '<div class="eyebrow-sm">Step 1 of 5</div><h2>Connect your Lovable project</h2>' +
+      '<p class="lead">Lovable Cloud can’t be connected directly, so you add a tiny, temporary, read-only helper. It takes about a minute — and you remove it when you’re done.</p>' +
+      connCard("lovable", "Lovable Cloud", pinged ? num(draft.source.tables) + " tables · " + num(draft.source.users) + " users · " + num(draft.source.objects) + " files" : "Add the helper below, then test", pinged) +
       (err ? note("err", esc(err)) : "") +
       '<div class="mig-steps">' +
-        step("1", "Create an edge function in Lovable", 'Tell Lovable: <code class="inline">Create an empty edge function called migrate-helper</code>, then refresh so it appears.') +
-        step("2", "Paste this helper code", 'Open <b>Cloud → Edge Functions → migrate-helper → View code</b>, replace everything with the code below, and Save. It\'s locked to your one-time access key and can only read.' +
-          '<div class="mig-code"><button class="btn btn-glass copy" data-copy-code>Copy code</button><pre id="mhCode">' + esc(code) + '</pre></div>') +
+        step("1", "Create the helper in Lovable", 'Tell Lovable: <code class="inline">Create an empty edge function called migrate-helper</code>, then refresh so it appears.') +
+        step("2", "Paste your helper code", 'Open <b>Cloud → Edge Functions → migrate-helper → View code</b>, replace everything with your code below, and Save.' +
+          '<details class="mig-reveal"><summary>📄 View &amp; copy your helper code <span class="chev">›</span></summary><div class="mig-code"><button class="btn btn-glass copy" data-copy-code>Copy</button><pre>' + esc(code) + '</pre></div></details>') +
         step("3", "Deploy it", 'Tell Lovable: <code class="inline">Deploy the migrate-helper edge function with verify_jwt = false in supabase/config.toml.</code>') +
-        step("4", "Paste the function URL", 'Get it from <b>Cloud → Edge Functions → migrate-helper → Copy URL</b>.' +
-          '<div class="mig-field"><input type="url" id="mhUrl" placeholder="https://YOUR-REF.functions.supabase.co/migrate-helper" value="' + esc(draft.helperUrl) + '"></div>') +
+        step("4", "Paste the function URL", 'From <b>Cloud → Edge Functions → migrate-helper → Copy URL</b>.' +
+          '<div class="mig-field" style="margin-bottom:0"><input type="url" id="mhUrl" placeholder="https://YOUR-REF.functions.supabase.co/migrate-helper" value="' + esc(draft.helperUrl) + '"></div>') +
       '</div>' +
-      (pinged ? note("ok", "✓ Connected to Lovable — found <b>" + num(draft.source.tables) + "</b> tables, <b>" + num(draft.source.users) + "</b> users, <b>" + num(draft.source.objects) + "</b> storage files.") : "") +
+      safePanel() +
       '<div class="mig-actions"><a class="btn btn-ghost" href="/migration/">Cancel</a><span class="spacer"></span>' +
         '<button class="btn btn-glass" id="mhTest">Test connection</button>' +
-        '<button class="btn btn-primary" id="mhNext" ' + (pinged ? "" : "disabled") + '>Next: Supabase →</button></div></div>';
+        '<button class="btn btn-primary" id="mhNext" ' + (pinged ? "" : "disabled") + '>Continue</button></div></div>';
     root.innerHTML = head() + progress(0) + body;
     document.querySelector("[data-copy-code]").onclick = function () { navigator.clipboard.writeText(code).then(function () { toast("Helper code copied"); }); };
     document.getElementById("mhUrl").oninput = function () { draft.helperUrl = this.value.trim(); save(); };
     document.getElementById("mhTest").onclick = testLovable;
-    document.getElementById("mhNext").onclick = function () { if (draft.helperUrl) { draft.step = 1; save(); render(); } };
+    document.getElementById("mhNext").onclick = function () { if (pinged) { draft.step = 1; save(); render(); } };
   }
   function step(n, title, body) { return '<div class="mig-step"><div class="n">' + n + '</div><div class="body"><h4>' + esc(title) + "</h4><p>" + body + "</p></div></div>"; }
 
@@ -128,20 +145,21 @@
       ? '<div class="mig-field"><label>Secret key <span class="hint">Settings → API Keys → secret key · only used to copy your ' + num(draft.source.objects) + ' storage file' + (draft.source.objects === 1 ? "" : "s") + '</span></label>' +
           '<input type="password" id="tgKey" placeholder="sb_secret_… or service_role key" value="' + esc(creds.targetKey) + '"></div>'
       : "";
-    var body = '<div class="mig-panel card"><h2>2 · Connect your target Supabase</h2>' +
-      '<p class="sub">Create a brand-new, empty Supabase project, click <b>Connect</b> at the top of its dashboard, and paste the connection string below. That\'s it — we read the project details from it automatically.</p>' +
+    var body = '<div class="mig-sheet">' +
+      '<div class="eyebrow-sm">Step 2 of 5</div><h2>Connect your target Supabase</h2>' +
+      '<p class="lead">Create a brand-new, empty Supabase project, click <b>Connect</b> at the top of its dashboard, and paste the connection string. We read the project details from it automatically.</p>' +
+      connCard("supabase", "Supabase", draft.targetEmpty === true ? "Connected · empty and ready" : derived ? "Project " + esc(derived.ref) + " · test to continue" : "Paste your connection string", draft.targetEmpty === true) +
       (err ? note("err", esc(err)) : "") +
-      '<div class="mig-field"><label>Database connection string <span class="hint">Supabase dashboard → Connect → Direct connection (or Session pooler)</span></label>' +
+      '<div class="mig-field"><label>Database connection string <span class="hint">Supabase → Connect → Direct connection (or Session pooler)</span></label>' +
         '<textarea id="tgConn" placeholder="postgresql://postgres:[YOUR-PASSWORD]@db.YOUR-REF.supabase.co:5432/postgres">' + esc(creds.targetConn) + '</textarea>' +
-        (derived ? '<div class="mig-note ok" style="margin:8px 0 0">✓ Project detected: <b>' + esc(derived.ref) + '</b> — we\'ll fill in the rest.</div>' : '') + '</div>' +
+        (derived ? '<div class="mig-note ok" style="margin:8px 0 0">✓ Project detected: <b>' + esc(derived.ref) + '</b></div>' : '') + '</div>' +
       keyField +
-      note("warn", "🔐 Your credentials stay in this browser tab and go directly to your own projects. Nativize never stores them." + (needsStorageKey() ? " Delete the temporary secret key when you\'re done." : "")) +
       '<label class="mig-check"><input type="checkbox" id="tgBlank"' + (draft.targetEmpty !== null ? " checked" : "") + '><span>I confirm this is a <b>fresh / empty</b> Supabase project.</span></label>' +
-      (draft.targetEmpty === false ? note("warn", "⚠ The target already has tables in <code class=\"inline\">public</code>. You can continue, but existing rows/tables won\'t be overwritten (insert-if-absent).") : "") +
-      (draft.targetEmpty === true ? note("ok", "✓ Target reachable and empty — ready to migrate.") : "") +
+      (draft.targetEmpty === false ? note("warn", "⚠ The target already has tables in <code class=\"inline\">public</code>. You can continue — existing rows aren’t overwritten (insert-if-absent).") : "") +
+      safePanel() +
       '<div class="mig-actions"><button class="btn btn-ghost" id="tgBack">← Back</button><span class="spacer"></span>' +
         '<button class="btn btn-glass" id="tgTest">Test connection</button>' +
-        '<button class="btn btn-primary" id="tgNext" ' + (draft.targetEmpty === null ? "disabled" : "") + '>Review migration →</button></div></div>';
+        '<button class="btn btn-primary" id="tgNext" ' + (draft.targetEmpty === null ? "disabled" : "") + '>Continue</button></div></div>';
     root.innerHTML = head() + progress(1) + body;
     var connEl = document.getElementById("tgConn");
     connEl.oninput = function () {
@@ -196,12 +214,13 @@
     } else {
       gate = paywall();
     }
-    var body = '<div class="mig-panel card"><h2>3 · Review &amp; start</h2>' +
-      '<p class="sub">Here\'s what will move from Lovable into your Supabase project.</p>' +
+    var body = '<div class="mig-sheet">' +
+      '<div class="eyebrow-sm">Step 3 of 5</div><h2>Review &amp; start</h2>' +
+      '<p class="lead">Here’s exactly what will move from Lovable into your Supabase project.</p>' +
       (err ? note("err", esc(err)) : "") + stats +
-      (draft.targetEmpty === false ? note("warn", "Target isn\'t empty — existing data is kept; only missing rows/tables are added.") : "") +
-      note("ok", "Migrates: <b>database schema + rows</b>, <b>auth users with password hashes</b>, <b>storage files &amp; buckets</b>, plus row-level-security policies. Edge functions and auth-provider settings are covered by the checklist afterward.") +
-      '<div style="margin-top:20px">' + gate + '</div>' +
+      (draft.targetEmpty === false ? note("warn", "Target isn’t empty — existing data is kept; only missing rows and tables are added.") : "") +
+      note("ok", "Copies your <b>database schema &amp; rows</b>, <b>auth users with password hashes</b>, <b>storage files &amp; buckets</b>, and row-level-security policies. Edge functions and auth-provider settings come with a checklist afterward.") +
+      '<div style="margin-top:22px">' + gate + '</div>' +
       '<div class="mig-actions"><button class="btn btn-ghost" id="rvBack">← Back</button><span class="spacer"></span></div></div>';
     root.innerHTML = head() + progress(2) + body;
     document.getElementById("rvBack").onclick = function () { draft.step = 1; save(); render(); };
@@ -324,18 +343,19 @@
   }
 
   function renderRun() {
-    if (root.dataset.rendered !== "run") { root.innerHTML = head() + progress(3) + '<div class="mig-panel card" id="runPanel"></div>'; root.dataset.rendered = "run"; }
+    if (root.dataset.rendered !== "run") { root.innerHTML = head("Sit back — this runs automatically and resumes safely if a step retries.") + progress(3) + '<div class="mig-sheet" id="runPanel"></div>'; root.dataset.rendered = "run"; }
     var active = -1; runState.phases.forEach(function (p, i) { if (p.status === "active" || p.status === "err") active = i; });
     runState.phase = active < 0 ? runState.phases.length : active;
+    var done = runState.pct >= 100;
     var panel = document.getElementById("runPanel");
-    panel.innerHTML = '<h2>4 · Migrating your app</h2><p class="sub">Keep this tab open. You can watch progress live — it resumes safely if a step retries.</p>' +
-      '<div class="mig-run-bar"><i style="width:' + runState.pct + '%"></i></div>' +
+    panel.innerHTML = '<div class="mig-run-head"><div class="mig-run-pct">' + runState.pct + '%</div><div class="mig-run-sub">' + (done ? "Wrapping up…" : runState.error ? "Paused" : "Migrating your app — keep this tab open") + '</div></div>' +
+      '<div class="mig-bar"><i style="width:' + runState.pct + '%"></i></div>' +
       runState.phases.map(function (p) {
-        var ic = p.status === "done" ? "✓" : p.status === "err" ? "!" : p.status === "active" ? "•" : "";
+        var ic = p.status === "done" ? "✓" : p.status === "err" ? "!" : p.status === "active" ? "" : "";
         return '<div class="mig-phase ' + p.status + '"><div class="ic">' + ic + '</div><div class="txt"><b>' + esc(p.label) + '</b><span>' + esc(p.detail || p.hint) + '</span></div></div>';
       }).join("") +
       (runState.warnings.length ? '<details class="mig-warns"><summary>' + num(runState.warnings.length) + ' notes / skipped items</summary><ul>' + runState.warnings.slice(0, 60).map(function (w) { return "<li>" + esc(w) + "</li>"; }).join("") + "</ul></details>" : "") +
-      (runState.error ? note("err", "<b>Stopped:</b> " + esc(runState.error)) + '<div class="mig-actions"><button class="btn btn-ghost" id="runBack">← Back</button><span class="spacer"></span><button class="btn btn-primary" id="runRetry">Retry this step</button></div>' : "");
+      (runState.error ? note("err", "<b>Paused:</b> " + esc(runState.error)) + '<div class="mig-actions"><button class="btn btn-ghost" id="runBack">← Back</button><span class="spacer"></span><button class="btn btn-primary" id="runRetry">Retry this step</button></div>' : "");
     var rb = document.getElementById("runBack"); if (rb) rb.onclick = function () { draft.step = 2; runState = null; root.dataset.rendered = ""; save(); render(); };
     var rr = document.getElementById("runRetry"); if (rr) rr.onclick = function () { runState.error = null; renderRun(); runEngine(); };
   }
@@ -353,35 +373,37 @@
       ["Reconfigure auth providers", "Re-enable Google/Apple/GitHub sign-in and set Site URL + redirect URLs on the new project so logins keep working."],
       ["Point your app at the new project", "Update your Supabase URL + publishable (anon) key in your app, then run login, storage, and payment tests before switching for real."]
     ];
-    var body = '<div class="mig-panel card"><h2>🎉 Migration complete</h2>' +
-      '<p class="sub">Your database, users, and storage are now in your own Supabase project. A few manual steps finish the move — you stay in control of the final switch.</p>' +
-      note("ok", "Copied: <b>" + num(draft.source.tables) + "</b> tables · <b>" + num(draft.source.users) + "</b> users · <b>" + num(draft.source.objects) + "</b> storage files.") +
-      '<h3 style="margin:22px 0 10px;font-size:16px">Clean up the temporary access</h3><div class="mig-list">' +
-        cleanup.map(function (c, i) { return checkItem("cln" + i, c[0], c[1]); }).join("") + "</div>" +
-      '<h3 style="margin:22px 0 10px;font-size:16px">Finish the switch</h3><div class="mig-list">' +
-        next.map(function (c, i) { return checkItem("nxt" + i, c[0], c[1]); }).join("") + "</div>" +
-      '<div class="mig-actions"><a class="btn btn-ghost" href="/migration/">Done</a><span class="spacer"></span><a class="btn btn-primary" href="/app/">Now build a native app →</a></div></div>';
+    var body = '<div class="mig-sheet" style="text-align:center">' +
+      '<div style="font-size:44px;line-height:1">🎉</div>' +
+      '<h2 style="margin-top:8px">Migration complete</h2>' +
+      '<p class="lead" style="max-width:520px;margin-inline:auto">Your database, users, and storage are now in your own Supabase project. A few quick steps finish the move — you control the final switch.</p>' +
+      note("ok", "Copied <b>" + num(draft.source.tables) + "</b> tables · <b>" + num(draft.source.users) + "</b> users · <b>" + num(draft.source.objects) + "</b> storage files.") +
+      '<h3 style="margin:24px 0 12px;font-size:15px;text-align:left">Clean up the temporary access</h3>' +
+        cleanup.map(function (c, i) { return checkItem("cln" + i, c[0], c[1]); }).join("") +
+      '<h3 style="margin:24px 0 12px;font-size:15px;text-align:left">Finish the switch</h3>' +
+        next.map(function (c, i) { return checkItem("nxt" + i, c[0], c[1]); }).join("") +
+      '<div class="mig-actions"><a class="btn btn-ghost" href="/migration/">Done</a><span class="spacer"></span><a class="btn btn-primary" href="/app/">Build a native app →</a></div></div>';
     root.innerHTML = head() + progress(4) + body;
-    root.querySelectorAll(".mig-list-check input").forEach(function (b) {
+    root.querySelectorAll(".mig-check-item input").forEach(function (b) {
       var key = "nz_mig_done_" + draft.projectId + "_" + b.id;
       b.checked = localStorage.getItem(key) === "1";
       b.onchange = function () { try { localStorage.setItem(key, b.checked ? "1" : "0"); } catch (_e) {} };
     });
   }
-  function checkItem(id, title, body) { return '<label class="mig-list-check"><input type="checkbox" id="' + id + '"><span><b>' + esc(title) + "</b><p>" + body + "</p></span></label>"; }
+  function checkItem(id, title, body) { return '<label class="mig-check-item" style="text-align:left"><input type="checkbox" id="' + id + '"><span><b>' + esc(title) + "</b><p>" + body + "</p></span></label>"; }
 
   /* ---------- Project view (/migration/:id) ---------- */
   function initProject() {
-    if (!accessToken) { root.innerHTML = head() + '<div class="mig-panel card"><h2>Your migrations</h2><p class="sub">Sign in to see your private migration projects.</p><button class="btn btn-primary" id="pSignin">Sign in with GitHub</button></div>'; document.getElementById("pSignin").onclick = function () { signIn(); }; return; }
+    if (!accessToken) { root.innerHTML = head() + '<div class="mig-sheet"><h2>Your migrations</h2><p class="lead">Sign in to see your private migration projects.</p><button class="btn btn-primary" id="pSignin">Sign in with GitHub</button></div>'; document.getElementById("pSignin").onclick = function () { signIn(); }; return; }
     var m = location.pathname.match(/^\/migration\/([0-9a-f-]{36})/i);
     if (!m) { return api("listMigrationProjects").then(function (list) {
-      root.innerHTML = head() + '<div class="mig-panel card"><h2>Your migrations</h2><div class="mig-actions" style="margin:0 0 16px"><span class="spacer"></span><a class="btn btn-primary" href="/migration/new/">New migration</a></div>' +
-        (list && list.length ? '<div class="mig-list">' + list.map(function (p) { return '<a class="mig-list-check" style="text-decoration:none;color:inherit" href="/migration/' + esc(p.id) + '"><span><b>' + esc(p.name) + '</b><p>' + esc(p.source_provider) + " → " + esc(p.target_provider) + " · " + esc(p.status) + "</p></span></a>"; }).join("") + "</div>" : '<div class="mig-note">No migrations yet. <a href="/migration/new/" style="color:#c4b5fd">Start one →</a></div>') + "</div>";
+      root.innerHTML = head() + '<div class="mig-sheet"><h2>Your migrations</h2><div class="mig-actions" style="margin:0 0 18px"><span class="spacer"></span><a class="btn btn-primary" href="/migration/new/">New migration</a></div>' +
+        (list && list.length ? list.map(function (p) { return '<a class="mig-check-item" style="text-decoration:none;color:inherit;text-align:left" href="/migration/' + esc(p.id) + '"><span><b>' + esc(p.name) + '</b><p>' + esc(p.source_provider) + " → " + esc(p.target_provider) + " · " + esc(p.status) + "</p></span></a>"; }).join("") : '<div class="mig-note">No migrations yet. <a href="/migration/new/" style="color:#c4b5fd">Start one →</a></div>') + "</div>";
     }).catch(function (e) { root.innerHTML = head() + note("err", esc(e.message)); }); }
     api("getMigrationProject", [m[1]]).then(function (data) {
       if (!data.project) throw new Error("Project not found for your account.");
       var p = data.project;
-      root.innerHTML = head() + '<div class="mig-panel card"><h2>' + esc(p.name) + '</h2><p class="sub">' + esc(p.source_provider) + " → " + esc(p.target_provider) + " · status: " + esc(p.status) + '</p>' +
+      root.innerHTML = head() + '<div class="mig-sheet"><h2>' + esc(p.name) + '</h2><p class="lead">' + esc(p.source_provider) + " → " + esc(p.target_provider) + " · status: " + esc(p.status) + '</p>' +
         note(p.status === "done" || p.status === "test" ? "ok" : "", "Created " + esc(new Date(p.created_at).toLocaleString())) +
         '<div class="mig-actions"><a class="btn btn-ghost" href="/migration/">All migrations</a><span class="spacer"></span><a class="btn btn-primary" href="/migration/new/">New migration</a></div></div>';
     }).catch(function (e) { root.innerHTML = head() + note("err", esc(e.message)); });
