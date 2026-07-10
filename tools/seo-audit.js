@@ -8,7 +8,7 @@ const ROOT = process.cwd();
 const SITE = path.join(ROOT, "website");
 const ORIGIN = "https://nativize.dev";
 const CHROME_STORE_URL = "https://chromewebstore.google.com/detail/mofjfbhfeanhffcfighdmhdboimiienb?utm_source=item-share-cb";
-const SCRIPT_CACHE_KEY = "20260710-migrate-nav";
+const SCRIPT_CACHE_KEY = "20260710-migration-home";
 const errors = [];
 
 function walk(dir) {

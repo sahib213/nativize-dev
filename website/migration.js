@@ -65,10 +65,8 @@
   }
   function note(cls, html) { return '<div class="mig-note ' + cls + '">' + html + "</div>"; }
   var LOGO = {
-    // Supabase — official bolt mark.
-    supabase: '<svg viewBox="0 0 109 113" width="26" height="26" fill="none" aria-hidden="true"><path d="M63.708 110.284c-2.86 3.601-8.658 1.629-8.727-2.97l-1.007-67.251h45.22c8.19 0 12.759 9.46 7.665 15.875l-43.151 54.346Z" fill="url(#lsa)"/><path d="M63.708 110.284c-2.86 3.601-8.658 1.629-8.727-2.97l-1.007-67.251h45.22c8.19 0 12.759 9.46 7.665 15.875l-43.151 54.346Z" fill="url(#lsb)" fill-opacity=".2"/><path d="M45.317 2.071c2.86-3.601 8.657-1.628 8.726 2.97l.442 67.251H9.83c-8.19 0-12.759-9.46-7.665-15.875L45.317 2.071Z" fill="#3ECF8E"/><defs><linearGradient id="lsa" x1="53.974" y1="54.974" x2="94.163" y2="71.829" gradientUnits="userSpaceOnUse"><stop stop-color="#249361"/><stop offset="1" stop-color="#3ECF8E"/></linearGradient><linearGradient id="lsb" x1="36.156" y1="30.578" x2="54.484" y2="65.081" gradientUnits="userSpaceOnUse"><stop/><stop offset="1" stop-opacity="0"/></linearGradient></defs></svg>',
-    // Lovable — heart mark in the brand gradient.
-    lovable: '<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M12 21s-7.5-4.35-10-9.5C.4 8 2 4.5 5.5 4.5c2.1 0 3.6 1.2 4.5 2.6.9-1.4 2.4-2.6 4.5-2.6C18 4.5 19.6 8 18 11.5 16.5 14.85 12 21 12 21Z" fill="url(#llov)"/><defs><linearGradient id="llov" x1="2" y1="4" x2="20" y2="21" gradientUnits="userSpaceOnUse"><stop stop-color="#FF5C8A"/><stop offset=".55" stop-color="#FF6B57"/><stop offset="1" stop-color="#FF9346"/></linearGradient></defs></svg>'
+    supabase: '<img src="/assets/supabase-logo.svg" alt="" />',
+    lovable: '<img src="/assets/lovable-logo.svg" alt="" />'
   };
   function connCard(kind, name, sub, connected) {
     return '<div class="mig-conn' + (connected ? " connected" : "") + '"><div class="tile ' + kind + '">' + (LOGO[kind] || "") + '</div>' +
@@ -78,12 +76,12 @@
   // Reassurance panel — makes the (already real) safety properties visible.
   function safePanel(extra) {
     var rows = [
-      ["🔑", "Your own private key", "This helper only answers requests carrying the random key baked into your copy of the code. Nobody else — not even Nativize — can call it."],
-      ["👁️", "Read-only &amp; open", "The helper only reads. You can see every line before you deploy it, and it never writes to or deletes from your Lovable project."],
-      ["🔒", "Keys never stored", "Your Supabase connection details stay in this browser tab and go straight to your own project. Nativize never saves or logs them."],
-      ["🧹", "You remove it after", "When the migration is done, you delete the helper — the access closes with it."]
+      ["01", "Your own private key", "This helper only answers requests carrying the random key baked into your copy of the code. Nobody else — not even Nativize — can call it."],
+      ["02", "Read-only &amp; open", "The helper only reads. You can see every line before you deploy it, and it never writes to or deletes from your Lovable project."],
+      ["03", "Keys never stored", "Your Supabase connection details stay in this browser tab and go straight to your own project. Nativize never saves or logs them."],
+      ["04", "You remove it after", "When the migration is done, you delete the helper — the access closes with it."]
     ].concat(extra || []);
-    return '<details class="mig-safe"><summary><span class="shield">🛡️</span> Is this safe? Here\'s exactly what happens <span class="chev">›</span></summary><div class="safe-body">' +
+    return '<details class="mig-safe"><summary><span class="shield" aria-hidden="true"></span> Is this safe? Here\'s exactly what happens <span class="chev">›</span></summary><div class="safe-body">' +
       rows.map(function (r) { return '<div class="safe-row"><div class="ic">' + r[0] + '</div><div><b>' + r[1] + '</b><p>' + r[2] + '</p></div></div>'; }).join("") + "</div></details>";
   }
 
@@ -95,10 +93,10 @@
     // Step 2 content: generate the unique key on the spot, then reveal the code.
     var codeStep = hasKey
       ? 'Open <b>Cloud → Edge Functions → migrate-helper → View code</b>, replace everything with your code below, and Save.' +
-        '<details class="mig-reveal" open><summary>📄 Your helper code <span style="color:var(--muted);font-weight:400">· key ' + esc(draft.accessKey.slice(0, 12)) + '…</span> <span class="chev">›</span></summary><div class="mig-code"><button class="btn btn-glass copy" data-copy-code>Copy</button><pre>' + esc(code) + '</pre></div></details>' +
-        '<button class="btn btn-ghost" id="mhRegen" style="margin-top:8px;font-size:12.5px;padding:6px 10px">↻ Generate a new key</button>'
+        '<details class="mig-reveal" open><summary>Your helper code <span style="color:var(--muted);font-weight:400">· key ' + esc(draft.accessKey.slice(0, 12)) + '…</span> <span class="chev">›</span></summary><div class="mig-code"><button class="btn btn-glass copy" data-copy-code>Copy</button><pre>' + esc(code) + '</pre></div></details>' +
+        '<button class="btn btn-ghost" id="mhRegen" style="margin-top:8px;font-size:12.5px;padding:6px 10px">Generate a new key</button>'
       : 'First, generate your own private helper — a unique access key is created right here in your browser, so this code is yours alone.' +
-        '<button class="btn btn-primary" id="mhGen" style="margin-top:10px">⚡ Generate my helper code</button>';
+        '<button class="btn btn-primary" id="mhGen" style="margin-top:10px">Generate my helper code</button>';
     var body = '<div class="mig-sheet">' +
       '<div class="eyebrow-sm">Step 1 of 5</div><h2>Connect your Lovable project</h2>' +
       '<p class="lead">Lovable Cloud can’t be connected directly, so you add a tiny, temporary, read-only helper. It takes about a minute — and you remove it when you’re done.</p>' +
@@ -106,7 +104,7 @@
       (err ? note("err", esc(err)) : "") +
       '<div class="mig-steps">' +
         step("1", "Create the helper in Lovable", 'Tell Lovable: <code class="inline">Create an empty edge function called migrate-helper</code>, then refresh so it appears.') +
-        step("2", "Generate &amp; paste your helper code", codeStep) +
+        step("2", "Generate & paste your helper code", codeStep) +
         step("3", "Deploy it", 'Tell Lovable: <code class="inline">Deploy the migrate-helper edge function with verify_jwt = false in supabase/config.toml.</code>') +
         step("4", "Paste the function URL", 'From <b>Cloud → Edge Functions → migrate-helper → Copy URL</b>.' +
           '<div class="mig-field" style="margin-bottom:0"><input type="url" id="mhUrl" placeholder="https://YOUR-REF.functions.supabase.co/migrate-helper" value="' + esc(draft.helperUrl) + '"' + (hasKey ? "" : " disabled") + '></div>') +

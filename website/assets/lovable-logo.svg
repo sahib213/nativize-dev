@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <defs>
+    <linearGradient id="lovable" x1="2" y1="4" x2="20" y2="21" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FF5C8A"/>
+      <stop offset=".55" stop-color="#FF6B57"/>
+      <stop offset="1" stop-color="#FF9346"/>
+    </linearGradient>
+  </defs>
+  <path d="M12 21s-7.5-4.35-10-9.5C.4 8 2 4.5 5.5 4.5c2.1 0 3.6 1.2 4.5 2.6.9-1.4 2.4-2.6 4.5-2.6C18 4.5 19.6 8 18 11.5 16.5 14.85 12 21 12 21Z" fill="url(#lovable)"/>
+</svg>
