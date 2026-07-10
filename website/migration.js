@@ -110,27 +110,48 @@
   }
 
   /* ---------- Step 1: Connect Supabase ---------- */
+  // Pull the project ref out of a Supabase connection string (direct OR pooler)
+  // so we can auto-fill the project URL — one less thing for the user to paste.
+  function deriveTarget(conn) {
+    conn = String(conn || "");
+    var m = conn.match(/@db\.([a-z0-9]{18,24})\.supabase\.co/i)      // direct connection
+      || conn.match(/\/\/postgres\.([a-z0-9]{18,24})[:@]/i);         // session/transaction pooler
+    return m ? { ref: m[1], url: "https://" + m[1] + ".supabase.co" } : null;
+  }
+  // The secret key is only used to upload storage files. Skip asking for it
+  // when the source project has no storage.
+  function needsStorageKey() { return (draft.source && (draft.source.objects || draft.source.buckets)) > 0; }
+
   function renderTarget(err) {
+    var derived = deriveTarget(creds.targetConn);
+    var keyField = needsStorageKey()
+      ? '<div class="mig-field"><label>Secret key <span class="hint">Settings → API Keys → secret key · only used to copy your ' + num(draft.source.objects) + ' storage file' + (draft.source.objects === 1 ? "" : "s") + '</span></label>' +
+          '<input type="password" id="tgKey" placeholder="sb_secret_… or service_role key" value="' + esc(creds.targetKey) + '"></div>'
+      : "";
     var body = '<div class="mig-panel card"><h2>2 · Connect your target Supabase</h2>' +
-      '<p class="sub">Create a brand-new, empty Supabase project to receive everything. Never point this at a live project.</p>' +
+      '<p class="sub">Create a brand-new, empty Supabase project, click <b>Connect</b> at the top of its dashboard, and paste the connection string below. That\'s it — we read the project details from it automatically.</p>' +
       (err ? note("err", esc(err)) : "") +
-      '<div class="mig-field"><label>Project URL <span class="hint">Settings → API → Project URL</span></label>' +
-        '<input type="url" id="tgUrl" placeholder="https://YOUR-REF.supabase.co" value="' + esc(draft.targetUrl) + '"></div>' +
-      '<div class="mig-field"><label>Database connection string <span class="hint">Connect → Direct connection (or Session pooler)</span></label>' +
-        '<textarea id="tgConn" placeholder="postgresql://postgres:[PASSWORD]@db.YOUR-REF.supabase.co:5432/postgres">' + esc(creds.targetConn) + '</textarea></div>' +
-      '<div class="mig-field"><label>Service role / secret key <span class="hint">Settings → API Keys → secret key (needed only to upload storage files)</span></label>' +
-        '<input type="password" id="tgKey" placeholder="sb_secret_… or service_role key" value="' + esc(creds.targetKey) + '"></div>' +
-      note("warn", "🔐 These credentials stay in this browser tab and are sent directly to your projects for the transfer. Nativize never stores them. Delete this temporary secret key after you\'re done.") +
-      '<label class="mig-check"><input type="checkbox" id="tgBlank"><span>I confirm this is a <b>fresh / empty</b> Supabase project. Migrating into a project with data can create conflicts.</span></label>' +
+      '<div class="mig-field"><label>Database connection string <span class="hint">Supabase dashboard → Connect → Direct connection (or Session pooler)</span></label>' +
+        '<textarea id="tgConn" placeholder="postgresql://postgres:[YOUR-PASSWORD]@db.YOUR-REF.supabase.co:5432/postgres">' + esc(creds.targetConn) + '</textarea>' +
+        (derived ? '<div class="mig-note ok" style="margin:8px 0 0">✓ Project detected: <b>' + esc(derived.ref) + '</b> — we\'ll fill in the rest.</div>' : '') + '</div>' +
+      keyField +
+      note("warn", "🔐 Your credentials stay in this browser tab and go directly to your own projects. Nativize never stores them." + (needsStorageKey() ? " Delete the temporary secret key when you\'re done." : "")) +
+      '<label class="mig-check"><input type="checkbox" id="tgBlank"' + (draft.targetEmpty !== null ? " checked" : "") + '><span>I confirm this is a <b>fresh / empty</b> Supabase project.</span></label>' +
       (draft.targetEmpty === false ? note("warn", "⚠ The target already has tables in <code class=\"inline\">public</code>. You can continue, but existing rows/tables won\'t be overwritten (insert-if-absent).") : "") +
       (draft.targetEmpty === true ? note("ok", "✓ Target reachable and empty — ready to migrate.") : "") +
       '<div class="mig-actions"><button class="btn btn-ghost" id="tgBack">← Back</button><span class="spacer"></span>' +
-        '<button class="btn btn-glass" id="tgTest">Test target</button>' +
+        '<button class="btn btn-glass" id="tgTest">Test connection</button>' +
         '<button class="btn btn-primary" id="tgNext" ' + (draft.targetEmpty === null ? "disabled" : "") + '>Review migration →</button></div></div>';
     root.innerHTML = head() + progress(1) + body;
-    document.getElementById("tgUrl").oninput = function () { draft.targetUrl = this.value.trim(); save(); };
-    document.getElementById("tgConn").oninput = function () { creds.targetConn = this.value.trim(); };
-    document.getElementById("tgKey").oninput = function () { creds.targetKey = this.value.trim(); };
+    var connEl = document.getElementById("tgConn");
+    connEl.oninput = function () {
+      creds.targetConn = this.value.trim();
+      // Live-update the "project detected" hint without a full re-render.
+      var d = deriveTarget(creds.targetConn); var hint = connEl.parentNode.querySelector(".mig-note");
+      if (d) { if (!hint) { hint = document.createElement("div"); hint.className = "mig-note ok"; hint.style.margin = "8px 0 0"; connEl.parentNode.appendChild(hint); } hint.innerHTML = "✓ Project detected: <b>" + esc(d.ref) + "</b> — we\'ll fill in the rest."; }
+      else if (hint) hint.remove();
+    };
+    var keyEl = document.getElementById("tgKey"); if (keyEl) keyEl.oninput = function () { creds.targetKey = this.value.trim(); };
     document.getElementById("tgBack").onclick = function () { draft.step = 0; save(); render(); };
     document.getElementById("tgTest").onclick = testTarget;
     document.getElementById("tgNext").onclick = function () { if (draft.targetEmpty !== null) { draft.step = 2; save(); loadAccess(); render(); } };
@@ -139,13 +160,15 @@
     if (!accessToken) { signIn("target"); return; }
     var btn = document.getElementById("tgTest");
     var conn = (document.getElementById("tgConn").value || "").trim();
-    var url = (document.getElementById("tgUrl").value || "").trim();
-    if (!/^postgres(ql)?:\/\/.+@.+/.test(conn)) { renderTarget("Paste your Supabase Postgres connection string."); return; }
-    if (!/^https:\/\/.+\.supabase\.co/.test(url)) { renderTarget("Paste your target Supabase project URL."); return; }
+    var keyEl = document.getElementById("tgKey");
+    if (!/^postgres(ql)?:\/\/.+@.+/.test(conn)) { renderTarget("Paste your Supabase Postgres connection string (from the Connect button in your dashboard)."); return; }
+    var derived = deriveTarget(conn);
+    if (!derived) { renderTarget("Couldn\'t read your project ref from that string. Copy the full connection string from Supabase → Connect."); return; }
+    if (needsStorageKey() && !(keyEl && keyEl.value.trim())) { renderTarget("Add your secret key so we can copy your storage files, or it will be skipped."); return; }
     if (!document.getElementById("tgBlank").checked) { renderTarget("Please confirm the target project is fresh / empty."); return; }
-    creds.targetConn = conn; draft.targetUrl = url; save();
+    creds.targetConn = conn; if (keyEl) creds.targetKey = keyEl.value.trim(); draft.targetUrl = derived.url; save();
     btn.disabled = true; btn.textContent = "Testing…";
-    api("runMigrationStep", [{ phase: "test", helperUrl: draft.helperUrl, helperKey: draft.accessKey, targetConn: conn, targetUrl: url }])
+    api("runMigrationStep", [{ phase: "test", helperUrl: draft.helperUrl, helperKey: draft.accessKey, targetConn: conn, targetUrl: derived.url }])
       .then(function (r) {
         if (!r.ok) throw new Error(r.error || "Target test failed.");
         draft.source = r.source || draft.source;
@@ -205,7 +228,7 @@
     { id: "finalize", label: "Keys, indexes & policies", hint: "Foreign keys, RLS and sequences" }
   ];
   function startMigration() {
-    if (!creds.targetConn || !creds.targetKey) { draft.step = 1; save(); renderTarget("Re-enter your target connection string and secret key to start (they aren\'t saved for security)."); return; }
+    if (!creds.targetConn || (needsStorageKey() && !creds.targetKey)) { draft.step = 1; save(); renderTarget("Re-enter your target connection string" + (needsStorageKey() ? " and secret key" : "") + " to start (not saved, for security)."); return; }
     var btn = document.getElementById("rvStart"); if (btn) { btn.disabled = true; btn.textContent = "Preparing…"; }
     api("createMigrationProject", [{ name: "Lovable → Supabase", source: "lovable", target: "supabase" }])
       .then(function (created) {
