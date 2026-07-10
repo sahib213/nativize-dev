@@ -121,8 +121,10 @@
           '</span>' +
           '<span class="brand-name">Nativize</span>' +
         '</a>' +
+        '<a class="btn btn-migrate" href="' + ROUTES.migration + '" aria-label="Migrate a Lovable app to Supabase">' +
+          '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h13M13 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 16H7M11 20l-4-4 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+          '<span>Migrate</span></a>' +
         '<div class="nav-links" id="navLinks">' +
-          '<a class="nav-feature" href="' + ROUTES.migration + '">Migrate</a>' +
           '<a href="' + ROUTES.how + '">How it works</a>' +
           '<a class="nav-extra" href="' + ROUTES.lovable + '">Lovable guide</a>' +
           '<a href="' + ROUTES.best + '">Best app</a>' +

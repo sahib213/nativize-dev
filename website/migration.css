@@ -44,9 +44,8 @@
 /* ---- Connection card (the "link an account" model) ---- */
 .mig-conn { display: flex; align-items: center; gap: 14px; padding: 16px 18px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); margin-bottom: 18px; transition: border-color .3s, background .3s; }
 .mig-conn.connected { border-color: rgba(52,199,120,.42); background: rgba(52,199,120,.06); }
-.mig-conn .tile { width: 46px; height: 46px; border-radius: 13px; display: grid; place-items: center; font-size: 22px; flex: none; border: 1px solid var(--border-strong); }
-.mig-conn .tile.lovable { background: linear-gradient(150deg, rgba(124,58,237,.28), rgba(124,58,237,.08)); }
-.mig-conn .tile.supabase { background: linear-gradient(150deg, rgba(52,199,120,.24), rgba(52,199,120,.06)); }
+.mig-conn .tile { width: 46px; height: 46px; border-radius: 13px; display: grid; place-items: center; flex: none; border: 1px solid var(--border-strong); background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.02)); }
+.mig-conn .tile svg { display: block; }
 .mig-conn .meta { flex: 1; min-width: 0; }
 .mig-conn .meta b { font-size: 15.5px; letter-spacing: -.01em; }
 .mig-conn .meta span { display: block; color: var(--muted); font-size: 13px; margin-top: 1px; }
