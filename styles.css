@@ -183,10 +183,6 @@ code {
 .nav-links { display: flex; gap: 6px; margin-left: 4px; }
 .nav-links a { color: rgba(236,237,245,.72); font-size: 14px; font-weight: 650; padding: 9px 12px; border-radius: 999px; white-space: nowrap; transition: color .2s, background .2s, transform .2s; }
 .nav-links a:hover { color: var(--text); background: rgba(255,255,255,.075); transform: translateY(-1px); }
-/* Prominent Migrate button, left, right beside the Nativize brand. */
-.btn-migrate { --pad: 9px 16px; margin-left: 12px; color: #fff; background: linear-gradient(135deg, #7c3aed, #4f46e5 55%, #2563eb); border: 0; box-shadow: 0 10px 26px -12px rgba(124,58,237,.85), inset 0 1px 0 rgba(255,255,255,.22); font-weight: 720; letter-spacing: -.01em; }
-.btn-migrate:hover { transform: translateY(-2px); box-shadow: 0 18px 40px -14px rgba(124,58,237,.95), inset 0 1px 0 rgba(255,255,255,.28); }
-.btn-migrate svg { width: 17px; height: 17px; flex: 0 0 auto; }
 .nav-cta { display: flex; gap: 8px; margin-left: auto; align-items: center; }
 .site-header .btn { min-height: 40px; }
 .site-header .btn-github-login {
@@ -217,12 +213,11 @@ code {
 @media (min-width: 1081px) {
   .nav {
     display: grid;
-    grid-template-columns: auto auto minmax(0, 1fr) auto;
+    grid-template-columns: minmax(190px, 1fr) auto minmax(190px, 1fr);
     align-items: center;
   }
   .nav-extra { display: none; }
   .brand { justify-self: start; min-width: 0; }
-  .btn-migrate { justify-self: start; }
   .nav-links {
     justify-self: center;
     justify-content: center;
