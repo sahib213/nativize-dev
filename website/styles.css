@@ -34,7 +34,7 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
-#how, #best-lovable-native-app, #compare, #features, #pricing, #security, #support, #faq, #get-started, #feature-request {
+#how, #best-lovable-native-app, #compare, #features, #migration, #pricing, #security, #support, #faq, #get-started, #feature-request {
   scroll-margin-top: calc(var(--header-space) + 18px);
 }
 
@@ -821,6 +821,8 @@ code {
 .feat h3 { font-size: 18.5px; letter-spacing: -0.02em; margin-bottom: 9px; }
 .feat p { color: var(--muted); font-size: 14.5px; }
 .feat p strong { color: var(--text); }
+.feature-label { display: inline-block; margin: -2px 0 8px; color: #a78bfa; font-size: 11px; font-weight: 760; letter-spacing: .08em; text-transform: uppercase; }
+.feat .feature-link { width: fit-content; margin-top: 18px; padding: 9px 15px; font-size: 13.5px; position: relative; z-index: 1; }
 
 /* ---------- Request + support forms ---------- */
 .request-panel {
@@ -1280,7 +1282,7 @@ code {
     --header-height: 62px;
     --header-space: 88px;
   }
-  #how, #best-lovable-native-app, #compare, #features, #pricing, #security, #support, #faq, #get-started, #feature-request { scroll-margin-top: 108px; }
+  #how, #best-lovable-native-app, #compare, #features, #migration, #pricing, #security, #support, #faq, #get-started, #feature-request { scroll-margin-top: 108px; }
   .site-header { padding-inline: 6px; }
   .nav {
     width: calc(100% - 12px);

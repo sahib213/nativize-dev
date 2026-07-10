@@ -13,7 +13,7 @@ website/
   /security/
   /get-started/
   /app/       # "Studio" — the full tool, in the browser (generate/push/update)
-  /migration/ # Migration Hub landing, five-step wizard, and private project UI
+  /migration/ # Redirect to the Migration feature; wizard and private project UI
   /privacy/   # public privacy policy URL for store listings
   /terms/     # public terms page
   /support/   # public support URL for store listings
