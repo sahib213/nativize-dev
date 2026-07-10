@@ -234,7 +234,7 @@ function heatmap(dayViews) {
 
 /* ---- layout ---- */
 const NAV = [
-  ["", [["/", "Overview", "grid"]]],
+  ["", [["/", "Overview", "grid"], ["/jarvis", "Jarvis", "spark"]]],
   ["Analytics", [["/visitors", "Visitors", "chart"], ["/features", "Feature requests", "star"]]],
   ["Engagement", [["/support", "Support", "chat"]]],
   ["Customers", [["/paid", "Paid customers", "card"], ["/testers", "Testers", "beaker"]]],
@@ -245,6 +245,7 @@ const NAV = [
 const ICO = {
   grid: "M3 3h8v8H3zM13 3h8v8h-8zM3 13h8v8H3zM13 13h8v8h-8z",
   bolt: "M13 2L3 14h7l-1 8 10-12h-7l1-8z",
+  spark: "M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9zM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z",
   doc: "M6 2h9l5 5v15H6zM14 2v6h6M9 13h8M9 17h6",
   chart: "M3 3v18h18M7 14l3-4 3 3 4-6", star: "M12 3l2.5 6H21l-5 4 2 7-6-4.3L6 20l2-7-5-4h6.5z",
   chat: "M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z", card: "M3 5h18v14H3zM3 10h18",
@@ -296,6 +297,23 @@ a{color:inherit;text-decoration:none}
 .chips{display:flex;gap:9px;flex-wrap:wrap;margin-top:12px}.chip{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:8px 14px;font-size:13px;font-weight:500;cursor:pointer;color:var(--muted)}.chip:hover{color:var(--ink);border-color:var(--brand)}
 .answer{margin-top:14px;background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:15px 16px;white-space:pre-wrap;font-size:14px;display:none}
 .answer.show{display:block}.answer.load{color:var(--muted)}
+/* Jarvis chat */
+.jv{display:flex;flex-direction:column;height:calc(100vh - 150px);max-width:860px}
+.jv-log{flex:1;overflow-y:auto;padding:6px 2px 16px;display:flex;flex-direction:column;gap:14px}
+.bubble{max-width:82%;padding:13px 16px;border-radius:16px;font-size:14.5px;line-height:1.55;white-space:pre-wrap;word-wrap:break-word}
+.bubble.me{align-self:flex-end;background:var(--accent);color:#fff;border-bottom-right-radius:5px}
+.bubble.ai{align-self:flex-start;background:var(--panel);border:1px solid var(--line);border-bottom-left-radius:5px;box-shadow:var(--shadow)}
+.bubble.ai.load{color:var(--muted)}
+.bubble .act{margin-top:12px;display:flex;gap:8px;flex-wrap:wrap}
+.bubble .act button{border:0;border-radius:9px;padding:8px 14px;font-weight:600;font-size:13px;cursor:pointer}
+.bubble .act .go{background:var(--accent);color:#fff}.bubble .act .no{background:var(--chip);color:var(--muted)}
+.jv-hint{align-self:center;color:var(--faint);font-size:13px;text-align:center;margin:auto 0}
+.jv-hint b{color:var(--ink)}
+.jv-chips{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+.jv-bar{display:flex;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:7px 7px 7px 16px;align-items:flex-end;box-shadow:var(--shadow)}
+.jv-bar textarea{flex:1;border:0;background:none;color:var(--ink);font:inherit;font-size:14.5px;outline:none;resize:none;max-height:120px;padding:8px 0;line-height:1.4}
+.jv-bar .send{background:var(--accent);color:#fff;border:0;border-radius:11px;width:44px;height:44px;flex:none;cursor:pointer;font-size:18px}
+.jv-bar .send:disabled{opacity:.5}
 /* Quick actions */
 .qa{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-top:22px}
 .qa a{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;align-items:center;gap:12px;font-weight:600;box-shadow:var(--shadow)}.qa a:hover{border-color:var(--brand)}
@@ -333,12 +351,24 @@ details.reply{margin-top:8px}details.reply summary{cursor:pointer;color:var(--br
 async function aiDraft(btn){var f=btn.closest('form');var box=f.querySelector('textarea');btn.disabled=true;var t=btn.textContent;btn.textContent='✨ Drafting…';try{var r=await fetch('/api/ai-draft',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:f.querySelector('[name=srcmsg]').value,email:f.querySelector('[name=to]').value})});var j=await r.json();if(j.draft){box.value=j.draft;box.focus();}else{alert(j.error||'AI error');}}catch(e){alert('AI error: '+e.message);}btn.disabled=false;btn.textContent=t;}
 function askChip(t){document.getElementById('askq').value=t;askSend();}
 async function askSend(){var q=document.getElementById('askq').value.trim();if(!q)return;var a=document.getElementById('answer');a.className='answer show load';a.textContent='✨ Thinking…';try{var r=await fetch('/api/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:q})});var j=await r.json();a.className='answer show';a.textContent=j.answer||j.error||'No answer.';}catch(e){a.className='answer show';a.textContent='AI error: '+e.message;}}
+/* ---- Jarvis chat ---- */
+var jvHist=[];
+function jvEsc(s){return (s||'').replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];});}
+function jvAdd(role,text,action){var log=document.getElementById('jvlog');var hint=document.getElementById('jvhint');if(hint)hint.remove();var b=document.createElement('div');b.className='bubble '+(role==='me'?'me':'ai');b.innerHTML=jvEsc(text);if(action){var box=document.createElement('div');box.className='act';var go=document.createElement('button');go.className='go';go.textContent=action.label;go.onclick=function(){if(action.confirm&&!confirm(action.confirm))return;go.disabled=true;go.textContent='Working…';fetch(action.endpoint,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:action.body||''}).then(function(){go.textContent='✓ Done';jvSay('Done — '+action.label+'.');}).catch(function(e){go.textContent='Failed';});};box.appendChild(go);b.appendChild(box);}log.appendChild(b);log.scrollTop=log.scrollHeight;return b;}
+function jvSay(t){var log=document.getElementById('jvlog');var b=document.createElement('div');b.className='bubble ai';b.innerHTML=jvEsc(t);log.appendChild(b);log.scrollTop=log.scrollHeight;}
+function jvChip(t){var ta=document.getElementById('jvq');ta.value=t;jvSendMsg();}
+async function jvSendMsg(){var ta=document.getElementById('jvq');var q=(ta.value||'').trim();if(!q)return;ta.value='';ta.style.height='auto';jvAdd('me',q);jvHist.push({role:'user',content:q});var load=jvAdd('ai','✨ Thinking…');load.classList.add('load');var btn=document.getElementById('jvsend');btn.disabled=true;
+try{var r=await fetch('/api/jarvis',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:q,history:jvHist.slice(-8)})});var j=await r.json();load.remove();var ans=j.answer||j.error||'No answer.';jvAdd('ai',ans,j.action);jvHist.push({role:'assistant',content:ans});}
+catch(e){load.remove();jvAdd('ai','⚠ '+e.message);}
+btn.disabled=false;ta.focus();}
+function jvKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();jvSendMsg();}var ta=e.target;ta.style.height='auto';ta.style.height=Math.min(120,ta.scrollHeight)+'px';}
 /* Live refresh: refetches this page every second and repaints only when the data
    changed. Pauses while you're typing, have a reply open, or the Ask box is busy. */
 (function(){
   var busy=false;
   setInterval(async function(){
     if(busy||document.hidden)return;
+    if(document.querySelector('.jv'))return; /* never repaint the Jarvis chat */
     if(document.querySelector('details[open]'))return;
     var ae=document.activeElement;
     if(ae&&(ae.tagName==='INPUT'||ae.tagName==='TEXTAREA'))return;
@@ -477,15 +507,15 @@ async function pageSupport(qs) {
     const reps = arr(await safe(sb(`support_replies?select=*&order=created_at.asc&request_id=in.(${ids.join(",")})`), []));
     for (const rep of reps) { const l = replyMap.get(rep.request_id) || []; l.push(rep); replyMap.set(rep.request_id, l); }
   }
-  const counts = { all: rows.length, open: 0, replied: 0, closed: 0 };
+  const counts = { all: rows.length, open: 0, pending: 0, replied: 0, closed: 0 };
   rows.forEach((r) => { const s = r.status || "open"; if (counts[s] != null) counts[s]++; });
   const shown = filter === "all" ? rows : rows.filter((r) => (r.status || "open") === filter);
   const emailReady = !!(RESEND_API_KEY && SUPPORT_FROM_EMAIL);
   const banner = emailReady ? "" : `<div class="err">In-portal “Send email” needs RESEND_API_KEY + SUPPORT_FROM_EMAIL in .env.local. “Reply in Mail” + AI drafting work now.</div>`;
-  const filters = `<div class="chips" style="margin:0 0 16px">${["all", "open", "replied", "closed"].map((f) =>
+  const filters = `<div class="chips" style="margin:0 0 16px">${["all", "open", "pending", "replied", "closed"].map((f) =>
     `<a class="chip" style="${f === filter ? "border-color:var(--brand);color:var(--ink)" : ""}" href="/support${f === "all" ? "" : "?f=" + f}">${f[0].toUpperCase() + f.slice(1)} (${counts[f]})</a>`).join("")}
     <span class="chip" style="margin-left:auto;border-style:dashed">AI auto-reply: <b style="color:${state.autoReply ? "var(--green)" : "var(--red)"};margin-left:4px">${state.autoReply ? "ON" : "OFF"}</b>&nbsp;· manage in AI Workers</span></div>`;
-  const pillCls = { open: "warn", replied: "info", closed: "ok" };
+  const pillCls = { open: "warn", pending: "warn", replied: "info", closed: "ok" };
   const items = shown.map((r) => {
     const to = r.email || "", subj = "Re: your message to Nativize", body = (r.message || r.body || "");
     const st = r.status || "open";
@@ -596,8 +626,76 @@ ${arr(support).map((s, i) => `  ${i + 1}. [${new Date(s.created_at).toLocaleDate
   return ollama(ctx + "\n\nQuestion: " + question + "\n\nAnswer:", sys);
 }
 
+/* ============================ Jarvis ============================ */
+async function jarvisContext() {
+  const [t, ents, openTickets, recentSup, feats, acts] = await Promise.all([
+    safe(sb("admin_pageviews_totals"), [{}]),
+    safe(sb("billing_entitlements?select=plan_id,billing,status"), []),
+    safe(sb("support_requests?select=id,email,message,status,created_at&order=created_at.desc&limit=25"), []),
+    safe(sb("support_requests?select=email,message,status,created_at&order=created_at.desc&limit=6"), []),
+    safe(sb("feature_requests?select=message,created_at&order=created_at.desc&limit=8"), []),
+    safe(sb("app_activations?select=plan_id,created_at&order=created_at.desc&limit=60"), [])
+  ]);
+  const T = arr(t)[0] || {}; const E = arr(ents);
+  const paid = E.filter((e) => e.plan_id !== "free").length;
+  const mrr = E.filter((e) => e.plan_id === "pro").length * 29 + E.filter((e) => e.plan_id === "max").length * 79;
+  const open = arr(openTickets).filter((r) => (r.status || "open") === "open");
+  const day = 864e5, now = Date.now();
+  return {
+    open, openCount: open.length,
+    text: `LIVE DATA (Nativize admin, ${new Date().toLocaleString()}):
+- Traffic: ${T.views_today || 0} views today, ${T.views_7d || 0} in 7d, ${T.total_new_visitors || 0} unique visitors all-time.
+- Customers: ${paid} paid, MRR ~$${mrr} CAD/mo. App builds in last 24h: ${arr(acts).filter((a) => now - new Date(a.created_at) < day).length}.
+- Support: ${open.length} OPEN tickets, ${arr(openTickets).length} total recent.
+- Newest support (newest first):
+${arr(recentSup).map((s, i) => `  ${i + 1}. [${s.status || "open"}] ${s.email || "?"}: ${(s.message || "").slice(0, 160)}`).join("\n") || "  none"}
+- Recent feature requests: ${arr(feats).map((f) => (f.message || "").slice(0, 60)).filter(Boolean).join(" | ") || "none"}`
+  };
+}
+const JARVIS_SYS = `You are Jarvis, the AI operations assistant inside Sahib's Nativize admin dashboard (nativize.dev — a tool that turns Lovable/Vite/React/GitHub web apps into native iOS/Android/Mac/Windows apps via Capacitor + GitHub Actions). You help Sahib run the business. Use ONLY the LIVE DATA provided — never invent numbers, users, refunds, or capabilities. Be concise, direct, and practical (usually under 160 words), plain text, no markdown symbols. When asked to draft something (reply, push notification, marketing, checklist), write it cleanly. If asked to do something you cannot verify or that would message/charge users, say it needs Sahib's explicit approval and explain the safe way to do it. If you don't have the data, say so.`;
+
+async function jarvisRespond(message, history) {
+  const m = (message || "").toLowerCase();
+  const ctx = await jarvisContext();
+  // Action intent: generate the daily brief (safe: read + store).
+  if (/\b(daily brief|today'?s brief|generate.*brief|make.*brief|run.*brief)\b/.test(m)) {
+    const b = await runDailyBrief();
+    return { answer: "Done — I generated today's brief and saved it:\n\n" + b };
+  }
+  // Sensitive intent: send AI replies to open tickets (emails customers) → require a confirm button.
+  if (/\b(reply|answer|respond|auto.?reply|clear).*(ticket|support|inbox)\b|\brun.*support\b|\breply to (them|everyone|all)\b/.test(m)) {
+    if (!ctx.openCount) return { answer: "Your support inbox is clear — there are no open tickets to reply to right now." };
+    return {
+      answer: `You have ${ctx.openCount} open ticket${ctx.openCount === 1 ? "" : "s"}. I can have the AI write and email a reply to each one. That sends real emails to customers, so it needs your go-ahead.`,
+      action: { label: `Send AI replies to ${ctx.openCount} ticket${ctx.openCount === 1 ? "" : "s"}`, endpoint: "/workers/run", body: "w=support", confirm: `Send AI-written replies (real emails) to ${ctx.openCount} customer${ctx.openCount === 1 ? "" : "s"}?` }
+    };
+  }
+  // Everything else: conversational answer grounded in live data.
+  const hist = arr(history).map((h) => `${h.role === "user" ? "Sahib" : "Jarvis"}: ${h.content}`).join("\n");
+  const answer = await ollama(ctx.text + (hist ? "\n\nConversation so far:\n" + hist : "") + "\n\nSahib: " + message + "\nJarvis:", JARVIS_SYS);
+  return { answer };
+}
+
+function pageJarvis() {
+  const chips = [
+    "What needs my attention today?",
+    "Summarize my open support tickets",
+    "Generate today's brief",
+    "Draft a push notification about a new feature",
+    "Give me a 3-item plan for today"
+  ];
+  const body = `<div class="jv">
+    <div class="jv-chips">${chips.map((c) => `<span class="chip" onclick="jvChip('${c.replace(/'/g, "\\'")}')">${esc(c)}</span>`).join("")}</div>
+    <div class="jv-log" id="jvlog">
+      <div class="jv-hint" id="jvhint">👋 Hi ${esc(OWNER)}, I'm <b>Jarvis</b>.<br>Ask me about your support, customers, traffic, or revenue — or tell me to draft replies, notifications, and plans.<br><span style="font-size:12px">Free &amp; private · runs on your Mac with Ollama · I ask before anything that emails or charges people.</span></div>
+    </div>
+    <div class="jv-bar"><textarea id="jvq" rows="1" placeholder="Message Jarvis…  (Enter to send, Shift+Enter for newline)" onkeydown="jvKey(event)"></textarea><button class="send" id="jvsend" onclick="jvSendMsg()">➤</button></div>
+  </div>`;
+  return { title: "Jarvis", sub: "Your private AI ops assistant — free, local, and it asks before sensitive actions.", body };
+}
+
 /* ============================ Router ============================ */
-const PAGES = { "/": pageOverview, "/support": pageSupport, "/features": pageFeatures, "/paid": pagePaid, "/testers": pageTesters, "/visitors": pageVisitors, "/issues": pageIssues, "/workers": async () => pageWorkers(), "/brief": pageBrief, "/settings": async () => pageSettings() };
+const PAGES = { "/": pageOverview, "/jarvis": async () => pageJarvis(), "/support": pageSupport, "/features": pageFeatures, "/paid": pagePaid, "/testers": pageTesters, "/visitors": pageVisitors, "/issues": pageIssues, "/workers": async () => pageWorkers(), "/brief": pageBrief, "/settings": async () => pageSettings() };
 function send(res, code, html) { res.writeHead(code, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", "X-Frame-Options": "DENY" }); res.end(html); }
 function json(res, obj) { res.writeHead(200, { "Content-Type": "application/json" }); res.end(JSON.stringify(obj)); }
 function redirect(res, to) { res.writeHead(302, { Location: to }); res.end(); }
@@ -608,6 +706,7 @@ const server = http.createServer(async (req, res) => {
   if (p === "/favicon.ico") { res.writeHead(204).end(); return; }
   if (p === "/api/ai-draft" && req.method === "POST") { try { const b = JSON.parse(await readBody(req) || "{}"); json(res, { draft: await aiDraft(b.message || "", b.email || "") }); } catch (e) { json(res, { error: e.message }); } return; }
   if (p === "/api/ask" && req.method === "POST") { try { const b = JSON.parse(await readBody(req) || "{}"); json(res, { answer: await askAI((b.question || "").slice(0, 500)) }); } catch (e) { json(res, { error: e.message }); } return; }
+  if (p === "/api/jarvis" && req.method === "POST") { try { const b = JSON.parse(await readBody(req) || "{}"); json(res, await jarvisRespond((b.message || "").slice(0, 1000), b.history)); } catch (e) { json(res, { error: e.message }); } return; }
 
   if (p === "/api/reply" && req.method === "POST") {
     const f = parseForm(await readBody(req));
@@ -633,7 +732,7 @@ const server = http.createServer(async (req, res) => {
   if (p === "/api/status" && req.method === "POST") {
     const f = parseForm(await readBody(req));
     const status = (f.status || "").trim();
-    if (f.id && ["open", "replied", "closed"].includes(status)) {
+    if (f.id && ["open", "pending", "replied", "closed"].includes(status)) {
       try {
         await sbWrite(`support_requests?id=eq.${encodeURIComponent(f.id)}`, "PATCH", { status, updated_at: new Date().toISOString() });
         log("admin", `ticket ${String(f.id).slice(0, 8)} → ${status}`, true);
