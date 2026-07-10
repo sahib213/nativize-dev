@@ -315,6 +315,22 @@
     }, opts);
   }
 
+  // Calls the hosted migration-run edge function for one resumable batch.
+  // Credentials (helper key, target connection string + service key) are sent
+  // over HTTPS for transient use and are never stored server-side.
+  async function runMigrationStep(accessToken, payload, opts) {
+    if (!accessToken) throw new Error("Sign in is required.");
+    var base = (opts && opts.supabaseUrl) || SUPABASE_URL;
+    var res = await doFetch(opts)(base + "/functions/v1/migration-run", {
+      method: "POST",
+      headers: authHeaders(accessToken),
+      body: JSON.stringify(payload || {})
+    });
+    var data = await readJson(res);
+    if (!res.ok) throw apiError(res, data, "Migration step failed.");
+    return data;
+  }
+
   function logMigrationEvent(accessToken, projectId, action, meta, opts) {
     return migrationRpc(accessToken, "log_migration_event", {
       p_project: projectId, p_action: action, p_meta: meta || {}
@@ -489,6 +505,7 @@
     createMigrationProject: createMigrationProject,
     saveMigrationScan: saveMigrationScan,
     saveMigrationFiles: saveMigrationFiles,
+    runMigrationStep: runMigrationStep,
     logMigrationEvent: logMigrationEvent,
     updateMigrationStatus: updateMigrationStatus,
     listMigrationProjects: listMigrationProjects,

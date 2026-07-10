@@ -315,6 +315,12 @@
                 '<div class="nz-tsub">Writes the native setup files for iOS and Android.</div></div>' +
               '<label class="nz-switch"><input type="checkbox" id="nz-push"><span class="nz-slider"></span></label>' +
             '</div>' +
+            '<div class="nz-sub" id="nz-pushConfig">' +
+              '<div class="nz-subhead">Firebase config — required, or push won\'t work</div>' +
+              '<div class="nz-field"><label>Android — google-services.json</label><input type="file" id="nz-fcmAndroid" accept=".json,application/json"><div class="nz-hint" id="nz-fcmAndroidInfo">Firebase Console &rarr; Project settings &rarr; your Android app.</div></div>' +
+              '<div class="nz-field"><label>iOS — GoogleService-Info.plist</label><input type="file" id="nz-fcmIos" accept=".plist"><div class="nz-hint" id="nz-fcmIosInfo">Firebase Console &rarr; Project settings &rarr; your iOS app.</div></div>' +
+              '<div class="nz-hint">These get baked into the build. Leave empty and it uses non-working placeholders. The iOS APNs key in Firebase must be enabled for <b>Sandbox &amp; Production</b>.</div>' +
+            '</div>' +
             '<div class="nz-paid-lock" id="nz-pushLock">Paid plan required for push notifications. Choose Starter, Pro, or Max to enable it.</div>' +
           '</div>' +
         '</div>' +
@@ -423,7 +429,7 @@
     var $ = function (id) { return shadow.getElementById(id); };
     var paidPlanIds = { starter: true, pro: true, max: true };
     var paidControlSelector = [
-      "#nz-push", "#nz-store", "#nz-ios", "#nz-android", "#nz-keystore",
+      "#nz-push", "#nz-fcmAndroid", "#nz-fcmIos", "#nz-store", "#nz-ios", "#nz-android", "#nz-keystore",
       "#nz-ascKeyId", "#nz-ascIssuer", "#nz-appleTeam", "#nz-ascP8",
       "#nz-ksPass", "#nz-keyAlias", "#nz-keyPass", "#nz-playJson",
       "#nz-logo", "#nz-logoBg", "#nz-island",
@@ -465,7 +471,12 @@
       Array.prototype.forEach.call(shadow.querySelectorAll("input, textarea, select, button"), function (control) {
         if (!control) return;
         if (control.id === "nz-signinBtn" || control.id === "nz-signout" || control.id === "nz-again") return;
-        if (control.classList && control.classList.contains("nz-close")) return;
+        // Never disable navigation: the launcher must stay clickable to OPEN the
+        // panel, and section headers must expand so the user can look around
+        // before signing in. Only action controls (build/download/inputs) lock.
+        if (control.classList && (control.classList.contains("nz-close") ||
+            control.classList.contains("nz-fab") ||
+            control.classList.contains("nz-section-toggle"))) return;
         control.disabled = !!authLocked;
       });
       Array.prototype.forEach.call(shadow.querySelectorAll(paidControlSelector), function (control) {
@@ -507,6 +518,8 @@
     setSignedIn(signedIn);
 
     var keystoreB64 = ""; // populated when a keystore file is selected
+    var firebaseAndroidJson = ""; // google-services.json contents (push)
+    var firebaseIosPlist = "";    // GoogleService-Info.plist contents (push)
 
     // ---- App logo → app icon + splash (resized in-browser via canvas) ----
     var logoImg = null, logoIconB64 = "", logoSplashB64 = "";
@@ -568,12 +581,15 @@
         secrets.ANDROID_KEY_PASSWORD = $("nz-keyPass").value;
         secrets.PLAY_SERVICE_ACCOUNT_JSON = $("nz-playJson").value;
       }
+      var pushOn = isPaidUi() && $("nz-push").checked;
       return {
         appName: $("nz-appName").value.trim(),
         appId: $("nz-appId").value.trim(),
         githubRepo: $("nz-repo").value.trim(),
         webDir: $("nz-webDir").value.trim() || "dist",
         enablePush: isPaidUi() && $("nz-push").checked,
+        firebaseAndroidJson: pushOn ? firebaseAndroidJson : "",
+        firebaseIosPlist: pushOn ? firebaseIosPlist : "",
         token: githubToken.trim(),
         iosUpload: iosUpload,
         androidUpload: androidUpload,
@@ -802,10 +818,32 @@
     ["nz-repo", "nz-webDir"].forEach(function (id) {
       $(id).addEventListener("input", emitChange);
     });
-    $("nz-push").addEventListener("change", emitChange);
-
     // ---- Store auto-upload toggles ----
     function reveal(id, on) { $(id).classList.toggle("nz-show", !!on); }
+    $("nz-push").addEventListener("change", function () { reveal("nz-pushConfig", $("nz-push").checked); emitChange(); });
+
+    // Read a Firebase config file as text (google-services.json / GoogleService-Info.plist).
+    function readFirebaseFile(inputId, infoId, assign) {
+      $(inputId).addEventListener("change", function (e) {
+        var file = e.target.files && e.target.files[0];
+        if (!file) { assign(""); emitChange(); return; }
+        if (file.size > 200000) {
+          assign(""); e.target.value = "";
+          $(infoId).textContent = "That file is too large (max 200 KB).";
+          emitChange(); return;
+        }
+        var reader = new FileReader();
+        reader.onload = function () {
+          assign(String(reader.result || ""));
+          $(infoId).textContent = file.name + " · " + file.size + " bytes ✓";
+          emitChange();
+        };
+        reader.readAsText(file);
+      });
+    }
+    readFirebaseFile("nz-fcmAndroid", "nz-fcmAndroidInfo", function (v) { firebaseAndroidJson = v; });
+    readFirebaseFile("nz-fcmIos", "nz-fcmIosInfo", function (v) { firebaseIosPlist = v; });
+
     $("nz-store").addEventListener("change", function () { reveal("nz-storeWrap", $("nz-store").checked); emitChange(); });
     $("nz-ios").addEventListener("change", function () { reveal("nz-iosWrap", $("nz-ios").checked); emitChange(); });
     $("nz-android").addEventListener("change", function () { reveal("nz-androidWrap", $("nz-android").checked); emitChange(); });

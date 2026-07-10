@@ -2,13 +2,108 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta http-equiv="refresh" content="0; url=/features/#migration" />
-  <meta name="robots" content="noindex,follow" />
-  <link rel="canonical" href="https://nativize.dev/features/" />
-  <title>Migration is a Nativize feature</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>App Migration — move your Lovable app to your own Supabase | Nativize</title>
+  <meta name="description" content="Migrate a Lovable Cloud app to your own Supabase project in minutes — database, users with passwords intact, and storage. Connect both, click go, stay in control. Included with Nativize Max." />
+  <meta name="robots" content="index,follow,max-image-preview:large" />
+  <meta name="theme-color" content="#0a0a12" />
+  <link rel="canonical" href="https://nativize.dev/migration/" />
+  <meta property="og:site_name" content="Nativize" />
+  <meta property="og:title" content="Move your Lovable app to your own Supabase" />
+  <meta property="og:description" content="Database, users (passwords intact), and storage — migrated in minutes. Connect Lovable and Supabase, click go, stay in control." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://nativize.dev/migration/" />
+  <meta property="og:image" content="https://nativize.dev/og-image.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Move your Lovable app to your own Supabase" />
+  <meta name="twitter:description" content="Database, users (passwords intact), and storage — migrated in minutes. Connect Lovable and Supabase, click go, stay in control." />
+  <meta name="twitter:image" content="https://nativize.dev/og-image.png" />
+  <link rel="icon" href="/favicon.ico" sizes="any" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+  <link rel="manifest" href="/site.webmanifest" />
+  <link rel="stylesheet" href="/styles.css?v=20260710-migration-connect" />
+  <link rel="stylesheet" href="/migration.css?v=20260710-migration-connect" />
+  <script type="application/ld+json">{
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      { "@type": "Question", "name": "Do you store my keys?", "acceptedAnswer": { "@type": "Answer", "text": "No. Your connection string and secret key stay in your browser and are sent directly to your own projects for the transfer. Nativize never stores them." } },
+      { "@type": "Question", "name": "Does it move my users?", "acceptedAnswer": { "@type": "Answer", "text": "Yes — user accounts move with their password hashes intact, so your users do not have to reset passwords." } },
+      { "@type": "Question", "name": "Is it included with Max?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Migration is included with Nativize Max, or you can buy a single one-time migration." } }
+    ]
+  }</script>
 </head>
 <body>
-  <h1>Migration is now part of Nativize features.</h1>
-  <p><a href="/features/#migration">Open the Migration feature</a></p>
+  <div class="aurora" aria-hidden="true"><span class="blob blob-1"></span><span class="blob blob-2"></span><span class="blob blob-3"></span><div class="grid-overlay"></div></div>
+  <header class="site-header"></header>
+
+  <main>
+    <section class="container" style="padding:130px 0 30px;text-align:center">
+      <span class="eyebrow" style="color:#a78bfa">App Migration · included with Max</span>
+      <h1 style="font-size:clamp(32px,5.4vw,56px);line-height:1.05;letter-spacing:-.03em;margin:10px auto 16px;max-width:14ch">Move your Lovable app to <span class="grad-text">your own Supabase</span></h1>
+      <p style="color:var(--muted);font-size:18px;max-width:640px;margin:0 auto 26px">Scan nothing. Copy nothing by hand. Connect your Lovable project and a fresh Supabase project, click go, and Nativize copies your <b style="color:var(--text)">database, users (passwords intact), and storage</b> — while you stay in control.</p>
+      <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+        <a class="btn btn-primary btn-lg" href="/migration/new/">Migrate an app <span class="arr">→</span></a>
+        <a class="btn btn-glass btn-lg" href="#how">See how it works</a>
+      </div>
+      <div class="mig-trust" style="margin-top:22px"><span>🔒 No raw secrets stored</span><span>🧭 You stay in control</span><span>↩︎ Non-destructive to your source</span><span>🗝️ No password resets</span></div>
+    </section>
+
+    <section class="container" style="padding:24px 0">
+      <div class="mig-stats" style="max-width:820px;margin:0 auto">
+        <div class="mig-stat"><b>🗄️</b><span>Database tables + RLS policies</span></div>
+        <div class="mig-stat"><b>👤</b><span>Auth users, password hashes intact</span></div>
+        <div class="mig-stat"><b>📦</b><span>Storage buckets + files</span></div>
+      </div>
+    </section>
+
+    <section class="container" id="how" style="padding:48px 0 24px">
+      <h2 style="text-align:center;font-size:clamp(24px,3.4vw,34px);letter-spacing:-.02em;margin-bottom:8px">Migrate in 5 guided steps</h2>
+      <p style="text-align:center;color:var(--muted);margin:0 auto 30px;max-width:560px">Lovable Cloud can't be connected directly, so you add a tiny temporary read-only helper — Nativize does the rest.</p>
+      <div class="mig-steps" style="max-width:760px;margin:0 auto">
+        <div class="mig-step"><div class="n">1</div><div class="body"><h4>Connect Lovable</h4><p>Paste a small, temporary, read-only helper edge function into your Lovable project (we generate it, locked to a one-time key). Test the connection in one click.</p></div></div>
+        <div class="mig-step"><div class="n">2</div><div class="body"><h4>Connect Supabase</h4><p>Point at a fresh, empty Supabase project with your connection string. Your credentials stay in your browser.</p></div></div>
+        <div class="mig-step"><div class="n">3</div><div class="body"><h4>Review</h4><p>See exactly what will move — tables, users, and files — before anything runs.</p></div></div>
+        <div class="mig-step"><div class="n">4</div><div class="body"><h4>Migrate</h4><p>Watch a live progress bar as your database, users, and storage copy over. It resumes safely if a step retries.</p></div></div>
+        <div class="mig-step"><div class="n">5</div><div class="body"><h4>Test &amp; switch</h4><p>Follow a short checklist to redeploy functions, re-add auth providers, and point your app at the new backend — you control the final switch.</p></div></div>
+      </div>
+    </section>
+
+    <section class="container" style="padding:40px 0">
+      <h2 style="text-align:center;font-size:clamp(24px,3.4vw,34px);letter-spacing:-.02em;margin-bottom:24px">Why it's safer</h2>
+      <div class="mig-prov" style="max-width:900px;margin:0 auto">
+        <div class="card"><div class="ico">🔒</div><h3>No raw secrets stored</h3><p>Your connection string and secret key live only in your browser tab and go straight to your projects. Nativize never keeps them.</p></div>
+        <div class="card"><div class="ico">↩︎</div><h3>Non-destructive</h3><p>The helper is read-only. Your original Lovable project is untouched — run both side by side until you're ready.</p></div>
+        <div class="card"><div class="ico">🗝️</div><h3>No password resets</h3><p>User accounts move with their password hashes intact, so your users keep logging in as normal.</p></div>
+        <div class="card"><div class="ico">🧭</div><h3>You stay in control</h3><p>Nothing switches automatically. You verify with a checklist and flip your backend when you're ready.</p></div>
+      </div>
+    </section>
+
+    <section class="container" style="padding:24px 0 40px">
+      <div class="card" style="max-width:720px;margin:0 auto;padding:30px;text-align:center">
+        <span class="mig-badge full">Included with Max</span>
+        <h2 style="font-size:26px;letter-spacing:-.02em;margin:14px 0 8px">Included with Max — or buy one</h2>
+        <p style="color:var(--muted);max-width:520px;margin:0 auto 20px">Nativize Max includes unlimited migrations. Not on Max? Buy a single one-time migration and run it once.</p>
+        <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+          <a class="btn btn-primary" href="/migration/new/">Start migrating</a>
+          <a class="btn btn-glass" href="/pricing/">See pricing</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="container" style="padding:20px 0 70px;max-width:760px">
+      <h2 style="text-align:center;font-size:clamp(24px,3.4vw,34px);letter-spacing:-.02em;margin-bottom:24px">FAQ</h2>
+      <details class="card" style="padding:18px 20px;margin-bottom:12px"><summary style="cursor:pointer;font-weight:650">Do you store my keys?</summary><p style="color:var(--muted);margin:12px 0 0">No. Your Supabase connection string and secret key stay in your browser tab and are sent directly to your own projects for the transfer. Nativize never stores or logs them.</p></details>
+      <details class="card" style="padding:18px 20px;margin-bottom:12px"><summary style="cursor:pointer;font-weight:650">Does it really move my users without password resets?</summary><p style="color:var(--muted);margin:12px 0 0">Yes. User accounts are copied with their password hashes intact, so existing users keep logging in with the same credentials — no forced resets.</p></details>
+      <details class="card" style="padding:18px 20px;margin-bottom:12px"><summary style="cursor:pointer;font-weight:650">What exactly gets migrated?</summary><p style="color:var(--muted);margin:12px 0 0">Your <code class="inline">public</code> database schema and rows, row-level-security policies, auth users, and storage buckets + files. Edge function code and auth-provider settings aren't auto-deployed — a checklist walks you through those.</p></details>
+      <details class="card" style="padding:18px 20px;margin-bottom:12px"><summary style="cursor:pointer;font-weight:650">Is my source project safe?</summary><p style="color:var(--muted);margin:12px 0 0">Yes — the migration is read-only on your Lovable project and only inserts into your new, empty Supabase project. Keep both running until you've tested and are ready to switch.</p></details>
+      <details class="card" style="padding:18px 20px;margin-bottom:12px"><summary style="cursor:pointer;font-weight:650">Can I migrate other platforms?</summary><p style="color:var(--muted);margin:12px 0 0">Lovable Cloud → Supabase is fully supported today. Other sources (Bolt, Replit, Cursor, GitHub) and targets are on the roadmap. Once your data is on Supabase, you can turn the app into real native iOS/Android/Mac/Windows apps with Nativize Studio.</p></details>
+      <details class="card" style="padding:18px 20px;margin-bottom:12px"><summary style="cursor:pointer;font-weight:650">Is this included in Max?</summary><p style="color:var(--muted);margin:12px 0 0">Yes. Migration is included with Nativize Max. If you're not on Max, you can buy a single one-time migration instead.</p></details>
+    </section>
+  </main>
+
+  <footer class="site-footer"></footer>
+  <script src="/script.js?v=20260708-chrome-store" defer></script>
 </body>
 </html>

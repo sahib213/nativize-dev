@@ -109,7 +109,8 @@ test("Migration routes, entitlement SQL, and checkout credit flow are wired", ()
   assert.match(webhook, /migration_credits/);
   assert.match(webhook, /onConflict: "stripe_checkout_session_id"/);
   assert.match(checkout, /STRIPE_PRICE_MIGRATION/);
-  assert.match(wizard, /This will use your one migration credit/);
-  assert.match(wizard, /Ready to switch backend/);
+  assert.match(wizard, /Use 1 credit/);            // credit consumption surfaced before start
+  assert.match(wizard, /One will be used when you start/);
+  assert.match(wizard, /Finish the switch/);       // post-migration test/switch checklist
   ["website/migration/index.html", "website/migration/new/index.html", "website/migration/project/index.html", "website/migration/providers/index.html"].forEach((file) => assert.equal(fs.existsSync(path.join(__dirname, "..", file)), true));
 });
