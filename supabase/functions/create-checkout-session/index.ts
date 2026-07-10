@@ -192,14 +192,15 @@ Deno.serve(async (req) => {
       client_reference_id: user.id,
       allow_promotion_codes: true,
       billing_address_collection: "auto",
+      automatic_tax: { enabled: false },
+      tax_id_collection: { enabled: false },
       line_items: [{ price, quantity: 1 }],
       success_url: successUrl,
       cancel_url: cancelUrl,
       branding_settings: checkoutBrandingSettings(),
-      managed_payments: { enabled: true },
       metadata,
       subscription_data: plan.mode === "subscription" ? { metadata } : undefined
-    } as Stripe.Checkout.SessionCreateParams & { managed_payments: { enabled: boolean } });
+    } as Stripe.Checkout.SessionCreateParams);
 
     return json({ id: session.id, url: session.url });
   } catch (err) {

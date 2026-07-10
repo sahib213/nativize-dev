@@ -353,7 +353,7 @@ async function automateSupport(supabase: ReturnType<typeof createClient>, row: S
 
   const errors = [userEmail.error, ownerResult.error].filter(Boolean).join("\n") || null;
   await markAutomation(supabase, "support_requests", row.id, {
-    status: reply.needsHuman ? "needs_human" : "auto_replied",
+    status: reply.needsHuman ? "pending" : "replied",
     bot_needs_human: reply.needsHuman,
     bot_summary: reply.summary,
     bot_reply_subject: reply.subject,

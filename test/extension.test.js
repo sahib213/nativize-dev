@@ -399,13 +399,38 @@ test("login routes are throttled and dynamic panel inputs are size-bounded", () 
 
 test("checkout and feedback endpoints have rate limits and malformed-input guards", () => {
   const checkout = read("supabase/functions/create-checkout-session/index.ts");
+  const cancelFn = read("supabase/functions/cancel-subscription/index.ts");
+  const cancelMigration = read("supabase/migrations/202607090002_subscription_cancellation_and_support_status.sql");
   const webhook = read("supabase/functions/stripe-webhook/index.ts");
   const feedbackFn = read("supabase/functions/feedback-submit/index.ts");
+  const billingClient = read("src/billing.js");
+  const cancelPage = read("website/cancel-subscription.js");
+  const homePage = read("website/index.html");
+  const pricingPage = read("website/pricing/index.html");
   const feedback = read("website/supabase-feedback.sql");
   const site = read("website/script.js");
   assert.match(checkout, /MAX_BODY_BYTES = 4096/);
   assert.match(checkout, /checkout-user:\$\{data\.user\.id\}`,\s*5,\s*900/);
+  assert.match(checkout, /automatic_tax:\s*\{\s*enabled:\s*false\s*\}/);
+  assert.match(checkout, /tax_id_collection:\s*\{\s*enabled:\s*false\s*\}/);
+  assert.doesNotMatch(checkout, /managed_payments/);
   assert.match(checkout, /return json\(\{ error: "Checkout failed\." \}, 500\)/);
+  assert.match(cancelFn, /cancel-subscription-status-user:\$\{data\.user\.id\}`,\s*60,\s*900/);
+  assert.match(cancelFn, /cancel-subscription-schedule-user:\$\{data\.user\.id\}`,\s*10,\s*900/);
+  assert.match(cancelFn, /ONE_DAY_SECONDS/);
+  assert.match(cancelFn, /cancel_at: cancelAt/);
+  assert.doesNotMatch(cancelFn, /subscriptions\.cancel/);
+  assert.match(cancelMigration, /subscription_cancellation_requests/);
+  assert.match(cancelMigration, /cancel_at timestamptz/);
+  assert.match(cancelMigration, /alter column status set default 'open'/);
+  assert.match(billingClient, /cancelSubscription/);
+  assert.match(billingClient, /subscriptionCancellationStatus/);
+  assert.match(cancelPage, /scheduleCancelBtn/);
+  assert.match(cancelPage, /cancelSubscription\(supabaseAccess\)/);
+  assert.match(homePage, /href="\/cancel-subscription\/"/);
+  assert.match(pricingPage, /href="\/cancel-subscription\/"/);
+  assert.doesNotMatch(homePage, /tax are handled by Stripe/);
+  assert.doesNotMatch(pricingPage, /tax are handled by Stripe/);
   assert.match(webhook, /MAX_WEBHOOK_BODY_BYTES = 2 \* 1024 \* 1024/);
   assert.match(webhook, /return json\(\{ error: "Invalid signature" \}, 400\)/);
   assert.match(feedbackFn, /RESEND_API_KEY/);

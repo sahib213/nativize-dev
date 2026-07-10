@@ -34,7 +34,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
   <link rel="manifest" href="/site.webmanifest" />
-  <link rel="stylesheet" href="/styles.css?v=20260630-centered-capsule" />
+  <link rel="stylesheet" href="/styles.css?v=20260709-subscription-cancel" />
   <link rel="stylesheet" href="/app.css?v=20260627-authlock" />
   <script type="application/ld+json">
   {
@@ -116,6 +116,7 @@
         </div>
         <div class="lic-status" id="licStatus"></div>
         <a class="lic-buy" href="/pricing/">See plans →</a>
+        <a class="lic-buy" id="cancelSubLink" href="/cancel-subscription/" hidden>Cancel subscription</a>
       </div>
     </section>
 
@@ -140,7 +141,7 @@
 
   <!-- Shared runtime (same modules the extension uses) -->
   <script src="/lib/plans.js?v=20260629-paid-perms"></script>
-  <script src="/lib/billing.js?v=20260630-secure-downloads"></script>
+  <script src="/lib/billing.js?v=20260709-subscription-cancel"></script>
   <script src="/lib/kit-generator.js?v=20260630-branded-downloads"></script>
   <script src="/lib/zip.js?v=20260630-download-fix"></script>
   <script src="/lib/vendor/tweetnacl.js?v=20260627-authlock"></script>
@@ -148,6 +149,6 @@
   <script src="/lib/sealedbox.js?v=20260627-authlock"></script>
   <script src="/lib/github.js?v=20260630-download-fix"></script>
   <script src="/lib/panel.js?v=20260701-centered-icons-video"></script>
-  <script src="/app.js?v=20260630-secure-downloads"></script>
+  <script src="/app.js?v=20260709-subscription-cancel"></script>
 </body>
 </html>

@@ -114,6 +114,9 @@ async function upsertEntitlement(params: {
   stripePriceId?: string | null;
   checkoutSessionId?: string | null;
   currentPeriodEnd?: string | null;
+  cancelAt?: string | null;
+  cancelAtPeriodEnd?: boolean;
+  cancellationEffectiveAt?: string | null;
 }) {
   const meta = planMeta[params.planId];
   assertUuid(params.userId, "user id");
@@ -132,6 +135,9 @@ async function upsertEntitlement(params: {
     stripe_price_id: params.stripePriceId || null,
     checkout_session_id: params.checkoutSessionId || null,
     current_period_end: params.currentPeriodEnd || null,
+    cancel_at: params.cancelAt || null,
+    cancel_at_period_end: params.cancelAtPeriodEnd === true,
+    cancellation_effective_at: params.cancellationEffectiveAt || null,
     apps_limit: meta.appsLimit
   });
 }
@@ -170,7 +176,12 @@ async function syncSubscription(subscription: Stripe.Subscription, explicit?: { 
     stripeSubscriptionId: subscription.id,
     stripePriceId: priceId,
     checkoutSessionId: explicit?.checkoutSessionId || null,
-    currentPeriodEnd: unixToIso(subscription.current_period_end)
+    currentPeriodEnd: unixToIso(subscription.current_period_end),
+    cancelAt: unixToIso(subscription.cancel_at),
+    cancelAtPeriodEnd: subscription.cancel_at_period_end === true,
+    cancellationEffectiveAt: subscription.status === "canceled"
+      ? unixToIso(subscription.ended_at || subscription.canceled_at)
+      : null
   });
 }
 

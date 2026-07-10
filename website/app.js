@@ -186,6 +186,7 @@
     $("planCaps").innerHTML = caps.map(function (c) { return "<span>" + c + "</span>"; }).join("");
     $("accountBtn").textContent = supabaseAccess ? "Refresh plan" : "Sign in with GitHub";
     $("checkoutBtn").textContent = planId === "free" ? "Choose plan" : "Change plan";
+    if ($("cancelSubLink")) $("cancelSubLink").hidden = !(supabaseAccess && billingStatus.billing === "subscription");
   }
 
   function refreshBilling(opts) {

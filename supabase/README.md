@@ -71,6 +71,7 @@ Endpoint ID: `we_1TmrFZLmsun3ElyeUzLEoshP`
 
 ```bash
 supabase functions deploy create-checkout-session
+supabase functions deploy cancel-subscription
 supabase functions deploy stripe-webhook
 supabase functions deploy feedback-submit
 supabase functions deploy artifact-download
