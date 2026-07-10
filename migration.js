@@ -25,7 +25,8 @@
   var refreshToken = sessionStorage.getItem(SESSION.refresh) || "";
 
   // Non-secret wizard draft is persisted so a refresh keeps your place.
-  var draft = load(K.draft, null) || { step: 0, accessKey: Helper.randomKey(), helperUrl: "", targetUrl: "", source: { tables: 0, users: 0, buckets: 0, objects: 0 }, targetEmpty: null, projectId: "" };
+  // accessKey starts empty — the user generates their unique key on the spot.
+  var draft = load(K.draft, null) || { step: 0, accessKey: "", helperUrl: "", targetUrl: "", source: { tables: 0, users: 0, buckets: 0, objects: 0 }, targetEmpty: null, projectId: "" };
   // Secrets are kept in memory ONLY (never persisted).
   var creds = { targetConn: "", targetKey: "" };
   var access = null;         // { access:'max'|'credit'|'none', credits_available }
@@ -63,8 +64,14 @@
     }).join("") + "</div>";
   }
   function note(cls, html) { return '<div class="mig-note ' + cls + '">' + html + "</div>"; }
+  var LOGO = {
+    // Supabase — official bolt mark.
+    supabase: '<svg viewBox="0 0 109 113" width="26" height="26" fill="none" aria-hidden="true"><path d="M63.708 110.284c-2.86 3.601-8.658 1.629-8.727-2.97l-1.007-67.251h45.22c8.19 0 12.759 9.46 7.665 15.875l-43.151 54.346Z" fill="url(#lsa)"/><path d="M63.708 110.284c-2.86 3.601-8.658 1.629-8.727-2.97l-1.007-67.251h45.22c8.19 0 12.759 9.46 7.665 15.875l-43.151 54.346Z" fill="url(#lsb)" fill-opacity=".2"/><path d="M45.317 2.071c2.86-3.601 8.657-1.628 8.726 2.97l.442 67.251H9.83c-8.19 0-12.759-9.46-7.665-15.875L45.317 2.071Z" fill="#3ECF8E"/><defs><linearGradient id="lsa" x1="53.974" y1="54.974" x2="94.163" y2="71.829" gradientUnits="userSpaceOnUse"><stop stop-color="#249361"/><stop offset="1" stop-color="#3ECF8E"/></linearGradient><linearGradient id="lsb" x1="36.156" y1="30.578" x2="54.484" y2="65.081" gradientUnits="userSpaceOnUse"><stop/><stop offset="1" stop-opacity="0"/></linearGradient></defs></svg>',
+    // Lovable — heart mark in the brand gradient.
+    lovable: '<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M12 21s-7.5-4.35-10-9.5C.4 8 2 4.5 5.5 4.5c2.1 0 3.6 1.2 4.5 2.6.9-1.4 2.4-2.6 4.5-2.6C18 4.5 19.6 8 18 11.5 16.5 14.85 12 21 12 21Z" fill="url(#llov)"/><defs><linearGradient id="llov" x1="2" y1="4" x2="20" y2="21" gradientUnits="userSpaceOnUse"><stop stop-color="#FF5C8A"/><stop offset=".55" stop-color="#FF6B57"/><stop offset="1" stop-color="#FF9346"/></linearGradient></defs></svg>'
+  };
   function connCard(kind, name, sub, connected) {
-    return '<div class="mig-conn' + (connected ? " connected" : "") + '"><div class="tile ' + kind + '">' + (kind === "lovable" ? "💜" : "🟩") + '</div>' +
+    return '<div class="mig-conn' + (connected ? " connected" : "") + '"><div class="tile ' + kind + '">' + (LOGO[kind] || "") + '</div>' +
       '<div class="meta"><b>' + esc(name) + '</b><span>' + esc(sub) + '</span></div>' +
       '<div class="pill">' + (connected ? "✓ Connected" : "Not connected") + '</div></div>';
   }
@@ -82,35 +89,45 @@
 
   /* ---------- Step 0: Connect Lovable ---------- */
   function renderConnect(err) {
-    var code = Helper.helperCode(draft.accessKey);
+    var hasKey = !!draft.accessKey;
+    var code = hasKey ? Helper.helperCode(draft.accessKey) : "";
     var pinged = draft.source && (draft.source.tables || draft.source.users || draft.source.buckets);
+    // Step 2 content: generate the unique key on the spot, then reveal the code.
+    var codeStep = hasKey
+      ? 'Open <b>Cloud → Edge Functions → migrate-helper → View code</b>, replace everything with your code below, and Save.' +
+        '<details class="mig-reveal" open><summary>📄 Your helper code <span style="color:var(--muted);font-weight:400">· key ' + esc(draft.accessKey.slice(0, 12)) + '…</span> <span class="chev">›</span></summary><div class="mig-code"><button class="btn btn-glass copy" data-copy-code>Copy</button><pre>' + esc(code) + '</pre></div></details>' +
+        '<button class="btn btn-ghost" id="mhRegen" style="margin-top:8px;font-size:12.5px;padding:6px 10px">↻ Generate a new key</button>'
+      : 'First, generate your own private helper — a unique access key is created right here in your browser, so this code is yours alone.' +
+        '<button class="btn btn-primary" id="mhGen" style="margin-top:10px">⚡ Generate my helper code</button>';
     var body = '<div class="mig-sheet">' +
       '<div class="eyebrow-sm">Step 1 of 5</div><h2>Connect your Lovable project</h2>' +
       '<p class="lead">Lovable Cloud can’t be connected directly, so you add a tiny, temporary, read-only helper. It takes about a minute — and you remove it when you’re done.</p>' +
-      connCard("lovable", "Lovable Cloud", pinged ? num(draft.source.tables) + " tables · " + num(draft.source.users) + " users · " + num(draft.source.objects) + " files" : "Add the helper below, then test", pinged) +
+      connCard("lovable", "Lovable Cloud", pinged ? num(draft.source.tables) + " tables · " + num(draft.source.users) + " users · " + num(draft.source.objects) + " files" : "Generate the helper below, then test", pinged) +
       (err ? note("err", esc(err)) : "") +
       '<div class="mig-steps">' +
         step("1", "Create the helper in Lovable", 'Tell Lovable: <code class="inline">Create an empty edge function called migrate-helper</code>, then refresh so it appears.') +
-        step("2", "Paste your helper code", 'Open <b>Cloud → Edge Functions → migrate-helper → View code</b>, replace everything with your code below, and Save.' +
-          '<details class="mig-reveal"><summary>📄 View &amp; copy your helper code <span class="chev">›</span></summary><div class="mig-code"><button class="btn btn-glass copy" data-copy-code>Copy</button><pre>' + esc(code) + '</pre></div></details>') +
+        step("2", "Generate &amp; paste your helper code", codeStep) +
         step("3", "Deploy it", 'Tell Lovable: <code class="inline">Deploy the migrate-helper edge function with verify_jwt = false in supabase/config.toml.</code>') +
         step("4", "Paste the function URL", 'From <b>Cloud → Edge Functions → migrate-helper → Copy URL</b>.' +
-          '<div class="mig-field" style="margin-bottom:0"><input type="url" id="mhUrl" placeholder="https://YOUR-REF.functions.supabase.co/migrate-helper" value="' + esc(draft.helperUrl) + '"></div>') +
+          '<div class="mig-field" style="margin-bottom:0"><input type="url" id="mhUrl" placeholder="https://YOUR-REF.functions.supabase.co/migrate-helper" value="' + esc(draft.helperUrl) + '"' + (hasKey ? "" : " disabled") + '></div>') +
       '</div>' +
       safePanel() +
       '<div class="mig-actions"><a class="btn btn-ghost" href="/migration/">Cancel</a><span class="spacer"></span>' +
-        '<button class="btn btn-glass" id="mhTest">Test connection</button>' +
+        '<button class="btn btn-glass" id="mhTest"' + (hasKey ? "" : " disabled") + '>Test connection</button>' +
         '<button class="btn btn-primary" id="mhNext" ' + (pinged ? "" : "disabled") + '>Continue</button></div></div>';
     root.innerHTML = head() + progress(0) + body;
-    document.querySelector("[data-copy-code]").onclick = function () { navigator.clipboard.writeText(code).then(function () { toast("Helper code copied"); }); };
-    document.getElementById("mhUrl").oninput = function () { draft.helperUrl = this.value.trim(); save(); };
-    document.getElementById("mhTest").onclick = testLovable;
+    var gen = document.getElementById("mhGen"); if (gen) gen.onclick = function () { draft.accessKey = Helper.randomKey(); save(); render(); toast("Your unique helper code is ready"); };
+    var regen = document.getElementById("mhRegen"); if (regen) regen.onclick = function () { if (!confirm("Generate a new key? You'll need to paste and redeploy the helper code again.")) return; draft.accessKey = Helper.randomKey(); draft.source = { tables: 0, users: 0, buckets: 0, objects: 0 }; save(); render(); };
+    var cp = document.querySelector("[data-copy-code]"); if (cp) cp.onclick = function () { navigator.clipboard.writeText(code).then(function () { toast("Helper code copied"); }); };
+    var urlEl = document.getElementById("mhUrl"); if (urlEl) urlEl.oninput = function () { draft.helperUrl = this.value.trim(); save(); };
+    var testEl = document.getElementById("mhTest"); if (testEl) testEl.onclick = testLovable;
     document.getElementById("mhNext").onclick = function () { if (pinged) { draft.step = 1; save(); render(); } };
   }
   function step(n, title, body) { return '<div class="mig-step"><div class="n">' + n + '</div><div class="body"><h4>' + esc(title) + "</h4><p>" + body + "</p></div></div>"; }
 
   // Ping the helper directly from the browser (it is CORS-enabled + key-gated).
   function testLovable() {
+    if (!draft.accessKey) { renderConnect("Generate your helper code first (Step 2)."); return; }
     var btn = document.getElementById("mhTest");
     var url = (document.getElementById("mhUrl").value || "").trim();
     if (!/^https:\/\/.+\.supabase\.co\/.*/.test(url)) { renderConnect("Enter your migrate-helper function URL (https://…supabase.co/…)."); return; }
