@@ -423,7 +423,7 @@
         var ic = p.status === "done" ? "✓" : p.status === "err" ? "!" : p.status === "active" ? "" : "";
         return '<div class="mig-phase ' + p.status + '"><div class="ic">' + ic + '</div><div class="txt"><b>' + esc(p.label) + '</b><span>' + esc(p.detail || p.hint) + '</span></div></div>';
       }).join("") +
-      (runState.warnings.length ? '<details class="mig-warns"><summary>' + num(runState.warnings.length) + ' notes / skipped items</summary><ul>' + runState.warnings.slice(0, 60).map(function (w) { return "<li>" + esc(w) + "</li>"; }).join("") + "</ul></details>" : "") +
+      (runState.warnings.length ? '<details class="mig-warns"><summary>' + num(runState.warnings.length) + ' notes / items to review</summary><ul>' + runState.warnings.slice(0, 60).map(function (w) { return "<li>" + esc(w) + "</li>"; }).join("") + "</ul></details>" : "") +
       (runState.error ? note("err", "<b>Paused:</b> " + esc(runState.error)) + '<div class="mig-actions"><button class="btn btn-ghost" id="runBack">← Back</button><span class="spacer"></span><button class="btn btn-primary" id="runRetry">Retry this step</button></div>' : "");
     var rb = document.getElementById("runBack"); if (rb) rb.onclick = function () { draft.step = 2; runState = null; root.dataset.rendered = ""; save(); render(); };
     var rr = document.getElementById("runRetry"); if (rr) rr.onclick = function () { runState.error = null; renderRun(); runEngine(); };
