@@ -31,7 +31,15 @@ const DATA_BATCH = 2_000;
 const AUTH_BATCH = 1_000;
 const MIGRATION_RATE_LIMIT_HITS = 5_000;
 const STORAGE_BATCH = 4;      // objects per call (each fetched + uploaded)
-const MAX_OBJECT_BYTES = 25 * 1024 * 1024;
+
+class SourceHelperError extends Error {
+  status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "SourceHelperError";
+    this.status = status;
+  }
+}
 
 function env(name: string): string {
   const v = Deno.env.get(name);
@@ -85,17 +93,76 @@ function assertConn(raw: unknown): string {
   return s;
 }
 
-async function callHelper(url: string, key: string, payload: Record<string, unknown>): Promise<Record<string, unknown>> {
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "x-migrate-key": key },
-    body: JSON.stringify(payload),
-  });
+function retryableHelperStatus(status: number): boolean {
+  return status === 408 || status === 429 || status === 500 || status === 502 || status === 503 || status === 504 || status === 546;
+}
+function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+async function helperFetch(url: string, key: string, payload: Record<string, unknown>, retries = 2): Promise<Response> {
+  let last: Response | null = null;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    last = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-migrate-key": key },
+      body: JSON.stringify(payload),
+    }).catch((e) => {
+      throw new SourceHelperError(503, "Source helper network error: " + redact((e as Error).message));
+    });
+    if (last.ok || !retryableHelperStatus(last.status) || attempt === retries) return last;
+    await delay(400 * (attempt + 1));
+  }
+  return last;
+}
+async function callHelper(url: string, key: string, payload: Record<string, unknown>, retries = 2): Promise<Record<string, unknown>> {
+  const res = await helperFetch(url, key, payload, retries);
   const text = await res.text();
   let data: Record<string, unknown> = {};
   try { data = JSON.parse(text); } catch { data = { error: text.slice(0, 200) }; }
-  if (!res.ok) throw new Error("Source helper: " + redact(String(data.error || res.status)));
+  if (!res.ok) throw new SourceHelperError(res.status, "Source helper: " + redact(String(data.error || res.status)));
   return data;
+}
+async function callHelperPage(url: string, key: string, payload: Record<string, unknown>, preferredLimit: number) {
+  const limits = Array.from(new Set([preferredLimit, 1000, 500, 250, 100, 50].filter((n) => n > 0 && n <= preferredLimit)));
+  let last: SourceHelperError | null = null;
+  for (const limit of limits) {
+    try {
+      const data = await callHelper(url, key, { ...payload, limit });
+      return { data, limit };
+    } catch (e) {
+      if (!(e instanceof SourceHelperError) || !retryableHelperStatus(e.status)) throw e;
+      last = e;
+    }
+  }
+  throw last || new Error("Source helper failed.");
+}
+async function fetchStorageObject(helperUrl: string, helperKey: string, bucket: string, name: string) {
+  const res = await helperFetch(helperUrl, helperKey, { action: "storage_download", bucket, name }, 2);
+  if (res.ok) {
+    return {
+      body: res.body || new Uint8Array(),
+      contentType: res.headers.get("content-type") || "application/octet-stream",
+      size: Number(res.headers.get("x-nativize-size") || 0),
+    };
+  }
+  const text = await res.text();
+  let data: Record<string, unknown> = {};
+  try { data = JSON.parse(text); } catch { data = { error: text.slice(0, 200) }; }
+  if (res.status !== 400 || !/unknown action/i.test(String(data.error || ""))) {
+    throw new SourceHelperError(res.status, "Source helper: " + redact(String(data.error || res.status)));
+  }
+
+  // Back-compat for helpers pasted before streaming downloads existed.
+  const old = await callHelper(helperUrl, helperKey, { action: "storage_object", bucket, name }, 1);
+  const b64 = String(old.base64 || "");
+  const size = Number(old.size || 0);
+  if (!b64 && size > 0) {
+    throw new Error("Source helper returned an empty file body. Copy the latest migrate-helper code and retry this step.");
+  }
+  const bin = b64 ? atob(b64) : "";
+  const bytes = new Uint8Array(bin.length);
+  for (let k = 0; k < bin.length; k++) bytes[k] = bin.charCodeAt(k);
+  return { body: bytes, contentType: String(old.contentType || "application/octet-stream"), size };
 }
 
 async function checkRateLimit(supabase: ReturnType<typeof createClient>, bucket: string) {
@@ -147,8 +214,8 @@ async function phaseData(helperUrl: string, helperKey: string, conn: string, tab
   if (i >= tables.length) return { ok: true, done: true };
   const name = tables[i];
   if (!IDENT_RE.test(name)) return { ok: true, done: false, cursor: { i: i + 1, offset: 0 } };
-  const batch = await callHelper(helperUrl, helperKey, { action: "table", name, offset, limit: DATA_BATCH });
-  const rows = (batch.rows as Record<string, unknown>[]) || [];
+  const batch = await callHelperPage(helperUrl, helperKey, { action: "table", name, offset }, DATA_BATCH);
+  const rows = (batch.data.rows as Record<string, unknown>[]) || [];
   const sql = postgres(conn, { prepare: false, max: 1, idle_timeout: 5, connect_timeout: 10 });
   let inserted = 0; const warnings: string[] = [];
   try {
@@ -162,9 +229,10 @@ async function phaseData(helperUrl: string, helperKey: string, conn: string, tab
           try { await sql`insert into ${sql("public")}.${sql(name)} ${sql([r])} on conflict do nothing`; inserted++; }
           catch (e2) { warnings.push(name + ": " + redact((e2 as Error).message)); }
         }
+        if (warnings.length) throw new Error("Could not copy rows from " + name + ": " + warnings[0]);
       }
     }
-    const advanced = rows.length < DATA_BATCH;
+    const advanced = rows.length < batch.limit;
     return {
       ok: true,
       done: false,
@@ -178,8 +246,8 @@ async function phaseData(helperUrl: string, helperKey: string, conn: string, tab
 
 async function phaseAuth(helperUrl: string, helperKey: string, conn: string, cursor: { offset: number }) {
   const offset = Math.max(0, cursor.offset | 0);
-  const batch = await callHelper(helperUrl, helperKey, { action: "auth_users", offset, limit: AUTH_BATCH });
-  const rows = (batch.rows as Record<string, unknown>[]) || [];
+  const batch = await callHelperPage(helperUrl, helperKey, { action: "auth_users", offset }, AUTH_BATCH);
+  const rows = (batch.data.rows as Record<string, unknown>[]) || [];
   if (!rows.length) return { ok: true, done: true, inserted: 0 };
   const sql = postgres(conn, { prepare: false, max: 1, idle_timeout: 5, connect_timeout: 10 });
   let inserted = 0; const warnings: string[] = [];
@@ -188,7 +256,8 @@ async function phaseAuth(helperUrl: string, helperKey: string, conn: string, cur
       try { await sql`insert into ${sql("auth")}.${sql("users")} ${sql([r])} on conflict (id) do nothing`; inserted++; }
       catch (e) { warnings.push("user " + redact((e as Error).message)); }
     }
-    return { ok: true, done: rows.length < AUTH_BATCH, cursor: { offset: offset + rows.length }, inserted, warnings: warnings.slice(0, 10) };
+    if (warnings.length) throw new Error("Could not copy auth users: " + warnings[0]);
+    return { ok: true, done: rows.length < batch.limit, cursor: { offset: offset + rows.length }, inserted, warnings: warnings.slice(0, 10) };
   } finally { await sql.end({ timeout: 5 }).catch(() => {}); }
 }
 
@@ -208,7 +277,7 @@ async function phaseStorage(helperUrl: string, helperKey: string, targetUrl: str
         headers: { Authorization: "Bearer " + targetKey, "Content-Type": "application/json", apikey: targetKey },
         body: JSON.stringify({ id: b.id || b.name, name: b.name, public: !!b.public }),
       }).catch(() => null);
-      if (res && !res.ok && res.status !== 409) warnings.push("bucket " + b.name + ": " + res.status);
+      if (res && !res.ok && res.status !== 409) throw new Error("Could not create storage bucket " + b.name + ": " + res.status);
     }
   }
 
@@ -218,19 +287,14 @@ async function phaseStorage(helperUrl: string, helperKey: string, targetUrl: str
     const o = objects[j];
     if (!o || !o.name) continue;
     try {
-      const obj = await callHelper(helperUrl, helperKey, { action: "storage_object", bucket: o.bucket_id, name: o.name });
-      const b64 = String(obj.base64 || "");
-      if (!b64 || (obj.size as number) > MAX_OBJECT_BYTES) { warnings.push("skipped large/empty " + o.name); continue; }
-      const bin = atob(b64);
-      const bytes = new Uint8Array(bin.length);
-      for (let k = 0; k < bin.length; k++) bytes[k] = bin.charCodeAt(k);
+      const obj = await fetchStorageObject(helperUrl, helperKey, o.bucket_id, o.name);
       const up = await fetch(targetUrl + "/storage/v1/object/" + encodeURIComponent(o.bucket_id) + "/" + o.name.split("/").map(encodeURIComponent).join("/"), {
         method: "POST",
         headers: { Authorization: "Bearer " + targetKey, apikey: targetKey, "Content-Type": String(obj.contentType || "application/octet-stream"), "x-upsert": "true" },
-        body: bytes,
+        body: obj.body,
       });
-      if (up.ok) uploaded++; else warnings.push(o.name + ": " + up.status);
-    } catch (e) { warnings.push(o.name + ": " + redact((e as Error).message)); }
+      if (up.ok) uploaded++; else throw new Error("target upload failed " + up.status);
+    } catch (e) { throw new Error("Storage file " + o.name + ": " + redact((e as Error).message)); }
   }
   return { ok: true, done: end >= objects.length, cursor: { i: end }, total: objects.length, processed: end, uploaded, warnings: warnings.slice(0, 10) };
 }

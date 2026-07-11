@@ -120,8 +120,16 @@ test("Migration routes, entitlement SQL, and checkout credit flow are wired", ()
   assert.match(runner, /const DATA_BATCH = 2_000/);
   assert.match(runner, /const AUTH_BATCH = 1_000/);
   assert.match(runner, /const MIGRATION_RATE_LIMIT_HITS = 5_000/);
+  assert.match(runner, /class SourceHelperError/);
+  assert.match(runner, /status === 546/);
+  assert.match(runner, /function callHelperPage/);
+  assert.match(runner, /action: "storage_download"/);
+  assert.match(runner, /Could not copy rows from/);
+  assert.match(runner, /Storage file/);
   assert.match(runner, /`migrun:\$\{userId\}:\$\{projectId\}`/);
   assert.match(rateLimit, /max_hits > 10000/);
+  assert.match(source("website/lib/migration-helper-code.js"), /storage_download/);
+  assert.match(wizard, /notes \/ items to review/);
   assert.match(wizard, /function freshRunState/);
   assert.match(wizard, /function forgetCompletedMigrationInfo/);
   assert.match(wizard, /creds = \{ targetConn: "", targetKey: "" \}/);
