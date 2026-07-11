@@ -131,6 +131,7 @@ test("Migration routes, entitlement SQL, and checkout credit flow are wired", ()
   assert.match(source("website/lib/migration-helper-code.js"), /storage_download/);
   assert.match(wizard, /notes \/ items to review/);
   assert.match(wizard, /function freshRunState/);
+  assert.match(wizard, /draft\.projectId \? Promise\.resolve\(\{ id: draft\.projectId \}\)/);
   assert.match(wizard, /function forgetCompletedMigrationInfo/);
   assert.match(wizard, /creds = \{ targetConn: "", targetKey: "" \}/);
   assert.match(wizard, /sessionStorage\.removeItem\(K\.draft\)/);

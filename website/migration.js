@@ -299,7 +299,7 @@
   function startMigration() {
     if (!creds.targetConn || (needsStorageKey() && !creds.targetKey)) { draft.step = 1; save(); renderTarget("Re-enter your target connection string" + (needsStorageKey() ? " and secret key" : "") + " to start (not saved, for security)."); return; }
     var btn = document.getElementById("rvStart"); if (btn) { btn.disabled = true; btn.textContent = "Preparing…"; }
-    api("createMigrationProject", [{ name: "Lovable → Supabase", source: "lovable", target: "supabase" }])
+    (draft.projectId ? Promise.resolve({ id: draft.projectId }) : api("createMigrationProject", [{ name: "Lovable → Supabase", source: "lovable", target: "supabase" }]))
       .then(function (created) {
         var id = Array.isArray(created) ? (created[0] && created[0].id) : created.id;
         if (!id) throw new Error("Could not create the migration project.");
