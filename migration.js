@@ -290,6 +290,7 @@
       tableNames: [],
       cursors: { data: { i: 0, offset: 0 }, auth: { offset: 0 }, storage: { i: 0 } },
       totals: { data: 0, auth: 0, storage: 0 },
+      skipStorage: [],
       warnings: [],
       pct: 0,
       error: null,
@@ -379,7 +380,7 @@
       var cursor = runState.cursors.storage || { i: 0 };
       var uploaded = runState.totals.storage || 0;
       function loop() {
-        return api("runMigrationStep", [step4Payload({ phase: "storage", cursor: cursor })]).then(function (r) {
+        return api("runMigrationStep", [step4Payload({ phase: "storage", cursor: cursor, skipStorage: runState.skipStorage || [] })]).then(function (r) {
           if (r.error) throw new Error(r.error);
           addWarns(r.warnings); uploaded += (r.uploaded || 0); runState.totals.storage = uploaded;
           if (r.cursor) { cursor = r.cursor; runState.cursors.storage = cursor; }
@@ -417,6 +418,8 @@
     runState.phase = active < 0 ? runState.phases.length : active;
     var done = runState.pct >= 100;
     var panel = document.getElementById("runPanel");
+    var storageSkipMatch = runState.error && runState.error.match(/^Storage file ([^:]+):/);
+    var storageSkipButton = storageSkipMatch ? '<button class="btn btn-glass" id="runSkipStorage">Skip unreadable file</button>' : "";
     panel.innerHTML = '<div class="mig-run-head"><div class="mig-run-pct">' + runState.pct + '%</div><div class="mig-run-sub">' + (done ? "Wrapping up…" : runState.error ? "Paused" : "Migrating your app — keep this tab open") + '</div></div>' +
       '<div class="mig-bar"><i style="width:' + runState.pct + '%"></i></div>' +
       runState.phases.map(function (p) {
@@ -424,9 +427,19 @@
         return '<div class="mig-phase ' + p.status + '"><div class="ic">' + ic + '</div><div class="txt"><b>' + esc(p.label) + '</b><span>' + esc(p.detail || p.hint) + '</span></div></div>';
       }).join("") +
       (runState.warnings.length ? '<details class="mig-warns"><summary>' + num(runState.warnings.length) + ' notes / items to review</summary><ul>' + runState.warnings.slice(0, 60).map(function (w) { return "<li>" + esc(w) + "</li>"; }).join("") + "</ul></details>" : "") +
-      (runState.error ? note("err", "<b>Paused:</b> " + esc(runState.error)) + '<div class="mig-actions"><button class="btn btn-ghost" id="runBack">← Back</button><span class="spacer"></span><button class="btn btn-primary" id="runRetry">Retry this step</button></div>' : "");
+      (runState.error ? note("err", "<b>Paused:</b> " + esc(runState.error)) + '<div class="mig-actions"><button class="btn btn-ghost" id="runBack">← Back</button><span class="spacer"></span>' + storageSkipButton + '<button class="btn btn-primary" id="runRetry">Retry this step</button></div>' : "");
     var rb = document.getElementById("runBack"); if (rb) rb.onclick = function () { draft.step = 2; runState = null; root.dataset.rendered = ""; save(); render(); };
     var rr = document.getElementById("runRetry"); if (rr) rr.onclick = function () { runState.error = null; renderRun(); runEngine(); };
+    var rs = document.getElementById("runSkipStorage"); if (rs) rs.onclick = function () {
+      var match = runState.error && runState.error.match(/^Storage file ([^:]+):/);
+      if (!match) return;
+      runState.skipStorage = runState.skipStorage || [];
+      if (runState.skipStorage.indexOf(match[1]) < 0) runState.skipStorage.push(match[1]);
+      addWarns(["Skipped unreadable storage file " + match[1] + " because the source storage API could not download it."]);
+      runState.error = null;
+      renderRun();
+      runEngine();
+    };
   }
 
   /* ---------- Step 4: Done ---------- */
