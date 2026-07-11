@@ -214,12 +214,21 @@ async function phaseSchema(helperUrl: string, helperKey: string, conn: string) {
     try { await sql.unsafe(stmt); applied++; }
     catch (e) { warnings.push(redact((e as Error).message)); }
   }
+  async function runCritical(stmt: string, label: string) {
+    try { await sql.unsafe(stmt); applied++; }
+    catch (e) { throw new Error(label + ": " + redact((e as Error).message)); }
+  }
   try {
+    if ((schema.extensions as string[] || []).length) await run("create schema if not exists extensions");
+    for (const ext of (schema.extensions as string[] || [])) await runCritical(ext, "Could not enable extension");
     for (const t of (schema.types as string[] || [])) await run(t);
-    for (const t of (schema.tables as Array<{ ddl: string }> || [])) await run(t.ddl);
+    for (const t of (schema.tables as Array<{ name: string; ddl: string }> || [])) await runCritical(t.ddl, "Could not create table " + t.name);
+    const existing = await sql`select table_name from information_schema.tables where table_schema='public' and table_type='BASE TABLE'`;
+    const existingNames = new Set(existing.map((r) => String(r.table_name)));
+    const tableNames = (schema.tableNames as string[] || []).filter((n) => IDENT_RE.test(n) && existingNames.has(n));
     return {
       ok: true, done: true, applied,
-      tableNames: (schema.tableNames as string[] || []).filter((n) => IDENT_RE.test(n)),
+      tableNames,
       warnings: warnings.slice(0, 20),
     };
   } finally { await sql.end({ timeout: 5 }).catch(() => {}); }

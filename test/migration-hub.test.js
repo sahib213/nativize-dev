@@ -123,6 +123,8 @@ test("Migration routes, entitlement SQL, and checkout credit flow are wired", ()
   assert.match(runner, /class SourceHelperError/);
   assert.match(runner, /status === 546/);
   assert.match(runner, /function callHelperPage/);
+  assert.match(runner, /Could not enable extension/);
+  assert.match(runner, /Could not create table/);
   assert.match(runner, /action: "storage_object_chunk"/);
   assert.match(runner, /STORAGE_CHUNK_BYTES = 1_000_000/);
   assert.match(runner, /Could not copy rows from/);
@@ -130,6 +132,8 @@ test("Migration routes, entitlement SQL, and checkout credit flow are wired", ()
   assert.match(runner, /`migrun:\$\{userId\}:\$\{projectId\}`/);
   assert.match(rateLimit, /max_hits > 10000/);
   assert.match(source("website/lib/migration-helper-code.js"), /storage_object_chunk/);
+  assert.match(source("website/lib/migration-helper-code.js"), /pg_catalog\.format_type/);
+  assert.match(source("website/lib/migration-helper-code.js"), /create extension if not exists/);
   assert.match(wizard, /notes \/ items to review/);
   assert.match(source("website/lib/billing.js"), /Could not reach the migration service/);
   assert.match(wizard, /function freshRunState/);
