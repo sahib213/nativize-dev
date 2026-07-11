@@ -132,6 +132,8 @@ test("Migration routes, entitlement SQL, and checkout credit flow are wired", ()
   assert.match(runner, /STORAGE_CHUNK_BYTES = 1_000_000/);
   assert.match(runner, /Could not copy rows from/);
   assert.match(runner, /Storage file/);
+  assert.match(runner, /skipStorage/);
+  assert.match(runner, /skipped unreadable storage file/);
   assert.match(runner, /storage\/v1\/bucket\/"\s*\+\s*encodeURIComponent\(bucketId\)/);
   assert.match(runner, /`migrun:\$\{userId\}:\$\{projectId\}`/);
   assert.match(rateLimit, /max_hits > 10000/);
@@ -140,6 +142,8 @@ test("Migration routes, entitlement SQL, and checkout credit flow are wired", ()
   assert.match(source("website/lib/migration-helper-code.js"), /pg_catalog\.format_type/);
   assert.match(source("website/lib/migration-helper-code.js"), /create extension if not exists/);
   assert.match(wizard, /notes \/ items to review/);
+  assert.match(wizard, /runSkipStorage/);
+  assert.match(wizard, /Skip unreadable file/);
   assert.match(source("website/lib/billing.js"), /Could not reach the migration service/);
   assert.match(wizard, /function freshRunState/);
   assert.match(wizard, /draft\.projectId \? Promise\.resolve\(\{ id: draft\.projectId \}\)/);

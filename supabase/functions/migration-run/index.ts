@@ -310,13 +310,14 @@ async function phaseAuth(helperUrl: string, helperKey: string, conn: string, cur
   } finally { await sql.end({ timeout: 5 }).catch(() => {}); }
 }
 
-async function phaseStorage(helperUrl: string, helperKey: string, targetUrl: string, targetKey: string, cursor: { i: number }) {
+async function phaseStorage(helperUrl: string, helperKey: string, targetUrl: string, targetKey: string, cursor: { i: number }, skipStorage: string[] = []) {
   // Build the full object list once (cheap) and page through it by index.
   const list = await callHelper(helperUrl, helperKey, { action: "storage_list" });
   const buckets = (list.buckets as Array<{ id: string; name: string; public: boolean }>) || [];
   const objects = (list.objects as Array<{ bucket_id: string; name: string }>) || [];
   const i = Math.max(0, cursor.i | 0);
   const warnings: string[] = [];
+  const skipped = new Set(skipStorage.map(String).filter((n) => n && n.length < 1024).slice(0, 200));
 
   if (i === 0) {
     // Create buckets first (idempotent).
@@ -345,6 +346,11 @@ async function phaseStorage(helperUrl: string, helperKey: string, targetUrl: str
   for (let j = i; j < end; j++) {
     const o = objects[j];
     if (!o || !o.name) continue;
+    const skipKey = o.bucket_id + "/" + o.name;
+    if (skipped.has(o.name) || skipped.has(skipKey)) {
+      warnings.push("skipped unreadable storage file " + skipKey);
+      continue;
+    }
     try {
       const obj = await fetchStorageObject(helperUrl, helperKey, o.bucket_id, o.name);
       const up = await fetch(targetUrl + "/storage/v1/object/" + encodeURIComponent(o.bucket_id) + "/" + o.name.split("/").map(encodeURIComponent).join("/"), {
@@ -431,7 +437,8 @@ Deno.serve(async (req) => {
     } else if (phase === "auth") {
       result = await phaseAuth(helperUrl, helperKey, assertConn(body.targetConn), (body.cursor as { offset: number }) || { offset: 0 });
     } else if (phase === "storage") {
-      result = await phaseStorage(helperUrl, helperKey, safeTargetUrl(body.targetUrl), String(body.targetKey || ""), (body.cursor as { i: number }) || { i: 0 });
+      const skipStorage = (Array.isArray(body.skipStorage) ? body.skipStorage : []).map(String).slice(0, 200);
+      result = await phaseStorage(helperUrl, helperKey, safeTargetUrl(body.targetUrl), String(body.targetKey || ""), (body.cursor as { i: number }) || { i: 0 }, skipStorage);
     } else if (phase === "finalize") {
       result = await phaseFinalize(helperUrl, helperKey, assertConn(body.targetConn));
     } else {
