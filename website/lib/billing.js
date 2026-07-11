@@ -85,6 +85,9 @@
     if (!f) throw new Error("No fetch available.");
     return f;
   }
+  function wait(ms) {
+    return new Promise(function (resolve) { setTimeout(resolve, ms); });
+  }
 
   function authHeaders(accessToken) {
     return {
@@ -321,11 +324,21 @@
   async function runMigrationStep(accessToken, payload, opts) {
     if (!accessToken) throw new Error("Sign in is required.");
     var base = (opts && opts.supabaseUrl) || SUPABASE_URL;
-    var res = await doFetch(opts)(base + "/functions/v1/migration-run", {
-      method: "POST",
-      headers: authHeaders(accessToken),
-      body: JSON.stringify(payload || {})
-    });
+    var res, lastErr;
+    for (var attempt = 0; attempt < 3; attempt++) {
+      try {
+        res = await doFetch(opts)(base + "/functions/v1/migration-run", {
+          method: "POST",
+          headers: authHeaders(accessToken),
+          body: JSON.stringify(payload || {})
+        });
+        break;
+      } catch (e) {
+        lastErr = e;
+        if (attempt < 2) await wait(700 * (attempt + 1));
+      }
+    }
+    if (!res) throw new Error("Could not reach the migration service. Check your connection, then retry this step.");
     var data = await readJson(res);
     if (!res.ok) throw apiError(res, data, "Migration step failed.");
     return data;

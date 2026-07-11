@@ -31,6 +31,8 @@ const DATA_BATCH = 2_000;
 const AUTH_BATCH = 1_000;
 const MIGRATION_RATE_LIMIT_HITS = 5_000;
 const STORAGE_BATCH = 4;      // objects per call (each fetched + uploaded)
+const STORAGE_CHUNK_BYTES = 1_000_000;
+const MAX_STORAGE_OBJECT_BYTES = 100 * 1024 * 1024;
 
 class SourceHelperError extends Error {
   status: number;
@@ -137,19 +139,34 @@ async function callHelperPage(url: string, key: string, payload: Record<string, 
   throw last || new Error("Source helper failed.");
 }
 async function fetchStorageObject(helperUrl: string, helperKey: string, bucket: string, name: string) {
-  const res = await helperFetch(helperUrl, helperKey, { action: "storage_download", bucket, name }, 2);
-  if (res.ok) {
-    return {
-      body: res.body || new Uint8Array(),
-      contentType: res.headers.get("content-type") || "application/octet-stream",
-      size: Number(res.headers.get("x-nativize-size") || 0),
-    };
-  }
-  const text = await res.text();
-  let data: Record<string, unknown> = {};
-  try { data = JSON.parse(text); } catch { data = { error: text.slice(0, 200) }; }
-  if (res.status !== 400 || !/unknown action/i.test(String(data.error || ""))) {
-    throw new SourceHelperError(res.status, "Source helper: " + redact(String(data.error || res.status)));
+  try {
+    const chunks: Uint8Array[] = [];
+    let offset = 0;
+    let total = 0;
+    let contentType = "application/octet-stream";
+    for (let part = 0; part < 200; part++) {
+      const chunk = await callHelper(helperUrl, helperKey, { action: "storage_object_chunk", bucket, name, offset, limit: STORAGE_CHUNK_BYTES }, 2);
+      const b64 = String(chunk.base64 || "");
+      total = Number(chunk.total || total || 0);
+      contentType = String(chunk.contentType || contentType);
+      if (total > MAX_STORAGE_OBJECT_BYTES) throw new Error("file is larger than the current 100 MB migration limit");
+      if (b64) {
+        const bin = atob(b64);
+        const bytes = new Uint8Array(bin.length);
+        for (let k = 0; k < bin.length; k++) bytes[k] = bin.charCodeAt(k);
+        chunks.push(bytes);
+      }
+      if (chunk.done === true) {
+        const body = new Uint8Array(chunks.reduce((n, c) => n + c.length, 0));
+        let pos = 0;
+        for (const c of chunks) { body.set(c, pos); pos += c.length; }
+        return { body, contentType, size: total || body.length };
+      }
+      offset = Number(chunk.next || (offset + STORAGE_CHUNK_BYTES));
+    }
+    throw new Error("file required too many chunks");
+  } catch (e) {
+    if (!(e instanceof SourceHelperError) || e.status !== 400 || !/unknown action/i.test(e.message)) throw e;
   }
 
   // Back-compat for helpers pasted before streaming downloads existed.
