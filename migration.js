@@ -34,6 +34,7 @@
   var draft = load(K.draft, null) || { step: 0, accessKey: "", helperUrl: "", targetUrl: "", source: { tables: 0, users: 0, buckets: 0, objects: 0 }, targetEmpty: null, projectId: "" };
   // Secrets are kept in memory ONLY (never persisted).
   var creds = { targetConn: "", targetKey: "" };
+  var completedMigration = null;
   var access = null;         // { access:'max'|'credit'|'none', credits_available }
   var runState = null;       // live run progress
   var busy = false;
@@ -41,6 +42,13 @@
   function esc(v) { return String(v == null ? "" : v).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
   function load(key, fb) { try { return JSON.parse(sessionStorage.getItem(key)) || fb; } catch (_e) { return fb; } }
   function save() { try { sessionStorage.setItem(K.draft, JSON.stringify(draft)); } catch (_e) {} }
+  function forgetCompletedMigrationInfo() {
+    completedMigration = { projectId: draft.projectId, source: draft.source || { tables: 0, users: 0, buckets: 0, objects: 0 } };
+    creds = { targetConn: "", targetKey: "" };
+    runState = null;
+    draft = { step: 4, accessKey: "", helperUrl: "", targetUrl: "", source: completedMigration.source, targetEmpty: null, projectId: completedMigration.projectId };
+    try { sessionStorage.removeItem(K.draft); } catch (_e) {}
+  }
   function toast(msg) { var o = document.querySelector(".mig-toast"); if (o) o.remove(); var e = document.createElement("div"); e.className = "mig-toast"; e.textContent = msg; document.body.appendChild(e); setTimeout(function () { e.remove(); }, 2400); }
   function num(n) { return Number(n || 0).toLocaleString("en-US"); }
 
@@ -395,9 +403,11 @@
       .then(function () {
         runState.running = false;
         runState.pct = 100; renderRun();
-        return api("updateMigrationStatus", [draft.projectId, "test"]).catch(function () {});
+        return api("updateMigrationStatus", [draft.projectId, "test"])
+          .then(function () { return api("updateMigrationStatus", [draft.projectId, "done"]); })
+          .catch(function () {});
       })
-      .then(function () { draft.step = 4; save(); render(); })
+      .then(function () { draft.step = 4; forgetCompletedMigrationInfo(); render(); })
       .catch(function (e) { runState.running = false; fail(runState.phase, e.message); });
   }
 
@@ -422,6 +432,8 @@
   /* ---------- Step 4: Done ---------- */
   function renderDone() {
     root.dataset.rendered = "";
+    var doneData = completedMigration || { projectId: draft.projectId, source: draft.source || { tables: 0, users: 0, buckets: 0, objects: 0 } };
+    var doneSource = doneData.source || {};
     var cleanup = [
       ["Remove the migrate-helper function", "In Lovable: <code class=\"inline\">Remove the edge function \"migrate-helper\".</code> It was only for the export."],
       ["Delete the temporary secret key", "In Supabase → Settings → API Keys, delete the secret key you pasted here."],
@@ -436,7 +448,7 @@
       '<div style="font-size:44px;line-height:1">🎉</div>' +
       '<h2 style="margin-top:8px">Migration complete</h2>' +
       '<p class="lead" style="max-width:520px;margin-inline:auto">Your database, users, and storage are now in your own Supabase project. A few quick steps finish the move — you control the final switch.</p>' +
-      note("ok", "Copied <b>" + num(draft.source.tables) + "</b> tables · <b>" + num(draft.source.users) + "</b> users · <b>" + num(draft.source.objects) + "</b> storage files.") +
+      note("ok", "Copied <b>" + num(doneSource.tables) + "</b> tables · <b>" + num(doneSource.users) + "</b> users · <b>" + num(doneSource.objects) + "</b> storage files. Temporary helper details and target credentials have been cleared from this browser.") +
       '<h3 style="margin:24px 0 12px;font-size:15px;text-align:left">Clean up the temporary access</h3>' +
         cleanup.map(function (c, i) { return checkItem("cln" + i, c[0], c[1]); }).join("") +
       '<h3 style="margin:24px 0 12px;font-size:15px;text-align:left">Finish the switch</h3>' +
@@ -444,7 +456,7 @@
       '<div class="mig-actions"><a class="btn btn-ghost" href="/migration/">Done</a><span class="spacer"></span><a class="btn btn-primary" href="/app/">Build a native app →</a></div></div>';
     root.innerHTML = head() + progress(4) + body;
     root.querySelectorAll(".mig-check-item input").forEach(function (b) {
-      var key = "nz_mig_done_" + draft.projectId + "_" + b.id;
+      var key = "nz_mig_done_" + doneData.projectId + "_" + b.id;
       b.checked = localStorage.getItem(key) === "1";
       b.onchange = function () { try { localStorage.setItem(key, b.checked ? "1" : "0"); } catch (_e) {} };
     });
