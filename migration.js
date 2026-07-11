@@ -21,8 +21,13 @@
   var SESSION = { access: "nz_web_supabase_access", refresh: "nz_web_supabase_refresh" };
   var K = { draft: "nz_migration_draft_v2", verifier: "nz_migration_pkce_verifier", pending: "nz_migration_pending" };
 
-  var accessToken = sessionStorage.getItem(SESSION.access) || "";
-  var refreshToken = sessionStorage.getItem(SESSION.refresh) || "";
+  function persistentGet(key) { try { return localStorage.getItem(key) || sessionStorage.getItem(key) || ""; } catch (_e) { return ""; } }
+  function persistentSet(key, value) { try { if (value) localStorage.setItem(key, value); else localStorage.removeItem(key); sessionStorage.removeItem(key); } catch (_e) {} }
+  var accessToken = persistentGet(SESSION.access);
+  var refreshToken = persistentGet(SESSION.refresh);
+  // Migrate older tab-only sessions so GitHub sign-in survives browser restarts.
+  if (accessToken) persistentSet(SESSION.access, accessToken);
+  if (refreshToken) persistentSet(SESSION.refresh, refreshToken);
 
   // Non-secret wizard draft is persisted so a refresh keeps your place.
   // accessKey starts empty — the user generates their unique key on the spot.
@@ -40,7 +45,7 @@
   function num(n) { return Number(n || 0).toLocaleString("en-US"); }
 
   /* ---------- auth ---------- */
-  function saveTokens(t) { accessToken = t.accessToken || ""; refreshToken = t.refreshToken || refreshToken; if (accessToken) sessionStorage.setItem(SESSION.access, accessToken); if (refreshToken) sessionStorage.setItem(SESSION.refresh, refreshToken); }
+  function saveTokens(t) { accessToken = t.accessToken || ""; refreshToken = t.refreshToken || refreshToken; persistentSet(SESSION.access, accessToken); persistentSet(SESSION.refresh, refreshToken); }
   function renew() { return Billing.refreshSession(refreshToken).then(function (t) { saveTokens(t); return t; }); }
   function api(method, args) { args = args || []; return Billing[method].apply(Billing, [accessToken].concat(args)).catch(function (err) { if (!refreshToken || !err || (err.status !== 401 && err.status !== 403)) throw err; return renew().then(function () { return Billing[method].apply(Billing, [accessToken].concat(args)); }); }); }
   function signIn(pending) { if (pending) sessionStorage.setItem(K.pending, pending); return Billing.createPkce().then(function (p) { sessionStorage.setItem(K.verifier, p.codeVerifier); location.href = Billing.authorizeUrl(location.href.split("#")[0], { codeChallenge: p.codeChallenge, codeChallengeMethod: p.codeChallengeMethod }); }); }
@@ -48,6 +53,17 @@
   function handleAuth() { var t = Billing.parseAuthTokens(location.href); if (t.error) { clearAuthParams(); return Promise.reject(new Error(t.error)); } if (!t.code) return Promise.resolve(); var v = sessionStorage.getItem(K.verifier) || ""; if (!v) { clearAuthParams(); return Promise.reject(new Error("Sign-in check failed. Start again.")); } return Billing.exchangeCodeForSession(t.code, v).then(function (s) { sessionStorage.removeItem(K.verifier); if (!s.accessToken) throw new Error("Sign-in did not return a session."); saveTokens(s); clearAuthParams(); }); }
   function currentUrl(params) { var u = new URL(location.href); u.hash = ""; u.search = ""; Object.keys(params || {}).forEach(function (k) { u.searchParams.set(k, params[k]); }); return u.toString(); }
   function checkout(planId) { if (!accessToken) return signIn("checkout:" + planId); busy = true; render(); return api("checkout", [planId, { successUrl: currentUrl({ checkout: "success" }), cancelUrl: currentUrl({ checkout: "cancelled" }) }]).then(function (r) { location.href = r.url; }).catch(function (e) { busy = false; render(e.message); }); }
+
+  function renderSignIn(err) {
+    root.innerHTML = head("Sign in once to securely load your migration access.") +
+      '<div class="mig-sheet" style="max-width:620px;margin-left:auto;margin-right:auto;text-align:center">' +
+      '<div class="eyebrow-sm">Secure account access</div><h2>Sign in with GitHub to migrate</h2>' +
+      '<p class="lead">Your GitHub sign-in creates your Nativize identity in Supabase. That same account is used to find your Max subscription or paid single-migration credit, and you’ll stay signed in on this device.</p>' +
+      (err ? note("err", esc(err)) : "") +
+      '<button class="btn btn-primary" id="migSignin" style="width:100%;justify-content:center;margin-top:8px">Sign in with GitHub</button>' +
+      '<p style="color:var(--muted);font-size:12.5px;margin:16px 0 0">Nativize never uses a different email or browser-only ID to decide migration access.</p></div>';
+    document.getElementById("migSignin").onclick = function () { signIn("migration"); };
+  }
 
   /* ---------- shared chrome ---------- */
   var STEPS = ["Connect", "Supabase", "Review", "Migrate", "Done"];
@@ -433,7 +449,7 @@
     draft.step = 0; return renderConnect(err);
   }
 
-  handleAuth().then(function () {
+  function launchAuthenticatedApp() {
     var pending = sessionStorage.getItem(K.pending); sessionStorage.removeItem(K.pending);
     if (pending && pending.indexOf("checkout:") === 0) { checkout(pending.split(":")[1]); return; }
     if (root.dataset.view === "project") return initProject();
@@ -442,8 +458,14 @@
     if (draft.step === 3 && !runState) draft.step = 2; // don't resume a run without in-memory creds
     if (draft.step === 2) loadAccess();
     render(cs === "success" ? null : cs === "cancelled" ? "Checkout cancelled — your progress is saved." : null);
-  }).catch(function (e) {
-    if (root.dataset.view === "project") return initProject();
-    render(e.message);
-  });
+  }
+
+  handleAuth().then(function () {
+    if (!accessToken && refreshToken) return renew();
+  }).then(function () {
+    if (!accessToken) { renderSignIn(); return; }
+    // This authenticated RPC binds all migration access to auth.uid(): the
+    // same Supabase user ID used by Stripe for Max and one-time purchases.
+    return api("migrationAccess").then(function (a) { access = a; launchAuthenticatedApp(); });
+  }).catch(function (e) { renderSignIn(e && e.message ? e.message : "Could not verify your GitHub session. Please sign in again."); });
 })();

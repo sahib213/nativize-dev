@@ -1,6 +1,7 @@
 /* ============================================================
    Nativize Studio (web) - same engine as the extension, in the browser.
-   Auth = Supabase GitHub OAuth; GitHub provider token stays in sessionStorage.
+   Auth = Supabase GitHub OAuth; the Supabase session persists on this device,
+   while the GitHub provider token stays in sessionStorage.
    Billing = Supabase RPCs + Stripe Checkout edge function.
    ============================================================ */
 (function () {
@@ -33,6 +34,8 @@
   function storeSession(key, val) { try { if (val == null) sessionStorage.removeItem(key); else sessionStorage.setItem(key, JSON.stringify(val)); } catch (e) {} }
   function loadText(key) { try { return sessionStorage.getItem(key) || ""; } catch (e) { return ""; } }
   function storeText(key, val) { try { if (val) sessionStorage.setItem(key, val); else sessionStorage.removeItem(key); } catch (e) {} }
+  function loadPersistentText(key) { try { return localStorage.getItem(key) || sessionStorage.getItem(key) || ""; } catch (e) { return ""; } }
+  function storePersistentText(key, val) { try { if (val) localStorage.setItem(key, val); else localStorage.removeItem(key); sessionStorage.removeItem(key); } catch (e) {} }
   function throttleLocal(key, maxHits, windowMs, message) {
     var now = Date.now();
     var attempts = load(key, []);
@@ -44,8 +47,10 @@
 
   var savedCfg = load(K.cfg, {});
   var savedToken = loadText(K.token);
-  var supabaseAccess = loadText(K.supabaseAccess);
-  var supabaseRefresh = loadText(K.supabaseRefresh);
+  var supabaseAccess = loadPersistentText(K.supabaseAccess);
+  var supabaseRefresh = loadPersistentText(K.supabaseRefresh);
+  if (supabaseAccess) storePersistentText(K.supabaseAccess, supabaseAccess);
+  if (supabaseRefresh) storePersistentText(K.supabaseRefresh, supabaseRefresh);
   var billingStatus = Billing.normalize(loadSession(K.billing, null));
   var nativizedRepos = load(K.repos, []);
 
@@ -99,8 +104,8 @@
         storeText(K.pkceVerifier, "");
         supabaseAccess = session.accessToken;
         supabaseRefresh = session.refreshToken || supabaseRefresh;
-        storeText(K.supabaseAccess, supabaseAccess);
-        storeText(K.supabaseRefresh, supabaseRefresh || "");
+        storePersistentText(K.supabaseAccess, supabaseAccess);
+        storePersistentText(K.supabaseRefresh, supabaseRefresh || "");
         if (session.githubToken) {
           savedToken = session.githubToken;
           storeText(K.token, savedToken);
@@ -130,8 +135,8 @@
   function storeSupabaseTokens(tokens) {
     supabaseAccess = tokens.accessToken || "";
     supabaseRefresh = tokens.refreshToken || supabaseRefresh || "";
-    storeText(K.supabaseAccess, supabaseAccess);
-    storeText(K.supabaseRefresh, supabaseRefresh);
+    storePersistentText(K.supabaseAccess, supabaseAccess);
+    storePersistentText(K.supabaseRefresh, supabaseRefresh);
   }
 
   function shouldRefresh(err) {
@@ -453,8 +458,8 @@
       supabaseRefresh = "";
       savedToken = "";
       storeText(K.token, "");
-      storeText(K.supabaseAccess, "");
-      storeText(K.supabaseRefresh, "");
+      storePersistentText(K.supabaseAccess, "");
+      storePersistentText(K.supabaseRefresh, "");
       storeSession(K.billing, null);
       setBillingStatus(Billing.freeStatus({ apps_used: nativizedRepos.length }));
     },

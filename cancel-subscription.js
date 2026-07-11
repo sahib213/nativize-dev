@@ -29,6 +29,12 @@
   function storeText(key, val) {
     try { if (val) sessionStorage.setItem(key, val); else sessionStorage.removeItem(key); } catch (e) {}
   }
+  function loadPersistentText(key) {
+    try { return localStorage.getItem(key) || sessionStorage.getItem(key) || ""; } catch (e) { return ""; }
+  }
+  function storePersistentText(key, val) {
+    try { if (val) localStorage.setItem(key, val); else localStorage.removeItem(key); sessionStorage.removeItem(key); } catch (e) {}
+  }
   function throttleLocal(key, maxHits, windowMs, message) {
     var now = Date.now();
     var attempts = load(key, []);
@@ -38,8 +44,10 @@
     store(key, attempts);
   }
 
-  var supabaseAccess = loadText(K.supabaseAccess);
-  var supabaseRefresh = loadText(K.supabaseRefresh);
+  var supabaseAccess = loadPersistentText(K.supabaseAccess);
+  var supabaseRefresh = loadPersistentText(K.supabaseRefresh);
+  if (supabaseAccess) storePersistentText(K.supabaseAccess, supabaseAccess);
+  if (supabaseRefresh) storePersistentText(K.supabaseRefresh, supabaseRefresh);
   var loadedStatus = null;
   var cancellationState = null;
 
@@ -84,8 +92,8 @@
   function storeSupabaseTokens(tokens) {
     supabaseAccess = tokens.accessToken || "";
     supabaseRefresh = tokens.refreshToken || supabaseRefresh || "";
-    storeText(K.supabaseAccess, supabaseAccess);
-    storeText(K.supabaseRefresh, supabaseRefresh);
+    storePersistentText(K.supabaseAccess, supabaseAccess);
+    storePersistentText(K.supabaseRefresh, supabaseRefresh);
     if (tokens.githubToken) storeText(K.token, tokens.githubToken);
   }
 
