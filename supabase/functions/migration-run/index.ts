@@ -139,6 +139,7 @@ async function callHelperPage(url: string, key: string, payload: Record<string, 
   throw last || new Error("Source helper failed.");
 }
 async function fetchStorageObject(helperUrl: string, helperKey: string, bucket: string, name: string) {
+  let chunkError: unknown = null;
   try {
     const chunks: Uint8Array[] = [];
     let offset = 0;
@@ -166,20 +167,41 @@ async function fetchStorageObject(helperUrl: string, helperKey: string, bucket: 
     }
     throw new Error("file required too many chunks");
   } catch (e) {
-    if (!(e instanceof SourceHelperError) || e.status !== 400 || !/unknown action/i.test(e.message)) throw e;
+    chunkError = e;
   }
 
-  // Back-compat for helpers pasted before streaming downloads existed.
-  const old = await callHelper(helperUrl, helperKey, { action: "storage_object", bucket, name }, 1);
-  const b64 = String(old.base64 || "");
-  const size = Number(old.size || 0);
-  if (!b64 && size > 0) {
-    throw new Error("Source helper returned an empty file body. Copy the latest migrate-helper code and retry this step.");
+  try {
+    const signed = await callHelper(helperUrl, helperKey, { action: "storage_signed_url", bucket, name }, 1);
+    const signedUrl = String(signed.url || signed.signedURL || signed.signedUrl || "");
+    if (signedUrl) {
+      const res = await fetch(signedUrl);
+      if (!res.ok) throw new Error("signed download failed " + res.status);
+      const size = Number(res.headers.get("content-length") || 0);
+      if (size > MAX_STORAGE_OBJECT_BYTES) throw new Error("file is larger than the current 100 MB migration limit");
+      const bytes = new Uint8Array(await res.arrayBuffer());
+      return { body: bytes, contentType: res.headers.get("content-type") || "application/octet-stream", size: size || bytes.length };
+    }
+  } catch (_signedErr) {
+    // Fall through to the legacy helper path below. Existing pasted helpers do
+    // not know the signed-url action yet.
   }
-  const bin = b64 ? atob(b64) : "";
-  const bytes = new Uint8Array(bin.length);
-  for (let k = 0; k < bin.length; k++) bytes[k] = bin.charCodeAt(k);
-  return { body: bytes, contentType: String(old.contentType || "application/octet-stream"), size };
+
+  try {
+    // Back-compat for helpers pasted before chunk/signed downloads existed.
+    const old = await callHelper(helperUrl, helperKey, { action: "storage_object", bucket, name }, 1);
+    const b64 = String(old.base64 || "");
+    const size = Number(old.size || 0);
+    if (size > MAX_STORAGE_OBJECT_BYTES) throw new Error("file is larger than the current 100 MB migration limit");
+    if (!b64 && size > 0) {
+      throw new Error("Source helper returned an empty file body. Copy the latest migrate-helper code and retry this step.");
+    }
+    const bin = b64 ? atob(b64) : "";
+    const bytes = new Uint8Array(bin.length);
+    for (let k = 0; k < bin.length; k++) bytes[k] = bin.charCodeAt(k);
+    return { body: bytes, contentType: String(old.contentType || "application/octet-stream"), size };
+  } catch (legacyErr) {
+    throw new Error("Source helper could not download this storage object. Copy the latest migrate-helper code and retry this step. Last error: " + redact((legacyErr as Error).message || (chunkError as Error)?.message || "download failed"));
+  }
 }
 
 async function checkRateLimit(supabase: ReturnType<typeof createClient>, bucket: string) {

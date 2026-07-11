@@ -127,12 +127,15 @@ test("Migration routes, entitlement SQL, and checkout credit flow are wired", ()
   assert.match(runner, /set search_path to public, extensions/);
   assert.match(runner, /Could not create table/);
   assert.match(runner, /action: "storage_object_chunk"/);
+  assert.match(runner, /action: "storage_signed_url"/);
+  assert.match(runner, /Source helper could not download this storage object/);
   assert.match(runner, /STORAGE_CHUNK_BYTES = 1_000_000/);
   assert.match(runner, /Could not copy rows from/);
   assert.match(runner, /Storage file/);
   assert.match(runner, /`migrun:\$\{userId\}:\$\{projectId\}`/);
   assert.match(rateLimit, /max_hits > 10000/);
   assert.match(source("website/lib/migration-helper-code.js"), /storage_object_chunk/);
+  assert.match(source("website/lib/migration-helper-code.js"), /storage_signed_url/);
   assert.match(source("website/lib/migration-helper-code.js"), /pg_catalog\.format_type/);
   assert.match(source("website/lib/migration-helper-code.js"), /create extension if not exists/);
   assert.match(wizard, /notes \/ items to review/);
