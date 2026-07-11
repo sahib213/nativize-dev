@@ -114,3 +114,23 @@ test("Migration routes, entitlement SQL, and checkout credit flow are wired", ()
   assert.match(wizard, /Finish the switch/);       // post-migration test/switch checklist
   ["website/migration/index.html", "website/migration/new/index.html", "website/migration/project/index.html", "website/migration/providers/index.html"].forEach((file) => assert.equal(fs.existsSync(path.join(__dirname, "..", file)), true));
 });
+
+test("Admin portal exposes secured user, migration, and support operations", () => {
+  const admin = source("tools/dashboard.js");
+  assert.match(admin, /DASHBOARD_PASSWORD/);
+  assert.match(admin, /isAuthorized\(req\)/);
+  assert.match(admin, /"\/users": pageUsers/);
+  assert.match(admin, /"\/migrations": pageMigrations/);
+  assert.match(admin, /migration_credits\?select=/);
+  assert.match(admin, /migration_projects\?select=/);
+});
+
+test("Migration marketing never advertises migration as free", () => {
+  const pricing = source("website/pricing/index.html");
+  const hub = source("website/migration/index.html");
+  const seo = source("website/lovable-to-supabase/index.html");
+  assert.doesNotMatch(pricing, /preview scan free/i);
+  assert.doesNotMatch(hub, /"price"\s*:\s*"0"/);
+  assert.doesNotMatch(seo, /"price"\s*:\s*"0"/);
+  assert.match(pricing, /Migration access is paid/);
+});

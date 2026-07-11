@@ -196,7 +196,9 @@ async function handleMigrationPurchase(session: Stripe.Checkout.Session, userId:
   });
   const priceId = expanded.line_items?.data[0]?.price?.id || null;
   const expectedPrice = envOptional("STRIPE_PRICE_MIGRATION");
-  if (expectedPrice && priceId !== expectedPrice) return;
+  // Fail closed: never grant a migration credit unless the paid line item
+  // matches the migration price explicitly configured for this environment.
+  if (!expectedPrice || priceId !== expectedPrice) return;
 
   const { error: purchaseErr } = await supabase.from("migration_purchases").upsert({
     user_id: userId,

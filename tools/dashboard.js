@@ -5,19 +5,17 @@
    and a grouped sidebar with sparklines, a contribution heatmap, and a donut.
 
    Data is live from Supabase (service_role key, this machine only). Free local
-   AI via Ollama. No login (open on your LAN). Run: npm run dashboard
+   AI via Ollama. Password protected. Run: npm run dashboard
    ============================================================================ */
 "use strict";
 const http = require("http");
+const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
 
 const ROOT = path.join(__dirname, "..");
 const SUPABASE_URL = process.env.SUPABASE_URL || "https://gaaxcbarmiwtojblkkyh.supabase.co";
-const PORT = Number(process.env.DASHBOARD_PORT || 8787);
-const HOST = process.env.DASHBOARD_HOST || "0.0.0.0";
-
 (function loadEnv() {
   const p = path.join(ROOT, ".env.local");
   if (!fs.existsSync(p)) return;
@@ -27,6 +25,8 @@ const HOST = process.env.DASHBOARD_HOST || "0.0.0.0";
   }
 })();
 
+const PORT = Number(process.env.DASHBOARD_PORT || 8787);
+const HOST = process.env.DASHBOARD_HOST || "127.0.0.1";
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN || "";
 const GITHUB_REPO = process.env.GITHUB_REPO || "sahib213/nativize-dev";
@@ -36,7 +36,23 @@ const SUPPORT_REPLY_TO = process.env.SUPPORT_REPLY_TO_EMAIL || SUPPORT_FROM_EMAI
 const OLLAMA_URL = process.env.OLLAMA_URL || "http://127.0.0.1:11434";
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "llama3.2:3b";
 const OWNER = process.env.DASHBOARD_OWNER || "Sahib";
+const DASHBOARD_USER = process.env.DASHBOARD_USER || "admin";
+const DASHBOARD_PASSWORD = process.env.DASHBOARD_PASSWORD || "";
 if (!SERVICE_KEY) { console.error("\n  Missing SUPABASE_SERVICE_ROLE_KEY in ~/nativize/.env.local.\n"); process.exit(1); }
+if (!DASHBOARD_PASSWORD) { console.error("\n  Missing DASHBOARD_PASSWORD in ~/nativize/.env.local.\n"); process.exit(1); }
+
+function sameSecret(a, b) {
+  const left = Buffer.from(String(a)); const right = Buffer.from(String(b));
+  return left.length === right.length && crypto.timingSafeEqual(left, right);
+}
+function isAuthorized(req) {
+  const value = req.headers.authorization || "";
+  if (!value.startsWith("Basic ")) return false;
+  let decoded = "";
+  try { decoded = Buffer.from(value.slice(6), "base64").toString("utf8"); } catch (_) { return false; }
+  const split = decoded.indexOf(":");
+  return split > -1 && sameSecret(decoded.slice(0, split), DASHBOARD_USER) && sameSecret(decoded.slice(split + 1), DASHBOARD_PASSWORD);
+}
 
 /* ---- Persistent settings + worker logs (~/nativize/.dashboard-state.json, gitignored) ---- */
 const STATE_FILE = process.env.DASHBOARD_STATE_FILE || path.join(ROOT, ".dashboard-state.json");
@@ -63,6 +79,22 @@ async function sb(q) {
   return v;
 }
 async function safe(p, fb) { try { return await p; } catch (e) { return { __error: e.message, fallback: fb }; } }
+let authUserCache = { t: 0, v: [] };
+async function authUsers() {
+  if (Date.now() - authUserCache.t < 10000) return authUserCache.v;
+  const users = [];
+  for (let page = 1; page <= 100; page++) {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/admin/users?page=${page}&per_page=1000`, {
+      headers: { apikey: SERVICE_KEY, Authorization: "Bearer " + SERVICE_KEY, Accept: "application/json" }
+    });
+    if (!res.ok) throw new Error("Auth users → " + res.status + " " + (await res.text()).slice(0, 140));
+    const batch = (await res.json()).users || [];
+    users.push(...batch);
+    if (batch.length < 1000) break;
+  }
+  authUserCache = { t: Date.now(), v: users };
+  return users;
+}
 async function githubIssues() {
   if (!GITHUB_TOKEN) return { __error: "No GITHUB_TOKEN set (optional).", fallback: [] };
   try {
@@ -79,7 +111,7 @@ async function sendReply(to, subject, text) {
     return { ok: true };
   } catch (e) { return { ok: false, error: e.message }; }
 }
-const AI_SYSTEM = `You are the support agent for Nativize (nativize.dev): a tool that turns Lovable, Vite, React and GitHub web apps into real native iOS/Android/Mac/Windows apps — it generates a standard Capacitor 8 project into the user's own GitHub repo and builds installable apps with GitHub Actions (iOS builds in the cloud, no Mac needed). Reply concisely and warmly, give clear next steps, ask for specifics only if needed, never invent refund/pricing policies or request secrets. Email body only, sign "— Sahib, Nativize".`;
+const AI_SYSTEM = `You are the support agent for Nativize (nativize.dev): a tool that turns Lovable, Vite, React and GitHub web apps into native apps and also provides guided app migration. Migration is never free: it is included with an active Max subscription, or requires a paid one-time migration credit. Reply concisely and warmly, give clear next steps, ask for specifics only if needed, never invent prices, refund policies, or request secrets. Email body only, sign "— Sahib, Nativize".`;
 async function ollama(prompt, sys) {
   const res = await fetch(OLLAMA_URL + "/api/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: OLLAMA_MODEL, prompt: (sys ? sys + "\n\n" : "") + prompt, stream: false, options: { temperature: 0.4 } }) });
   if (!res.ok) throw new Error("Local AI error " + res.status + " — is Ollama running? (open the Ollama app or run `ollama serve`)");
@@ -106,7 +138,7 @@ async function sbWrite(q, method, body, prefer) {
    features, honest sign-off, one reply per ticket, and Sahib
    always gets the thread (reply_to routes back to him).
    ============================================================ */
-const AI_AUTO_SYSTEM = `You are the automated first-response support assistant for Nativize (nativize.dev). Nativize turns Lovable, Vite, React, and GitHub web apps into real native iOS/Android/Mac/Windows apps: it generates a standard Capacitor 8 project into the user's own GitHub repo and builds installable apps with GitHub Actions (iOS builds run in the cloud, no Mac needed). Facts you may use: generation runs in the browser; the user owns the generated code; App Store needs an Apple Developer account (US$99/yr) and Google Play a one-time US$25 account; build artifacts download from GitHub Actions.
+const AI_AUTO_SYSTEM = `You are the automated first-response support assistant for Nativize (nativize.dev). Nativize turns Lovable, Vite, React, and GitHub web apps into real native apps and provides guided app migration. Facts you may use: generation runs in the browser; the user owns the generated code; migration is never free and is included with active Max or available through a paid one-time migration credit; App Store needs an Apple Developer account (US$99/yr) and Google Play a one-time US$25 account; build artifacts download from GitHub Actions.
 STRICT RULES:
 - NEVER promise refunds, discounts, cancellations, fixes, or timelines.
 - NEVER invent features or capabilities. If you are not sure, say Sahib (the founder) will follow up personally.
@@ -236,8 +268,8 @@ function heatmap(dayViews) {
 const NAV = [
   ["", [["/", "Overview", "grid"], ["/jarvis", "Jarvis", "spark"]]],
   ["Analytics", [["/visitors", "Visitors", "chart"], ["/features", "Feature requests", "star"]]],
-  ["Engagement", [["/support", "Support", "chat"]]],
-  ["Customers", [["/paid", "Paid customers", "card"], ["/testers", "Testers", "beaker"]]],
+  ["Engagement", [["/support", "Support", "chat"], ["/migrations", "Migrations", "migrate"]]],
+  ["Customers", [["/users", "All users", "users"], ["/paid", "Paid customers", "card"], ["/testers", "Testers", "beaker"]]],
   ["AI", [["/workers", "AI Workers", "bolt"], ["/brief", "Daily Brief", "doc"]]],
   ["Dev", [["/issues", "GitHub issues", "bug"]]],
   ["", [["/settings", "Settings", "gear"]]]
@@ -249,6 +281,8 @@ const ICO = {
   doc: "M6 2h9l5 5v15H6zM14 2v6h6M9 13h8M9 17h6",
   chart: "M3 3v18h18M7 14l3-4 3 3 4-6", star: "M12 3l2.5 6H21l-5 4 2 7-6-4.3L6 20l2-7-5-4h6.5z",
   chat: "M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z", card: "M3 5h18v14H3zM3 10h18",
+  users: "M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75",
+  migrate: "M7 7h11l-3-3M18 7l-3 3M17 17H6l3 3M6 17l3-3",
   beaker: "M9 3h6M10 3v6l-5 9a2 2 0 002 3h10a2 2 0 002-3l-5-9V3", bug: "M12 2a10 10 0 100 20 10 10 0 000-20zM12 8v5M12 16h.01",
   gear: "M12 15a3 3 0 100-6 3 3 0 000 6zM19.4 13a7.5 7.5 0 000-2l2-1.5-2-3.5-2.4 1a7 7 0 00-1.7-1L14 3h-4l-.3 2a7 7 0 00-1.7 1l-2.4-1-2 3.5L3.6 11a7.5 7.5 0 000 2l-2 1.5 2 3.5 2.4-1a7 7 0 001.7 1l.3 2h4l.3-2a7 7 0 001.7-1l2.4 1 2-3.5z"
 };
@@ -437,12 +471,13 @@ async function activationMap() {
 
 /* ============================ Pages ============================ */
 async function pageOverview() {
-  const [t, daily, support, ents, actMap, feats, recentActs] = await Promise.all([
+  const [t, daily, support, ents, actMap, feats, recentActs, migrationProjects] = await Promise.all([
     safe(sb("admin_pageviews_totals"), [{}]), safe(sb("admin_pageviews_daily?limit=120"), []),
     safe(sb("support_requests?select=*&order=created_at.desc&limit=6"), []),
     safe(sb("billing_entitlements?select=user_id,plan_id,billing&limit=1000"), []), activationMap(),
     safe(sb("feature_requests?select=created_at&limit=1000"), []),
-    safe(sb("app_activations?select=created_at,plan_id,repo&order=created_at.desc&limit=8"), [])
+    safe(sb("app_activations?select=created_at,plan_id,repo&order=created_at.desc&limit=8"), []),
+    safe(sb("migration_projects?select=status,created_at&order=created_at.desc&limit=10000"), [])
   ]);
   const T = arr(t)[0] || {};
   const dayMap = {}; arr(daily).forEach((d) => (dayMap[d.day] = d.views));
@@ -474,6 +509,7 @@ async function pageOverview() {
     ${kpi("red", "chat", "Support inbox", num(sup.length), { cls: supWeek ? "down" : "flat", text: supWeek ? supWeek + " new this week" : "all caught up" }, "")}
     ${kpi("blue", "beaker", "Testers", num(free), { cls: "flat", text: "free-plan builders" }, "")}
     ${kpi("purple", "card", "Paid customers", num(paid), { cls: "up", text: "$" + num(mrr) + " CAD/mo" }, "")}
+    ${kpi("blue", "migrate", "Migrations", num(arr(migrationProjects).length), { text: arr(migrationProjects).filter((p) => p.status === "done").length + " completed" }, "")}
     ${kpi("green", "star", "Feature requests", num(featCount), { text: "ideas from users" }, "")}
   </div>`;
 
@@ -491,6 +527,7 @@ async function pageOverview() {
     <a href="/testers"><span class="ic">${icon("beaker")}</span>See frequent testers</a>
     <a href="/visitors"><span class="ic">${icon("chart")}</span>Traffic report</a>
     <a href="/paid"><span class="ic">${icon("card")}</span>Paid customers</a>
+    <a href="/migrations"><span class="ic">${icon("migrate")}</span>Migration activity</a>
   </div>`;
 
   // Revenue + conversion funnel row
@@ -523,7 +560,16 @@ async function pageOverview() {
 
 async function pageSupport(qs) {
   const filter = (qs && qs.get("f")) || "all";
-  const rows = arr(await safe(sb("support_requests?select=*&order=created_at.desc&limit=100"), []));
+  const [rowsRes, custsRes, entsRes, projectsRes] = await Promise.all([
+    safe(sb("support_requests?select=*&order=created_at.desc&limit=100"), []),
+    safe(sb("billing_customers?select=user_id,email&limit=10000"), []),
+    safe(sb("billing_entitlements?select=user_id,plan_id,status&limit=10000"), []),
+    safe(sb("migration_projects?select=user_id&limit=10000"), [])
+  ]);
+  const rows = arr(rowsRes);
+  const uidByEmail = new Map(arr(custsRes).filter((c) => c.email).map((c) => [String(c.email).toLowerCase(), c.user_id]));
+  const entByUid = new Map(arr(entsRes).map((e) => [e.user_id, e]));
+  const migrationCount = new Map(); for (const p of arr(projectsRes)) migrationCount.set(p.user_id, (migrationCount.get(p.user_id) || 0) + 1);
   const probe = await safe(sb("support_replies?select=id&limit=1"), []);
   const migrated = !(probe && probe.__error);
   const migBanner = migrated ? "" : `<div class="err" style="margin:0 0 14px;padding:12px 16px;border:1px solid var(--red);border-radius:12px">⚠ <b>One step pending:</b> run migration <code>202607090001</code> in the Supabase SQL editor to unlock AI auto-replies, ticket statuses, and reply threads. Until then you can read messages and reply manually via “Reply in Mail”.</div>`;
@@ -545,6 +591,8 @@ async function pageSupport(qs) {
   const pillCls = { open: "warn", pending: "warn", replied: "info", closed: "ok" };
   const items = shown.map((r) => {
     const to = r.email || "", subj = "Re: your message to Nativize", body = (r.message || r.body || "");
+    const uid = uidByEmail.get(String(to).toLowerCase()); const ent = entByUid.get(uid); const migrations = migrationCount.get(uid) || 0;
+    const account = uid ? `${ent?.plan_id || "free"} plan · ${migrations} migration${migrations === 1 ? "" : "s"}` : "No linked billing account";
     const st = r.status || "open";
     const mailto = to ? `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subj)}` : "";
     const thread = (replyMap.get(r.id) || []).map((rep) =>
@@ -555,7 +603,7 @@ async function pageSupport(qs) {
       ? `<form method="POST" action="/api/status" style="display:inline"><input type="hidden" name="id" value="${esc(r.id)}"/><input type="hidden" name="status" value="open"/><button class="btn" type="submit">Reopen</button></form>`
       : `<form method="POST" action="/api/status" style="display:inline" onsubmit="return confirm('Mark this support ticket resolved?')"><input type="hidden" name="id" value="${esc(r.id)}"/><input type="hidden" name="status" value="closed"/><button class="btn" type="submit">Mark resolved</button></form>`;
     const reply = to ? `<details class="reply"><summary>Reply</summary><form method="POST" action="/api/reply"><input type="hidden" name="to" value="${esc(to)}"/><input type="hidden" name="request_id" value="${esc(r.id)}"/><input type="hidden" name="srcmsg" value="${esc(body)}"/><input type="text" name="subject" value="${esc(subj)}"/><textarea name="text" placeholder="Write a reply… or click Draft with AI"></textarea><div class="row"><button class="btn" type="button" onclick="aiDraft(this)">✨ Draft with AI</button>${emailReady ? `<button class="btn pri" type="submit">Send email</button>` : `<button class="btn" type="submit" disabled>Send email (set up Resend)</button>`}<a class="btn" href="${mailto}">Reply in Mail</a></div></form></details>` : `<span class="muted">No email on file — cannot reply</span>`;
-    return `<tr><td style="white-space:nowrap">${when(r.created_at)}<div style="margin-top:6px"><span class="pill ${pillCls[st] || "free"}">${esc(st)}</span></div></td><td>${esc(to || "—")}<div class="muted" style="font-size:12px">${esc(r.topic || "")}</div></td><td><span class="msg">${esc(body)}</span>${thread}<div class="row" style="display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap">${reply}${statusBtns}</div></td></tr>`;
+    return `<tr><td style="white-space:nowrap">${when(r.created_at)}<div style="margin-top:6px"><span class="pill ${pillCls[st] || "free"}">${esc(st)}</span></div></td><td>${esc(to || "—")}<div class="muted" style="font-size:12px">${esc(r.topic || "")}</div><div class="muted" style="font-size:11.5px;margin-top:5px">${esc(account)}</div></td><td><span class="msg">${esc(body)}</span>${thread}<div class="row" style="display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap">${reply}${statusBtns}</div></td></tr>`;
   });
   const inner = shown.length ? `<table><thead><tr><th>When / status</th><th>From</th><th>Conversation</th></tr></thead><tbody>${items.join("")}</tbody></table>` : `<div class="empty">${filter === "all" ? "No support messages yet." : "No " + filter + " tickets."}</div>`;
   return { title: "Support", sub: (state.autoReply ? "AI auto-reply ON · " : "AI auto-reply OFF · ") + (emailReady ? "sending from " + SUPPORT_FROM_EMAIL : "email sending off"), body: migBanner + banner + filters + card(shown.length + " of " + rows.length + " tickets", inner) };
@@ -599,6 +647,73 @@ async function pageFeatures() {
   const rows = arr(await safe(sb("feature_requests?select=*&order=created_at.desc&limit=200"), []));
   return { title: "Feature requests", body: card(rows.length + " requests", tableEl(["When", "From", "Request"], rows.map((r) => [when(r.created_at), esc(r.email || "—"), `<span class="msg">${esc(r.message || r.body || r.title || "")}</span>`]), "No feature requests yet.")) };
 }
+async function pageUsers(qs) {
+  const [authRes, entsRes, custsRes, actMap, projectsRes, creditsRes, supportRes] = await Promise.all([
+    safe(authUsers(), []), safe(sb("billing_entitlements?select=*&limit=10000"), []),
+    safe(sb("billing_customers?select=user_id,email&limit=10000"), []), activationMap(),
+    safe(sb("migration_projects?select=id,user_id,status,created_at,updated_at&limit=10000"), []),
+    safe(sb("migration_credits?select=user_id,status,source,project_id,created_at&limit=10000"), []),
+    safe(sb("support_requests?select=email,status,created_at&limit=10000"), [])
+  ]);
+  const users = new Map();
+  const ensure = (id) => { if (!users.has(id)) users.set(id, { id, email: "", joined: null, login: null, provider: "—", plan: "free", planStatus: "", apps: 0, repos: 0, migrations: 0, migrationLast: null, credits: 0, support: 0, openSupport: 0 }); return users.get(id); };
+  for (const u of arr(authRes)) { const r = ensure(u.id); r.email = u.email || ""; r.joined = u.created_at; r.login = u.last_sign_in_at; r.provider = u.app_metadata?.provider || (Array.isArray(u.app_metadata?.providers) ? u.app_metadata.providers.join(", ") : "email"); }
+  for (const c of arr(custsRes)) { const r = ensure(c.user_id); if (!r.email) r.email = c.email || ""; }
+  for (const e of arr(entsRes)) { const r = ensure(e.user_id); r.plan = e.plan_id || "free"; r.planStatus = e.status || ""; }
+  for (const [id, a] of actMap) { const r = ensure(id); r.apps = a.count; r.repos = a.repos.size; if (r.plan === "free" && a.plan) r.plan = a.plan; }
+  for (const p of arr(projectsRes)) { const r = ensure(p.user_id); r.migrations++; if (!r.migrationLast || new Date(p.updated_at || p.created_at) > new Date(r.migrationLast)) r.migrationLast = p.updated_at || p.created_at; }
+  for (const c of arr(creditsRes)) if (c.status === "unused") ensure(c.user_id).credits++;
+  const byEmail = new Map([...users.values()].filter((u) => u.email).map((u) => [u.email.toLowerCase(), u]));
+  for (const s of arr(supportRes)) { const r = byEmail.get(String(s.email || "").toLowerCase()); if (r) { r.support++; if ((s.status || "open") === "open") r.openSupport++; } }
+  const q = String(qs?.get("q") || "").trim().toLowerCase();
+  const all = [...users.values()].sort((a, b) => new Date(b.joined || b.login || 0) - new Date(a.joined || a.login || 0));
+  const shown = q ? all.filter((u) => [u.email, u.id, u.plan, u.provider].some((v) => String(v).toLowerCase().includes(q))) : all;
+  const paid = all.filter((u) => u.plan !== "free" && ["active", "trialing", ""].includes(String(u.planStatus).toLowerCase())).length;
+  const max = all.filter((u) => u.plan === "max" && ["active", "trialing"].includes(String(u.planStatus).toLowerCase())).length;
+  const search = `<form method="GET" action="/users" style="display:flex;gap:9px;margin-bottom:16px;max-width:560px"><input name="q" value="${esc(qs?.get("q") || "")}" placeholder="Search email, user ID, plan, or provider" style="flex:1;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:10px;padding:9px 12px;font:inherit"><button class="btn" type="submit">Search</button>${q ? `<a class="btn" href="/users">Clear</a>` : ""}</form>`;
+  const kpis = `<div class="kpis">${kpi("blue", "users", "All users", num(all.length), { text: "Supabase accounts" }, "")}${kpi("purple", "card", "Paid users", num(paid), { text: "active entitlements" }, "")}${kpi("green", "migrate", "Migration users", num(all.filter((u) => u.migrations > 0).length), { text: "started a migration" }, "")}${kpi("red", "chat", "Open support", num(all.reduce((n, u) => n + u.openSupport, 0)), { text: "linked to accounts" }, "")}</div>`;
+  const table = tableEl(["User", "Account", "Plan", "App usage", "Migration usage", "Support"], shown.map((u) => [
+    `<b>${esc(u.email || shortId(u.id))}</b><div class="muted" style="font-size:11.5px">${esc(u.id)}</div>`,
+    `${esc(u.provider)}<div class="muted" style="font-size:11.5px">Joined ${when(u.joined)} · Last sign-in ${when(u.login)}</div>`,
+    `<span class="pill ${u.plan === "max" ? "ok" : u.plan === "free" ? "free" : "info"}">${esc(u.plan)}</span>${u.planStatus ? `<div class="muted" style="font-size:11.5px">${esc(u.planStatus)}</div>` : ""}`,
+    `<b>${num(u.apps)}</b> builds<div class="muted" style="font-size:11.5px">${num(u.repos)} repositories</div>`,
+    `<b>${num(u.migrations)}</b> projects<div class="muted" style="font-size:11.5px">${num(u.credits)} unused credits · ${when(u.migrationLast)}</div>`,
+    `${num(u.support)} tickets${u.openSupport ? `<div><span class="pill warn">${num(u.openSupport)} open</span></div>` : ""}`
+  ]), "No users match this search.");
+  return { title: "All users", sub: `Every account, with billing and product usage. ${max} active Max users.`, body: kpis + search + card(`${shown.length} of ${all.length} users`, table + errline(authRes)) };
+}
+
+async function pageMigrations(qs) {
+  const [projectsRes, creditsRes, purchasesRes, auditsRes, entsRes, custsRes, authRes] = await Promise.all([
+    safe(sb("migration_projects?select=id,user_id,name,source_provider,target_provider,status,created_at,updated_at&order=created_at.desc&limit=10000"), []),
+    safe(sb("migration_credits?select=user_id,status,source,project_id,created_at,used_at&limit=10000"), []),
+    safe(sb("migration_purchases?select=user_id,created_at&limit=10000"), []),
+    safe(sb("migration_audit_logs?select=project_id,action,created_at&order=created_at.desc&limit=10000"), []),
+    safe(sb("billing_entitlements?select=user_id,plan_id,status&limit=10000"), []),
+    safe(sb("billing_customers?select=user_id,email&limit=10000"), []), safe(authUsers(), [])
+  ]);
+  const emailBy = new Map(arr(authRes).map((u) => [u.id, u.email]));
+  for (const c of arr(custsRes)) if (!emailBy.get(c.user_id)) emailBy.set(c.user_id, c.email);
+  const maxIds = new Set(arr(entsRes).filter((e) => e.plan_id === "max" && ["active", "trialing"].includes(String(e.status).toLowerCase())).map((e) => e.user_id));
+  const creditByProject = new Map(arr(creditsRes).filter((c) => c.project_id).map((c) => [c.project_id, c]));
+  const latestAction = new Map(); for (const a of arr(auditsRes)) if (!latestAction.has(a.project_id)) latestAction.set(a.project_id, a);
+  const filter = String(qs?.get("f") || "all"); const projects = arr(projectsRes);
+  const shown = filter === "all" ? projects : projects.filter((p) => p.status === filter);
+  const active = projects.filter((p) => p.status !== "done").length;
+  const unused = arr(creditsRes).filter((c) => c.status === "unused").length;
+  const filters = `<div class="chips" style="margin:0 0 16px">${["all", "connect", "target", "scan", "run", "test", "done"].map((f) => `<a class="chip" style="${f === filter ? "border-color:var(--brand);color:var(--ink)" : ""}" href="/migrations${f === "all" ? "" : "?f=" + f}">${f === "all" ? "All" : f[0].toUpperCase() + f.slice(1)} (${f === "all" ? projects.length : projects.filter((p) => p.status === f).length})</a>`).join("")}</div>`;
+  const kpis = `<div class="kpis">${kpi("purple", "migrate", "Migration projects", num(projects.length), { text: "all time" }, "")}${kpi("blue", "chart", "In progress", num(active), { text: "not completed" }, "")}${kpi("green", "card", "One-time purchases", num(arr(purchasesRes).length), { text: "paid credits granted" }, "")}${kpi("red", "star", "Unused credits", num(unused), { text: "available to customers" }, "")}</div>`;
+  const rows = shown.map((p) => { const action = latestAction.get(p.id); const access = maxIds.has(p.user_id) ? "Max included" : creditByProject.has(p.id) ? "One-time paid" : "Legacy / review"; return [
+    `<b>${esc(emailBy.get(p.user_id) || shortId(p.user_id))}</b><div class="muted" style="font-size:11.5px">${esc(p.name || "Migration")}</div>`,
+    `${esc(p.source_provider)} → ${esc(p.target_provider)}`,
+    `<span class="pill ${p.status === "done" ? "ok" : "info"}">${esc(p.status)}</span>`,
+    `<span class="pill ${access === "Legacy / review" ? "warn" : "ok"}">${esc(access)}</span>`,
+    `${when(p.created_at)}<div class="muted" style="font-size:11.5px">Updated ${when(p.updated_at)}</div>`,
+    action ? `${esc(action.action)}<div class="muted" style="font-size:11.5px">${when(action.created_at)}</div>` : "—"
+  ]; });
+  const note = `<div class="err" style="color:var(--muted)">This admin view intentionally excludes uploaded source, credentials, secret values, and generated migration files.</div>`;
+  return { title: "Migrations", sub: "Paid migration usage, entitlement source, and progress for every customer.", body: kpis + filters + card(`${shown.length} of ${projects.length} migrations`, tableEl(["Customer", "Route", "Status", "Access", "Timeline", "Latest activity"], rows, "No migration projects yet.") + errline(projectsRes)) + note };
+}
 async function pagePaid() {
   const [ents, custs, actMap] = await Promise.all([safe(sb("billing_entitlements?select=*&order=updated_at.desc&limit=500"), []), safe(sb("billing_customers?select=user_id,email"), []), activationMap()]);
   const emailBy = new Map(arr(custs).map((c) => [c.user_id, c.email]));
@@ -631,7 +746,7 @@ async function pageIssues() {
 function pageSettings() {
   const emailReady = !!(RESEND_API_KEY && SUPPORT_FROM_EMAIL);
   return { title: "Settings", body:
-    card("Access", `<div class="empty">No login (open on your WiFi). Anyone on your WiFi can view this. Ask me to add a lock anytime.</div>`) +
+    card("Access", `<div class="empty"><b style="color:var(--green)">Password protected</b> with HTTP Basic authentication. The portal binds to <code>${esc(HOST)}</code>; set DASHBOARD_HOST=0.0.0.0 only when you intentionally want LAN access.</div>`) +
     card("AI", `<div class="empty">Free local AI via Ollama · model <b style="color:var(--ink)">${esc(OLLAMA_MODEL)}</b>. Nothing goes to a paid API. Powers the Ask box and reply drafts.</div>`) +
     card("Email sending", `<div class="empty">Reply-by-email: <b style="color:${emailReady ? "var(--green)" : "var(--red)"}">${emailReady ? "ON — " + esc(SUPPORT_FROM_EMAIL) : "OFF"}</b>. ${emailReady ? "" : "Add RESEND_API_KEY + SUPPORT_FROM_EMAIL to .env.local to enable in-portal sending."}</div>`) };
 }
@@ -785,12 +900,17 @@ async function pageJarvis() {
 }
 
 /* ============================ Router ============================ */
-const PAGES = { "/": pageOverview, "/jarvis": async () => pageJarvis(), "/support": pageSupport, "/features": pageFeatures, "/paid": pagePaid, "/testers": pageTesters, "/visitors": pageVisitors, "/issues": pageIssues, "/workers": async () => pageWorkers(), "/brief": pageBrief, "/settings": async () => pageSettings() };
+const PAGES = { "/": pageOverview, "/jarvis": async () => pageJarvis(), "/support": pageSupport, "/migrations": pageMigrations, "/users": pageUsers, "/features": pageFeatures, "/paid": pagePaid, "/testers": pageTesters, "/visitors": pageVisitors, "/issues": pageIssues, "/workers": async () => pageWorkers(), "/brief": pageBrief, "/settings": async () => pageSettings() };
 function send(res, code, html) { res.writeHead(code, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", "X-Frame-Options": "DENY" }); res.end(html); }
 function json(res, obj) { res.writeHead(200, { "Content-Type": "application/json" }); res.end(JSON.stringify(obj)); }
 function redirect(res, to) { res.writeHead(302, { Location: to }); res.end(); }
 
 const server = http.createServer(async (req, res) => {
+  if (!isAuthorized(req)) {
+    res.writeHead(401, { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store", "WWW-Authenticate": 'Basic realm="Nativize Admin", charset="UTF-8"' });
+    res.end("Authentication required.");
+    return;
+  }
   const u = new URL(req.url, "http://x");
   const p = u.pathname;
   if (p === "/favicon.ico") { res.writeHead(204).end(); return; }
@@ -862,6 +982,7 @@ server.listen(PORT, HOST, () => {
   for (const k of Object.keys(ni)) for (const a of ni[k]) if (a.family === "IPv4" && !a.internal) ips.push(a.address);
   console.log(`\n  Nativize portal running.`);
   console.log(`  • This Mac:  http://127.0.0.1:${PORT}`);
-  ips.forEach((ip) => console.log(`  • WiFi:      http://${ip}:${PORT}`));
+  if (HOST === "0.0.0.0") ips.forEach((ip) => console.log(`  • WiFi:      http://${ip}:${PORT}`));
+  console.log(`  • Login:     ${DASHBOARD_USER} + DASHBOARD_PASSWORD from .env.local`);
   console.log("");
 });
