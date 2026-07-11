@@ -221,6 +221,7 @@ async function phaseSchema(helperUrl: string, helperKey: string, conn: string) {
   try {
     if ((schema.extensions as string[] || []).length) await run("create schema if not exists extensions");
     for (const ext of (schema.extensions as string[] || [])) await runCritical(ext, "Could not enable extension");
+    await runCritical("set search_path to public, extensions", "Could not set schema search path");
     for (const t of (schema.types as string[] || [])) await run(t);
     for (const t of (schema.tables as Array<{ name: string; ddl: string }> || [])) await runCritical(t.ddl, "Could not create table " + t.name);
     const existing = await sql`select table_name from information_schema.tables where table_schema='public' and table_type='BASE TABLE'`;
