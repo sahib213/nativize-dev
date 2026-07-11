@@ -321,12 +321,22 @@ async function phaseStorage(helperUrl: string, helperKey: string, targetUrl: str
   if (i === 0) {
     // Create buckets first (idempotent).
     for (const b of buckets) {
+      const bucketId = b.id || b.name;
       const res = await fetch(targetUrl + "/storage/v1/bucket", {
         method: "POST",
         headers: { Authorization: "Bearer " + targetKey, "Content-Type": "application/json", apikey: targetKey },
-        body: JSON.stringify({ id: b.id || b.name, name: b.name, public: !!b.public }),
+        body: JSON.stringify({ id: bucketId, name: b.name, public: !!b.public }),
       }).catch(() => null);
-      if (res && !res.ok && res.status !== 409) throw new Error("Could not create storage bucket " + b.name + ": " + res.status);
+      if (res && !res.ok && res.status !== 409) {
+        const errText = await res.text().catch(() => "");
+        const exists = await fetch(targetUrl + "/storage/v1/bucket/" + encodeURIComponent(bucketId), {
+          headers: { Authorization: "Bearer " + targetKey, apikey: targetKey },
+        }).catch(() => null);
+        if (!exists || !exists.ok) {
+          throw new Error("Could not create storage bucket " + b.name + ": " + res.status + (errText ? " " + redact(errText) : ""));
+        }
+      }
+      if (!res) throw new Error("Could not reach target storage while creating bucket " + b.name);
     }
   }
 

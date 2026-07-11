@@ -132,6 +132,7 @@ test("Migration routes, entitlement SQL, and checkout credit flow are wired", ()
   assert.match(runner, /STORAGE_CHUNK_BYTES = 1_000_000/);
   assert.match(runner, /Could not copy rows from/);
   assert.match(runner, /Storage file/);
+  assert.match(runner, /storage\/v1\/bucket\/"\s*\+\s*encodeURIComponent\(bucketId\)/);
   assert.match(runner, /`migrun:\$\{userId\}:\$\{projectId\}`/);
   assert.match(rateLimit, /max_hits > 10000/);
   assert.match(source("website/lib/migration-helper-code.js"), /storage_object_chunk/);
