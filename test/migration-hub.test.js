@@ -111,8 +111,21 @@ test("Migration routes, entitlement SQL, and checkout credit flow are wired", ()
   assert.match(checkout, /STRIPE_PRICE_MIGRATION/);
   assert.match(wizard, /Use 1 credit/);            // credit consumption surfaced before start
   assert.match(wizard, /One will be used when you start/);
+  assert.match(wizard, /Sign in with GitHub to migrate/);
+  assert.match(wizard, /localStorage\.setItem\(key, value\)/);
+  assert.match(wizard, /api\("migrationAccess"\).*launchAuthenticatedApp/);
+  assert.match(wizard, /same Supabase user ID used by Stripe/);
   assert.match(wizard, /Finish the switch/);       // post-migration test/switch checklist
   ["website/migration/index.html", "website/migration/new/index.html", "website/migration/project/index.html", "website/migration/providers/index.html"].forEach((file) => assert.equal(fs.existsSync(path.join(__dirname, "..", file)), true));
+});
+
+test("Web account surfaces share a persistent Supabase GitHub session", () => {
+  const app = source("website/app.js");
+  const cancel = source("website/cancel-subscription.js");
+  assert.match(app, /loadPersistentText\(K\.supabaseAccess\)/);
+  assert.match(app, /storePersistentText\(K\.supabaseRefresh/);
+  assert.match(cancel, /loadPersistentText\(K\.supabaseAccess\)/);
+  assert.match(cancel, /storePersistentText\(K\.supabaseRefresh/);
 });
 
 test("Admin portal exposes secured user, migration, and support operations", () => {
