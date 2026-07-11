@@ -359,7 +359,14 @@ async function phaseStorage(helperUrl: string, helperKey: string, targetUrl: str
         body: obj.body,
       });
       if (up.ok) uploaded++; else throw new Error("target upload failed " + up.status);
-    } catch (e) { throw new Error("Storage file " + o.name + ": " + redact((e as Error).message)); }
+    } catch (e) {
+      const msg = redact((e as Error).message);
+      if (/Source helper could not download this storage object|Source helper: download failed 400|download failed 400/i.test(msg)) {
+        warnings.push("skipped unreadable storage file " + skipKey + ": source storage returned an unrecoverable download error");
+        continue;
+      }
+      throw new Error("Storage file " + o.name + ": " + msg);
+    }
   }
   return { ok: true, done: end >= objects.length, cursor: { i: end }, total: objects.length, processed: end, uploaded, warnings: warnings.slice(0, 10) };
 }

@@ -134,6 +134,7 @@ test("Migration routes, entitlement SQL, and checkout credit flow are wired", ()
   assert.match(runner, /Storage file/);
   assert.match(runner, /skipStorage/);
   assert.match(runner, /skipped unreadable storage file/);
+  assert.match(runner, /source storage returned an unrecoverable download error/);
   assert.match(runner, /storage\/v1\/bucket\/"\s*\+\s*encodeURIComponent\(bucketId\)/);
   assert.match(runner, /`migrun:\$\{userId\}:\$\{projectId\}`/);
   assert.match(rateLimit, /max_hits > 10000/);
