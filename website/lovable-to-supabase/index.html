@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://*.supabase.co https://www.google-analytics.com https://www.googletagmanager.com; img-src 'self' data: blob: https://www.google-analytics.com; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests" />
-  <title>Lovable to Supabase Migration — Move Your App in Minutes</title>
-  <meta name="description" content="Migrate a Lovable Cloud app to your own Supabase project — database, users with passwords intact, and storage — in minutes. Connect both, click go, no CSV exports, no password resets. Included with Nativize Max." />
+  <title>How to Migrate Lovable Cloud to Supabase (2026 Guide)</title>
+  <meta name="description" content="Learn how to migrate Lovable Cloud to your own Supabase in 2026: database, auth users with password hashes, RLS policies, storage, testing, and cutover." />
   <meta name="robots" content="index,follow,max-image-preview:large" />
   <meta name="theme-color" content="#0a0a12" />
   <link rel="canonical" href="https://nativize.dev/lovable-to-supabase/" />
@@ -14,8 +14,8 @@
   <link rel="alternate" type="application/json" href="https://nativize.dev/nativize-facts.json" title="Nativize structured facts" />
   <meta property="og:site_name" content="Nativize" />
   <meta property="og:locale" content="en_US" />
-  <meta property="og:title" content="Lovable to Supabase Migration — move your app in minutes" />
-  <meta property="og:description" content="Move a Lovable Cloud app to your own Supabase: database, users (passwords intact), and storage. No CSV exports, no password resets, no keys handed to random tools." />
+  <meta property="og:title" content="How to Migrate Lovable Cloud to Supabase (2026)" />
+  <meta property="og:description" content="A practical guide to moving database schema and rows, auth users, RLS policies, and storage from Lovable Cloud to your own Supabase." />
   <meta property="og:type" content="article" />
   <meta property="og:url" content="https://nativize.dev/lovable-to-supabase/" />
   <meta property="og:image" content="https://nativize.dev/og-image.png" />
@@ -25,8 +25,8 @@
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="Nativize migrates a Lovable Cloud app to your own Supabase project — database, users, and storage." />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="Lovable to Supabase Migration" />
-  <meta name="twitter:description" content="Move a Lovable Cloud app to your own Supabase — database, users with passwords intact, and storage — in minutes." />
+  <meta name="twitter:title" content="How to Migrate Lovable Cloud to Supabase" />
+  <meta name="twitter:description" content="The 2026 guide to migrating database, auth users, RLS policies, and storage from Lovable Cloud to your own Supabase." />
   <meta name="twitter:image" content="https://nativize.dev/og-image.png" />
   <link rel="icon" href="/favicon.ico" sizes="any" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -39,6 +39,19 @@
   {
     "@context": "https://schema.org",
     "@graph": [
+      {
+        "@type": "Article",
+        "@id": "https://nativize.dev/lovable-to-supabase/#article",
+        "headline": "How to migrate Lovable Cloud to Supabase (2026 guide)",
+        "description": "A practical guide to moving a Lovable Cloud backend to a user-owned Supabase project.",
+        "datePublished": "2026-07-10",
+        "dateModified": "2026-07-10",
+        "mainEntityOfPage": "https://nativize.dev/lovable-to-supabase/",
+        "author": { "@type": "Organization", "name": "Nativize", "url": "https://nativize.dev/" },
+        "publisher": { "@type": "Organization", "name": "Nativize", "url": "https://nativize.dev/" },
+        "image": "https://nativize.dev/og-image.png",
+        "inLanguage": "en-US"
+      },
       {
         "@type": "BreadcrumbList",
         "@id": "https://nativize.dev/lovable-to-supabase/#breadcrumbs",
@@ -97,7 +110,7 @@
     <article class="container" style="max-width:820px;padding:120px 0 40px">
       <nav aria-label="Breadcrumb" style="color:var(--muted);font-size:13px;margin-bottom:16px"><a href="/" style="color:var(--muted)">Nativize</a> › Lovable to Supabase Migration</nav>
       <span class="eyebrow" style="color:#a78bfa">Lovable Cloud → Supabase</span>
-      <h1 style="font-size:clamp(30px,5vw,50px);line-height:1.06;letter-spacing:-.03em;margin:8px 0 18px">Lovable to Supabase migration, done in minutes</h1>
+      <h1 style="font-size:clamp(30px,5vw,50px);line-height:1.06;letter-spacing:-.03em;margin:8px 0 18px">How to migrate Lovable Cloud to Supabase</h1>
       <p style="color:var(--muted);font-size:18px;line-height:1.6;margin:0 0 22px">Ready to own your backend? <strong style="color:var(--text)">Nativize migrates your Lovable Cloud app to your own Supabase project</strong> — the database, your auth users with their passwords intact, and every storage file — in five guided steps. No CSV exports, no table-by-table copying, no password resets, and no handing your private keys to a random tool.</p>
       <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px">
         <a class="btn btn-primary btn-lg" href="/migration/new/">Start your migration <span class="arr">→</span></a>
@@ -107,7 +120,7 @@
 
       <section style="margin-top:48px">
         <h2 style="font-size:26px;letter-spacing:-.02em">How to migrate Lovable Cloud to Supabase</h2>
-        <p style="color:var(--muted);line-height:1.7">Migrating a Lovable Cloud project to your own Supabase used to mean exporting each table to CSV, importing them in the right dependency order, forcing every user to reset their password, and re-uploading storage files one by one. Nativize automates the whole thing. Because Lovable Cloud can't be connected directly, you add a tiny temporary read-only helper to your project — then Nativize does the rest:</p>
+        <p style="color:var(--muted);line-height:1.7">Migrating a Lovable Cloud project to your own Supabase manually means recreating the schema, moving tables in dependency order, transferring auth users through a separate password-hash-safe process, and re-uploading storage files. Nativize automates those connected phases. Because Lovable Cloud cannot use a normal direct database connection, you add a temporary read-only helper to your project — then Nativize does the rest:</p>
         <div class="mig-steps" style="margin-top:20px">
           <div class="mig-step"><div class="n">1</div><div class="body"><h4>Connect Lovable</h4><p>Nativize generates a small, temporary, read-only <code class="inline">migrate-helper</code> edge function locked to a one-time key. Paste it into your Lovable project, deploy it, and test the connection in one click.</p></div></div>
           <div class="mig-step"><div class="n">2</div><div class="body"><h4>Connect your Supabase project</h4><p>Point Nativize at a fresh, empty Supabase project. Your connection string and secret key stay in your browser and go straight to your own projects.</p></div></div>
@@ -129,7 +142,8 @@
 
       <section style="margin-top:44px">
         <h2 style="font-size:26px;letter-spacing:-.02em">Manual CSV export vs Nativize</h2>
-        <p style="color:var(--muted);line-height:1.7">Lovable's own documentation for moving to Supabase is rough: you export and import table data via CSV one table at a time in the right order, storage files download and re-upload individually, and <strong style="color:var(--text)">every user has to reset their password</strong> — a dealbreaker if you have real users. Miss a step and you start over. Nativize copies tables, users, and storage in a single pass, keeps passwords intact, is read-only on your source, and is <strong style="color:var(--text)">included with Max</strong> rather than a separate paywall — so you own your data without the manual grind.</p>
+        <p style="color:var(--muted);line-height:1.7">A manual move requires careful table ordering, schema recreation, a separate auth-user transfer, and individual storage handling. Supabase documents that auth tables can be migrated with hashed passwords, but doing it safely still requires database access, the right export scope, and correct sequencing. Nativize handles those connected phases in one resumable workflow, keeps the Lovable source read-only, and is <strong style="color:var(--text)">included with Max</strong>.</p>
+        <p style="color:var(--muted);line-height:1.7">For background, see the official <a href="https://supabase.com/docs/guides/troubleshooting/migrating-auth-users-between-projects" rel="noopener" style="color:#c4b5fd">Supabase auth-user migration guidance</a> and <a href="https://docs.lovable.dev/integrations/cloud" rel="noopener" style="color:#c4b5fd">Lovable Cloud documentation</a>.</p>
       </section>
 
       <section style="margin-top:44px">
@@ -147,7 +161,6 @@
         <details class="card" style="padding:18px 20px;margin-top:12px"><summary style="cursor:pointer;font-weight:650">Does it reset user passwords?</summary><p style="color:var(--muted);margin:12px 0 0;line-height:1.65">No. Users are copied with their password hashes intact, so they keep logging in with the same credentials — no forced resets.</p></details>
         <details class="card" style="padding:18px 20px;margin-top:12px"><summary style="cursor:pointer;font-weight:650">Do you store my Supabase keys?</summary><p style="color:var(--muted);margin:12px 0 0;line-height:1.65">No. Your connection string and secret key stay in your browser and are sent directly to your own projects for the transfer. Nativize never stores or logs them.</p></details>
         <details class="card" style="padding:18px 20px;margin-top:12px"><summary style="cursor:pointer;font-weight:650">Is migrating off Lovable Cloud reversible?</summary><p style="color:var(--muted);margin:12px 0 0;line-height:1.65">Yes. The migration is read-only on your Lovable project and only inserts into your new Supabase project, so your original data stays intact. Run both side by side until you're ready to switch.</p></details>
-        <details class="card" style="padding:18px 20px;margin-top:12px"><summary style="cursor:pointer;font-weight:650">How much does it cost?</summary><p style="color:var(--muted);margin:12px 0 0;line-height:1.65">It's included with Nativize Max. Not on Max? Buy a single one-time migration instead. See <a href="/pricing/" style="color:#c4b5fd">pricing</a>.</p></details>
       </section>
 
       <section style="margin-top:44px;text-align:center">
@@ -162,6 +175,7 @@
       </section>
 
       <p style="color:var(--muted-2);font-size:12.5px;margin-top:30px">Related: <a href="/migration/" style="color:var(--muted)">App Migration</a> · <a href="/lovable-to-native-app/" style="color:var(--muted)">Lovable to native app</a> · <a href="/features/" style="color:var(--muted)">Features</a> · <a href="/pricing/" style="color:var(--muted)">Pricing</a>. Not affiliated with Lovable or Supabase.</p>
+      <p class="last-reviewed">Published and reviewed: <time datetime="2026-07-10">July 10, 2026</time></p>
     </article>
   </main>
 

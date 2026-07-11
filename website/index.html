@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://api.github.com https://github.com https://codeload.github.com https://gaaxcbarmiwtojblkkyh.supabase.co https://www.google-analytics.com https://www.googletagmanager.com; img-src 'self' data: blob: https://www.google-analytics.com; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests" />
   <title>Nativize | Turn Lovable Apps Into Real Native Apps</title>
-  <meta name="description" content="Nativize is the app for turning a Lovable app into a real native iOS, Android, Mac, or Windows app. Generate Capacitor projects and GitHub Actions builds from Lovable or Vite." />
+  <meta name="description" content="Nativize turns Lovable apps into native iOS, Android, Mac, and Windows projects, and migrates Lovable Cloud backends to your own Supabase." />
   <meta name="robots" content="index,follow,max-image-preview:large" />
   <meta name="theme-color" content="#0a0a12" />
   <link rel="canonical" href="https://nativize.dev/" />
@@ -49,6 +49,7 @@
         "name": "Nativize",
         "url": "https://nativize.dev/",
         "logo": "https://nativize.dev/og-image.png",
+        "sameAs": ["https://chromewebstore.google.com/detail/nativize-lovable-to-nativ/mofjfbhfeanhffcfighdmhdboimiienb"],
         "contactPoint": {
           "@type": "ContactPoint",
           "contactType": "customer support",
@@ -68,6 +69,8 @@
           { "@type": "WebPage", "@id": "https://nativize.dev/best-app-to-turn-lovable-into-native-app/", "name": "Best app to turn a Lovable app into a real native app" },
           { "@type": "WebPage", "@id": "https://nativize.dev/ai-app-builder-to-native-app/", "name": "Turn an AI-built web app into a native app" },
           { "@type": "WebPage", "@id": "https://nativize.dev/lovable-to-native-app/", "name": "Lovable to native app guide" },
+          { "@type": "WebPage", "@id": "https://nativize.dev/migration/", "name": "Lovable Cloud to Supabase migration tool" },
+          { "@type": "WebPage", "@id": "https://nativize.dev/lovable-to-supabase/", "name": "How to migrate Lovable Cloud to Supabase" },
           { "@type": "WebPage", "@id": "https://nativize.dev/github-to-native-app/", "name": "Turn a GitHub app into a native app" },
           { "@type": "WebPage", "@id": "https://nativize.dev/blog/", "name": "Nativize blog" },
           { "@type": "WebPage", "@id": "https://nativize.dev/blog/ship-lovable-app-to-app-store/", "name": "Ship a Lovable app to the App Store and Google Play" },
@@ -91,7 +94,7 @@
         "isPartOf": { "@id": "https://nativize.dev/#website" },
         "about": { "@id": "https://nativize.dev/#software" },
         "primaryImageOfPage": "https://nativize.dev/og-image.png",
-        "dateModified": "2026-07-04",
+        "dateModified": "2026-07-10",
         "speakable": {
           "@type": "SpeakableSpecification",
           "cssSelector": ["#best-lovable-native-app h2", "#best-lovable-native-app p", "#faq"]
@@ -504,9 +507,9 @@
         <article class="feat card reveal" id="migration">
           <div class="feat-ico grad-1"><svg viewBox="0 0 24 24"><path d="M12 2 3 7v5c0 5 3.8 8.4 9 10 5.2-1.6 9-5 9-10V7z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="m8.5 12 2.5 2.5L16 9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
           <span class="feature-label">New · Included with Max</span>
-          <h3>App migration</h3>
-          <p>Scan a Lovable or Supabase project locally, get safe commands, and move it to your own Supabase project in five guided steps.</p>
-          <a class="btn btn-glass feature-link" href="/migration/new/">Start a migration <span aria-hidden="true">→</span></a>
+          <h3>Lovable Cloud to Supabase migration</h3>
+          <p>Move database schema and rows, auth users with password hashes, RLS policies, and storage to a Supabase project you own.</p>
+          <a class="btn btn-glass feature-link" href="/migration/">Explore migration <span aria-hidden="true">→</span></a>
         </article>
 
         <article class="feat card reveal">
