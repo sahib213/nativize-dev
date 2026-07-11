@@ -123,6 +123,11 @@ test("Migration routes, entitlement SQL, and checkout credit flow are wired", ()
   assert.match(runner, /`migrun:\$\{userId\}:\$\{projectId\}`/);
   assert.match(rateLimit, /max_hits > 10000/);
   assert.match(wizard, /function freshRunState/);
+  assert.match(wizard, /function forgetCompletedMigrationInfo/);
+  assert.match(wizard, /creds = \{ targetConn: "", targetKey: "" \}/);
+  assert.match(wizard, /sessionStorage\.removeItem\(K\.draft\)/);
+  assert.match(wizard, /updateMigrationStatus", \[draft\.projectId, "done"\]/);
+  assert.match(wizard, /Temporary helper details and target credentials have been cleared/);
   assert.match(wizard, /cursors: \{ data: \{ i: 0, offset: 0 \}, auth: \{ offset: 0 \}, storage: \{ i: 0 \} \}/);
   assert.match(wizard, /runState\.cursors\.data = cursor/);
   assert.match(wizard, /Finish the switch/);       // post-migration test/switch checklist
