@@ -27,8 +27,9 @@ const corsHeaders = {
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const IDENT_RE = /^[A-Za-z0-9_]{1,63}$/;
-const DATA_BATCH = 500;
-const AUTH_BATCH = 500;
+const DATA_BATCH = 2_000;
+const AUTH_BATCH = 1_000;
+const MIGRATION_RATE_LIMIT_HITS = 5_000;
 const STORAGE_BATCH = 4;      // objects per call (each fetched + uploaded)
 const MAX_OBJECT_BYTES = 25 * 1024 * 1024;
 
@@ -98,7 +99,7 @@ async function callHelper(url: string, key: string, payload: Record<string, unkn
 }
 
 async function checkRateLimit(supabase: ReturnType<typeof createClient>, bucket: string) {
-  const { error } = await supabase.rpc("nativize_check_rate_limit", { bucket, max_hits: 240, window_seconds: 900 });
+  const { error } = await supabase.rpc("nativize_check_rate_limit", { bucket, max_hits: MIGRATION_RATE_LIMIT_HITS, window_seconds: 900 });
   if (error && /too many requests/i.test(error.message || "")) {
     throw Object.assign(new Error("Too many migration requests. Wait a few minutes."), { status: 429 });
   }
@@ -267,11 +268,11 @@ Deno.serve(async (req) => {
     const { data: userData, error: userErr } = await admin.auth.getUser(jwt);
     if (userErr || !userData.user) return json({ error: "Invalid session." }, 401);
     const userId = userData.user.id;
-    await checkRateLimit(admin, `migrun:${userId}`);
 
     const body = await req.json().catch(() => ({})) as Record<string, unknown>;
     const phase = String(body.phase || "");
     const projectId = String(body.projectId || "");
+    await checkRateLimit(admin, UUID_RE.test(projectId) ? `migrun:${userId}:${projectId}` : `migrun:${userId}`);
 
     // Entitlement: Max subscription or at least one unused single-migration credit.
     const { data: maxEnt } = await admin

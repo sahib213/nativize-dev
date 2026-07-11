@@ -101,6 +101,8 @@ test("Migration routes, entitlement SQL, and checkout credit flow are wired", ()
   const sql = source("supabase/migrations/202607100001_migration_hub.sql");
   const webhook = source("supabase/functions/stripe-webhook/index.ts");
   const checkout = source("supabase/functions/create-checkout-session/index.ts");
+  const runner = source("supabase/functions/migration-run/index.ts");
+  const rateLimit = source("supabase/migrations/202607100002_raise_migration_rate_limit_ceiling.sql");
   const wizard = source("website/migration.js");
   assert.match(sql, /create_migration_project/);
   assert.match(sql, /for update skip locked/);
@@ -115,6 +117,14 @@ test("Migration routes, entitlement SQL, and checkout credit flow are wired", ()
   assert.match(wizard, /localStorage\.setItem\(key, value\)/);
   assert.match(wizard, /api\("migrationAccess"\).*launchAuthenticatedApp/);
   assert.match(wizard, /same Supabase user ID used by Stripe/);
+  assert.match(runner, /const DATA_BATCH = 2_000/);
+  assert.match(runner, /const AUTH_BATCH = 1_000/);
+  assert.match(runner, /const MIGRATION_RATE_LIMIT_HITS = 5_000/);
+  assert.match(runner, /`migrun:\$\{userId\}:\$\{projectId\}`/);
+  assert.match(rateLimit, /max_hits > 10000/);
+  assert.match(wizard, /function freshRunState/);
+  assert.match(wizard, /cursors: \{ data: \{ i: 0, offset: 0 \}, auth: \{ offset: 0 \}, storage: \{ i: 0 \} \}/);
+  assert.match(wizard, /runState\.cursors\.data = cursor/);
   assert.match(wizard, /Finish the switch/);       // post-migration test/switch checklist
   ["website/migration/index.html", "website/migration/new/index.html", "website/migration/project/index.html", "website/migration/providers/index.html"].forEach((file) => assert.equal(fs.existsSync(path.join(__dirname, "..", file)), true));
 });
