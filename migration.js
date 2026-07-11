@@ -275,6 +275,19 @@
     { id: "storage", label: "Storage files", hint: "Copying buckets and objects" },
     { id: "finalize", label: "Keys, indexes & policies", hint: "Foreign keys, RLS and sequences" }
   ];
+  function freshRunState() {
+    return {
+      phase: 0,
+      phases: RUN_PHASES.map(function (p) { return { id: p.id, label: p.label, hint: p.hint, status: "wait", detail: "" }; }),
+      tableNames: [],
+      cursors: { data: { i: 0, offset: 0 }, auth: { offset: 0 }, storage: { i: 0 } },
+      totals: { data: 0, auth: 0, storage: 0 },
+      warnings: [],
+      pct: 0,
+      error: null,
+      running: false
+    };
+  }
   function startMigration() {
     if (!creds.targetConn || (needsStorageKey() && !creds.targetKey)) { draft.step = 1; save(); renderTarget("Re-enter your target connection string" + (needsStorageKey() ? " and secret key" : "") + " to start (not saved, for security)."); return; }
     var btn = document.getElementById("rvStart"); if (btn) { btn.disabled = true; btn.textContent = "Preparing…"; }
@@ -283,7 +296,7 @@
         var id = Array.isArray(created) ? (created[0] && created[0].id) : created.id;
         if (!id) throw new Error("Could not create the migration project.");
         draft.projectId = id; draft.step = 3; save();
-        runState = { phase: 0, phases: RUN_PHASES.map(function (p) { return { id: p.id, label: p.label, hint: p.hint, status: "wait", detail: "" }; }), warnings: [], pct: 0, error: null };
+        runState = freshRunState();
         render();
         runEngine();
       })
@@ -300,26 +313,35 @@
   function addWarns(w) { if (w && w.length) runState.warnings = runState.warnings.concat(w).slice(0, 200); }
 
   function runEngine() {
-    var tableNames = [];
+    if (runState.running) return;
+    runState.running = true;
+    runState.error = null;
+    runState.cursors = runState.cursors || { data: { i: 0, offset: 0 }, auth: { offset: 0 }, storage: { i: 0 } };
+    runState.totals = runState.totals || { data: 0, auth: 0, storage: 0 };
     function fail(i, msg) { runState.phases[i].status = "err"; runState.error = msg; renderRun(); }
+    function done(i) { return runState.phases[i] && runState.phases[i].status === "done"; }
 
     function doSchema() {
+      if (done(0)) return Promise.resolve();
       setPhase(0, "active", "Reading and applying schema…");
       return api("runMigrationStep", [step4Payload({ phase: "schema" })]).then(function (r) {
         if (r.error) throw new Error(r.error);
-        tableNames = r.tableNames || []; addWarns(r.warnings);
-        setPhase(0, "done", num(r.applied || 0) + " objects created" + (tableNames.length ? " · " + num(tableNames.length) + " tables" : ""));
+        runState.tableNames = r.tableNames || []; addWarns(r.warnings);
+        setPhase(0, "done", num(r.applied || 0) + " objects created" + (runState.tableNames.length ? " · " + num(runState.tableNames.length) + " tables" : ""));
       });
     }
     function doData() {
+      if (done(1)) return Promise.resolve();
       setPhase(1, "active", "Copying rows…");
-      var cursor = { i: 0, offset: 0 }, total = 0;
+      var tableNames = runState.tableNames || [];
+      var cursor = runState.cursors.data || { i: 0, offset: 0 };
+      var total = runState.totals.data || 0;
       function loop() {
         return api("runMigrationStep", [step4Payload({ phase: "data", tables: tableNames, cursor: cursor })]).then(function (r) {
           if (r.error) throw new Error(r.error);
-          addWarns(r.warnings); total += (r.inserted || 0);
+          addWarns(r.warnings); total += (r.inserted || 0); runState.totals.data = total;
+          if (r.cursor) { cursor = r.cursor; runState.cursors.data = cursor; }
           if (r.done) { setPhase(1, "done", num(total) + " rows copied"); return; }
-          cursor = r.cursor || cursor;
           runState.phases[1].detail = "Copying rows… " + num(total) + " so far" + (r.table ? " (" + esc(r.table) + ")" : ""); renderRun();
           return loop();
         });
@@ -327,34 +349,41 @@
       return tableNames.length ? loop() : (setPhase(1, "done", "No tables"), Promise.resolve());
     }
     function doAuth() {
+      if (done(2)) return Promise.resolve();
       setPhase(2, "active", "Copying user accounts…");
-      var cursor = { offset: 0 }, total = 0;
+      var cursor = runState.cursors.auth || { offset: 0 };
+      var total = runState.totals.auth || 0;
       function loop() {
         return api("runMigrationStep", [step4Payload({ phase: "auth", cursor: cursor })]).then(function (r) {
           if (r.error) throw new Error(r.error);
-          addWarns(r.warnings); total += (r.inserted || 0);
+          addWarns(r.warnings); total += (r.inserted || 0); runState.totals.auth = total;
+          if (r.cursor) { cursor = r.cursor; runState.cursors.auth = cursor; }
           if (r.done) { setPhase(2, "done", num(total) + " users copied (passwords intact)"); return; }
-          cursor = r.cursor || cursor; runState.phases[2].detail = num(total) + " users so far…"; renderRun();
+          runState.phases[2].detail = num(total) + " users so far…"; renderRun();
           return loop();
         });
       }
       return loop();
     }
     function doStorage() {
+      if (done(3)) return Promise.resolve();
       setPhase(3, "active", "Copying storage files…");
-      var cursor = { i: 0 }, uploaded = 0;
+      var cursor = runState.cursors.storage || { i: 0 };
+      var uploaded = runState.totals.storage || 0;
       function loop() {
         return api("runMigrationStep", [step4Payload({ phase: "storage", cursor: cursor })]).then(function (r) {
           if (r.error) throw new Error(r.error);
-          addWarns(r.warnings); uploaded += (r.uploaded || 0);
+          addWarns(r.warnings); uploaded += (r.uploaded || 0); runState.totals.storage = uploaded;
+          if (r.cursor) { cursor = r.cursor; runState.cursors.storage = cursor; }
           if (r.done) { setPhase(3, "done", num(uploaded) + " files copied"); return; }
-          cursor = r.cursor || cursor; runState.phases[3].detail = "Copied " + num(r.processed || 0) + " / " + num(r.total || 0) + " files…"; renderRun();
+          runState.phases[3].detail = "Copied " + num(r.processed || 0) + " / " + num(r.total || 0) + " files…"; renderRun();
           return loop();
         });
       }
       return loop();
     }
     function doFinalize() {
+      if (done(4)) return Promise.resolve();
       setPhase(4, "active", "Applying keys, indexes and policies…");
       return api("runMigrationStep", [step4Payload({ phase: "finalize" })]).then(function (r) {
         if (r.error) throw new Error(r.error);
@@ -364,11 +393,12 @@
 
     doSchema().then(doData).then(doAuth).then(doStorage).then(doFinalize)
       .then(function () {
+        runState.running = false;
         runState.pct = 100; renderRun();
         return api("updateMigrationStatus", [draft.projectId, "test"]).catch(function () {});
       })
       .then(function () { draft.step = 4; save(); render(); })
-      .catch(function (e) { fail(runState.phase, e.message); });
+      .catch(function (e) { runState.running = false; fail(runState.phase, e.message); });
   }
 
   function renderRun() {
